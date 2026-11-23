@@ -32,9 +32,12 @@ alongside the installed application and produced diagnostic results. The first
 custom screen renders and handles touch on a physical DASH. It includes a touch
 counter, a button to open the original dashboard, and USB/Wi-Fi ADB controls.
 Wi-Fi ADB is verified on hardware, including a root shell and file transfers.
-Integration with the existing communication service is next.
+A separate **ADB Enabler** helper provides a minimal SD startup screen with
+automatic Wi-Fi ADB and a centered connection address. It is the current
+development loader.
 
 - [Research](docs/research.md)
 - [Roadmap](docs/roadmap.md)
 - [SD probe: build and test](app/sd-probe/README.md)
 - [Dashboard: build and test](app/dashboard/README.md)
+- [ADB Enabler: setup and development loader](app/adb-enabler/README.md)

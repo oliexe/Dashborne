@@ -6,3 +6,5 @@ app/sd-probe/build/
 app/sd-probe/card/
 app/dashboard/build/
 app/dashboard/card/
+app/adb-enabler/build/
+app/adb-enabler/card/

@@ -1,0 +1,68 @@
+{
+  "id": 0,
+  "caption": "ADB Enabler",
+  "backgroundColor": 725013,
+  "position": {
+    "left": 0,
+    "top": 0,
+    "width": 1920,
+    "height": 480
+  },
+  "resolution": {
+    "width": 1920,
+    "height": 480
+  },
+  "visible": true,
+  "modal": false,
+  "topmost": false,
+  "beepEnable": false,
+  "hideTimeout": -1,
+  "textview__1": {
+    "id": 50001,
+    "text": "ADB Enabler",
+    "fontSize": 38,
+    "alignment": 37,
+    "colorTab": {
+      "color0": 10332853
+    },
+    "position": {
+      "left": 80,
+      "top": 130,
+      "width": 1760,
+      "height": 60
+    },
+    "touchable": false
+  },
+  "textview__2": {
+    "id": 50003,
+    "text": "Connecting...",
+    "fontSize": 64,
+    "alignment": 37,
+    "colorTab": {
+      "color0": 15922936
+    },
+    "position": {
+      "left": 80,
+      "top": 204,
+      "width": 1760,
+      "height": 80
+    },
+    "touchable": false
+  },
+  "textview__3": {
+    "id": 50002,
+    "text": "Waiting for Wi-Fi",
+    "fontSize": 28,
+    "alignment": 37,
+    "colorTab": {
+      "color0": 6609341
+    },
+    "position": {
+      "left": 80,
+      "top": 298,
+      "width": 1760,
+      "height": 50
+    },
+    "touchable": false
+  }
+}

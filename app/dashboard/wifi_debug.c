@@ -8,7 +8,13 @@ extern int close(int);
 extern int socket(int, int, int);
 extern int ioctl(int, unsigned long, ...);
 
-#define CONFIG "/mnt/extsd/Dashborne/wifi.conf"
+#ifndef WIFI_CONFIG_PATH
+#define WIFI_CONFIG_PATH "/mnt/extsd/Dashborne/wifi.conf"
+#endif
+#ifndef WIFI_TIMEOUT_STATUS
+#define WIFI_TIMEOUT_STATUS "Wi-Fi: no address; tap Wi-Fi to retry"
+#endif
+#define CONFIG WIFI_CONFIG_PATH
 static void (*change_mode)(int);
 static int (*get_mode)(void), (*is_connected)(void);
 static void (*connect_wifi)(const void *, const void *);
@@ -110,7 +116,7 @@ void wifi_debug_poll(void) {
         requested = 1;
         log_event("wifi: connection requested\n");
     }
-    if (ticks >= 90) error = "Wi-Fi: no address; tap Wi-Fi to retry";
+    if (ticks >= 90) error = WIFI_TIMEOUT_STATUS;
 }
 
 const char *wifi_debug_ip(void) { return ip; }

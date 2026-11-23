@@ -25,6 +25,14 @@
 - [x] Capture the live screen and deploy/restart an updated UI over Wi-Fi.
 - [ ] Verify USB enumeration and a USB ADB shell on the development laptop.
 
+## Development loader
+
+- [x] Build a separate minimal ADB Enabler app.
+- [x] Read Wi-Fi settings from the SD card and start TCP ADB automatically.
+- [x] Show centered connection status and address.
+- [x] Verify on-screen rendering and automatic recovery of a stopped ADB daemon.
+- [x] Verify automatic Wi-Fi and ADB startup after a full device reboot.
+
 ## Dashboard features
 
 - [ ] Map the local communication service interface.

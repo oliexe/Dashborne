@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")"
+mkdir -p build
+${HOST_CC:-cc} -std=c11 -Wall -Wextra -Werror -fno-strict-aliasing -fsanitize=address,undefined -g tests/runtime_test.c -o build/runtime-test
+for scenario in normal shutdown-prepared wrong-runtime read-error missing-layout missing-symbol wrong-vtable create-failure allocation-failure; do
+    ./build/runtime-test "$scenario"
+done
+${HOST_CC:-cc} -std=c11 -Wall -Wextra -Werror -fno-strict-aliasing -fsanitize=address,undefined -g tests/tcp_adb_test.c -o build/tcp-adb-test
+for scenario in normal missing-api existing other-transport failure; do
+    ./build/tcp-adb-test "$scenario"
+done
+python3 -m unittest discover -s tests -p 'test_*.py'
