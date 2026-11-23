@@ -99,3 +99,6 @@ from configuration. Extensions can add UI and behavior, replace theme resources,
 or register a custom startup activity while using the installed official app.
 See the [extension SDK](app/extensions/README.md) and the
 [lifecycle example](extensions/lifecycle-example).
+
+The [Contrast plugin](extensions/contrast) adds an entry to the official Settings
+menu with temporary display contrast and luminance controls.
