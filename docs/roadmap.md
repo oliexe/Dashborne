@@ -33,6 +33,15 @@
 - [x] Verify on-screen rendering and automatic recovery of a stopped ADB daemon.
 - [x] Verify automatic Wi-Fi and ADB startup after a full device reboot.
 
+## Instrument cluster mockup
+
+- [x] Build a Tesla-inspired layout at the native 1920 × 480 resolution.
+- [x] Add original car artwork, animated lanes, traffic and simulated speed.
+- [x] Add navigation/energy, Park/Drive and pause/resume interactions.
+- [x] Test the simulation and native control callbacks locally.
+- [x] Deploy remotely and inspect the rendered screen on the DASH.
+- [x] Preserve ADB Enabler as the startup selection after preview deployment.
+
 ## Dashboard features
 
 - [ ] Map the local communication service interface.

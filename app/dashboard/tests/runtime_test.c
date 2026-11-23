@@ -15,34 +15,24 @@
 #define free fake_free
 #define fsync fake_fsync
 #include "../dashboard.c"
+#include "../demo.c"
 #undef calloc
 #undef free
 
 static const char *scenario;
 static int init_calls, start_calls, deinit_calls, create_calls, dtor_calls;
-static int allocations, frees, reads, opens;
+static int allocations, frees, reads;
 static void *(*registered)(void);
 static void *original_table[17];
-static char label[32];
-static int counter_control;
-static int debug_control, debug_button, debug_toggles, timer_calls;
-void usb_debug_bind(void *p, void (*logger)(const char *)) { assert(p == (void *)2 && logger); }
+static char speed_text[16], primary_text[64], road_picture[128];
+static int controls[32], timer_calls, wifi_polls;
 void wifi_debug_bind(void *p, void (*logger)(const char *)) { assert(p == (void *)1 && logger); }
-void wifi_debug_poll(void) {}
+void wifi_debug_poll(void) { ++wifi_polls; }
 void wifi_debug_retry(void) {}
 const char *wifi_debug_status(void) { return "Wi-Fi: ready"; }
 const char *wifi_debug_ip(void) { return ""; }
-void usb_debug_toggle_wifi(void) {}
-int usb_debug_wifi_owned(void) { return 0; }
-int usb_debug_wifi_active(void) { return 0; }
-void usb_debug_toggle(void) { ++debug_toggles; }
-void usb_debug_shutdown(void) { }
-void usb_debug_collect(void) { }
-void usb_debug_poll(void) { }
-const char *usb_debug_status(void) { return "ADB: off"; }
-int usb_debug_owned(void) { return 0; }
 static void timer(void *p, int id, int interval) {
-    assert(p && id == DEBUG_TIMER && interval == 1000); ++timer_calls;
+    assert(p && id == DEMO_TIMER && interval == 100); ++timer_calls;
 }
 static int is(const char *s) { return !strcmp(scenario, s); }
 static void original_init(void *p) { assert(p == (void *)123); ++init_calls; }
@@ -65,19 +55,20 @@ static int create(void *p) {
 }
 static void *find(void *p, int id) {
     assert(p);
-    if (id == COUNT_ID) return &counter_control;
-    if (id == DEBUG_STATUS_ID) return &debug_control;
-    if (id == WIFI_ID || id == WIFI_STATUS_ID) return NULL;
-    assert(id == DEBUG_ID); return &debug_button;
+    int index = id >= 50000 ? id - 50000 : id - 20000 + 20;
+    assert(index >= 0 && index < 32); controls[index] = id; return &controls[index];
 }
 static int get_id(void *p) { return *(int *)p; }
 static void text(void *p, const char *s) {
-    if (p == &counter_control) snprintf(label, sizeof(label), "%s", s);
-    else assert(p == &debug_control || p == &debug_button);
+    int id = *(int *)p;
+    if (id == SPEED_ID) snprintf(speed_text, sizeof(speed_text), "%s", s);
+    if (id == PRIMARY_ID) snprintf(primary_text, sizeof(primary_text), "%s", s);
 }
-static void navigate(void *p, const char *s, void *intent) {
-    assert(p == (void *)123 && !strcmp(s, "installedActivity") && !intent); ++opens;
+static void pic(void *p, const char *s) {
+    assert(!strncmp(s, ASSET, strlen(ASSET)));
+    if (*(int *)p == ROAD_ID) snprintf(road_picture, sizeof(road_picture), "%s", s);
 }
+static void tint(void *p, int rgb) { assert(p && rgb >= 0 && rgb <= 0xffffff); }
 void *fake_dlopen(const char *path, int flags) {
     assert(flags == 1);
     if (!strcmp(path, "/res/lib/libzkgui.so")) return (void *)1;
@@ -99,7 +90,8 @@ void *fake_dlsym(void *handle, const char *name) {
         {"_ZN7BaseApp6createEv", (void *)create}, {"_ZN7BaseApp8onCreateEv", (void *)base_created},
         {"_ZN7BaseApp15findControlByIDEi", (void *)find}, {"_ZNK6ZKBase5getIDEv", (void *)get_id},
         {"_ZN10ZKTextView7setTextEPKc", (void *)text},
-        {"_ZN13EasyUIContext12openActivityEPKcP6Intent", (void *)navigate},
+        {"_ZN6ZKBase16setBackgroundPicEPKc", (void *)pic},
+        {"_ZN10ZKTextView12setTextColorEi", (void *)tint},
         {"_ZN7BaseApp13registerTimerEii", (void *)timer},
         {"_ZTV8Activity", original_table}, {"_ZNK7BaseApp10getAppNameEv", (void *)base_name}
     };
@@ -138,25 +130,27 @@ int main(int argc, char **argv) {
     assert(init_calls == 1 && start_calls == 1);
     if (is("normal") || is("shutdown-prepared")) {
         assert(!strcmp(selected, ACTIVITY) && registered && create_calls == 1);
-        assert(!strcmp(label, "Touches: 0"));
+        assert(!strcmp(speed_text, "72") && !strcmp(primary_text, "600 m"));
         if (is("normal")) {
             void *p = registered();
             assert(!prepared && allocations == 1);
             void **v = *(void ***)p;
-            int tap = TAP_ID, stock_button = STOCK_ID, other = 999, debug = DEBUG_ID;
+            int road = ROAD_ID, pane = PANE_ID, pause = SPEED_BUTTON_ID;
             assert(timer_calls == 1);
-            ((void (*)(void *, void *))v[2])(p, &debug);
-            assert(debug_toggles == 1);
-            assert(((int (*)(void *, int))v[5])(p, DEBUG_TIMER) == 1);
+            ((void (*)(void *, void *))v[2])(p, &road);
+            assert(!strcmp(speed_text, "0") && strstr(road_picture, "park.png"));
+            ((void (*)(void *, void *))v[2])(p, &road);
+            assert(!strcmp(speed_text, "72") && strstr(road_picture, "road-0.png"));
+            ((void (*)(void *, void *))v[2])(p, &pane);
+            assert(!strcmp(primary_text, "168 Wh/km"));
+            ((void (*)(void *, void *))v[2])(p, &pause);
+            for (int i = 0; i < 20; ++i) assert(((int (*)(void *, int))v[5])(p, DEMO_TIMER) == 1);
+            assert(demo.paused && demo.ticks == 0 && wifi_polls == 2);
+            ((void (*)(void *, void *))v[2])(p, &pause);
             void *secondary = (void **)p + 1;
             void **sv = *(void ***)secondary;
-            assert(((int (*)(void *, int))sv[2])(secondary, DEBUG_TIMER) == 1);
-            for (int i = 0; i < 12; ++i) ((void (*)(void *, void *))v[2])(p, &tap);
-            assert(!strcmp(label, "Touches: 12"));
-            ((void (*)(void *, void *))v[2])(p, &other);
-            assert(!strcmp(label, "Touches: 12"));
-            ((void (*)(void *, void *))v[2])(p, &stock_button);
-            assert(opens == 1);
+            assert(((int (*)(void *, int))sv[2])(secondary, DEMO_TIMER) == 1);
+            assert(demo.ticks == 1 && strstr(road_picture, "road-1.png"));
             ((void (*)(void *))v[1])(p);
         }
     } else {

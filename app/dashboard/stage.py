@@ -9,6 +9,7 @@ from layout import decode
 
 ROOT = Path(__file__).resolve().parent
 STARTUP = "/mnt/extsd/lib/libdashborne.so"
+ASSETS = ["base.png", "base-park.png", "nav.png", "energy.png", "park.png"] + [f"road-{i}.png" for i in range(8)]
 
 
 def atomic_write(path, content):
@@ -56,6 +57,10 @@ def stage(card, restore=False, build=None, wifi_config=None):
         raise ValueError("Expected a 32-bit ARM hard-float library; run build.sh")
     layout = (build / "ui/dashborne.ftu").read_bytes()
     decode(layout)
+    assets = {name: (build / "ui/cluster" / name).read_bytes() for name in ASSETS}
+    for data in assets.values():
+        if data[:8] != b"\x89PNG\r\n\x1a\n":
+            raise ValueError("Invalid cluster artwork; run build.sh")
     diagnostic_script = (build / "Dashborne/usb-diagnostics.sh").read_bytes()
     if config.get("startupLibPath") != STARTUP:
         atomic_write(previous, raw_config)
@@ -63,6 +68,8 @@ def stage(card, restore=False, build=None, wifi_config=None):
         raise ValueError("The previous launcher configuration is missing")
     atomic_write(card / "lib/libdashborne.so", library)
     atomic_write(card / "ui/dashborne.ftu", layout)
+    for name, data in assets.items():
+        atomic_write(card / "ui/cluster" / name, data)
     atomic_write(card / "Dashborne/usb-diagnostics.sh", diagnostic_script)
     if wifi is not None:
         atomic_write(card / "Dashborne/wifi.conf", wifi)

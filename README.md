@@ -63,14 +63,15 @@ app files and UI restarts can be handled remotely.
 
 ## Progress
 
-MicroSD code execution is confirmed on a physical DASH. Our ARM library loaded
-alongside the installed application and produced diagnostic results. The first
-custom screen renders and handles touch on a physical DASH. It includes a touch
-counter, a button to open the original dashboard, and USB/Wi-Fi ADB controls.
-Wi-Fi ADB is verified on hardware, including a root shell and file transfers.
-A separate **ADB Enabler** helper provides a minimal SD startup screen with
-automatic Wi-Fi ADB and a centered connection address. It is the current
-development loader.
+The dashboard now includes a Tesla-inspired instrument cluster with simulated
+speed, animated lanes and traffic, navigation and energy panels, and a Park view.
+It runs at the DASH's native 1920 × 480 resolution using the installed UI framework.
+See [the dashboard guide](app/dashboard/README.md) for controls and deployment.
+
+Wi-Fi ADB is verified on hardware, including a root shell, file transfers,
+screen capture and remote UI updates. A separate **ADB Enabler** helper provides
+a minimal SD startup screen with automatic Wi-Fi ADB and a centered connection
+address. Remote cluster previews preserve that helper as the startup selection.
 
 - [Research](docs/research.md)
 - [Roadmap](docs/roadmap.md)

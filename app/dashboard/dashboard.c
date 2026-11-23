@@ -1,5 +1,5 @@
 /* Original C adapter for the inspected ARM FlyThings Activity ABI. */
-#include "usb_debug.h"
+#include "demo.h"
 #include "wifi_debug.h"
 typedef __SIZE_TYPE__ usize;
 typedef unsigned int u32;
@@ -21,16 +21,25 @@ extern int fsync(int);
 #define EXPORT __attribute__((visibility("default")))
 #define ACTIVITY "dashborneActivity"
 #define LAYOUT "/mnt/extsd/ui/dashborne.ftu"
-#define COUNT_ID 50003
-#define TAP_ID 20001
-#define STOCK_ID 20002
-#define DEBUG_ID 20003
-#define DEBUG_STATUS_ID 50004
-#define WIFI_ID 20004
-#define WIFI_STATUS_ID 50005
-#define DEBUG_TIMER 91001
+#define SPEED_ID 50001
+#define MODE_ID 50003
+#define DRIVE_ID 50004
+#define CRUISE_ID 50005
+#define MAX_ID 50006
+#define PARK_ID 50007
+#define HEADER_ID 50010
+#define SUMMARY_ID 50011
+#define PRIMARY_ID 50012
+#define DETAIL_ID 50013
+#define PAUSE_ID 50018
+#define BACKGROUND_ID 50019
+#define ROAD_ID 20001
+#define PANE_ID 20002
+#define SPEED_BUTTON_ID 20003
+#define DEMO_TIMER 91001
+#define ASSET "../../../mnt/extsd/ui/cluster/"
 
-static void *stock, *runtime, *context;
+static void *stock, *runtime;
 static void (*stock_init)(void *), (*stock_deinit)(void *);
 static const char *(*stock_start)(void *);
 static const char *stock_screen;
@@ -42,10 +51,13 @@ static void (*base_on_create)(void *);
 static void *(*find_control)(void *, int);
 static int (*control_id)(void *);
 static void (*set_text)(void *, const char *);
-static void (*open_activity)(void *, const char *, void *);
+static void (*set_picture)(void *, const char *);
+static void (*set_color)(void *, int);
 static void (*register_timer)(void *, int, int);
 static void *table[17], *prepared;
-static unsigned int taps;
+static struct demo_state demo;
+static int previous_speed = -1, previous_frame = -1, previous_pane = -1, previous_park = -1, previous_pause = -1;
+static unsigned int network_ticks;
 static int ready;
 
 static void log_line(const char *s) {
@@ -76,93 +88,87 @@ static const char *layout_name(void *self) {
     return "../../../mnt/extsd/ui/dashborne.ftu";
 }
 
-static void show_count(void *self) {
-    char text[32] = "Touches: ", digits[10];
-    unsigned int value = taps, n = 0, at = 9;
-    do { digits[n++] = (char)('0' + value % 10); value /= 10; } while (value);
-    while (n) text[at++] = digits[--n];
-    text[at] = 0;
-    void *label = find_control(self, COUNT_ID);
-    if (label) set_text(label, text);
+static void label(void *self, int id, const char *text) {
+    void *control = find_control(self, id);
+    if (control) set_text(control, text);
+}
+static void picture(void *self, int id, const char *path) {
+    void *control = find_control(self, id);
+    if (control) set_picture(control, path);
+}
+static void color(void *self, int id, int rgb) {
+    void *control = find_control(self, id);
+    if (control) set_color(control, rgb);
 }
 
-static void show_debug(void *self) {
-    usb_debug_poll();
-    static char previous_status[128];
-    const char *status = usb_debug_status();
-    void *label = find_control(self, DEBUG_STATUS_ID);
-    if (label) set_text(label, status);
-    void *button = find_control(self, DEBUG_ID);
-    if (button) set_text(button, usb_debug_owned() && !usb_debug_wifi_owned() ? "Disable USB ADB" : "Enable USB ADB");
-    unsigned int i = 0;
-    while (i < sizeof(previous_status) - 1 && status[i] && status[i] == previous_status[i]) ++i;
-    if (status[i] != previous_status[i]) {
-        log_line(status);
-        log_line("\n");
-        for (i = 0; status[i] && i < sizeof(previous_status) - 1; ++i) previous_status[i] = status[i];
-        previous_status[i] = 0;
+static void render_demo(void *self) {
+    if (demo.speed != previous_speed) {
+        char text[4], reverse[3]; unsigned int n = 0, at = 0, value = (unsigned int)demo.speed;
+        do { reverse[n++] = (char)('0' + value % 10); value /= 10; } while (value);
+        while (n) text[at++] = reverse[--n];
+        text[at] = 0;
+        label(self, SPEED_ID, text);
+        previous_speed = demo.speed;
     }
-}
-
-static void show_wifi(void *self) {
-    static char previous[80];
-    const char *status = wifi_debug_status();
-    unsigned int i = 0;
-    while (i < sizeof(previous) - 1 && status[i] && status[i] == previous[i]) ++i;
-    if (status[i] != previous[i]) {
-        log_line(status); log_line("\n");
-        for (i = 0; i < sizeof(previous) - 1 && status[i]; ++i) previous[i] = status[i];
-        previous[i] = 0;
+    int frame = demo.parked ? 8 : (int)demo.frame;
+    if (frame != previous_frame) {
+        static const char *const roads[] = {
+            ASSET "road-0.png", ASSET "road-1.png", ASSET "road-2.png", ASSET "road-3.png",
+            ASSET "road-4.png", ASSET "road-5.png", ASSET "road-6.png", ASSET "road-7.png", ASSET "park.png"
+        };
+        picture(self, ROAD_ID, roads[frame]);
+        previous_frame = frame;
     }
-    void *label = find_control(self, WIFI_STATUS_ID);
-    if (label) set_text(label, status);
-    void *button = find_control(self, WIFI_ID);
-    if (button) set_text(button, usb_debug_wifi_owned() ? "Disable Wi-Fi ADB" :
-                         usb_debug_wifi_active() ? "Wi-Fi ADB active" : "Enable Wi-Fi ADB");
+    if (demo.energy != previous_pane) {
+        picture(self, PANE_ID, demo.energy ? ASSET "energy.png" : ASSET "nav.png");
+        label(self, HEADER_ID, demo.energy ? "DEMO · ENERGY" : "DEMO · NAVIGATION");
+        label(self, SUMMARY_ID, demo.energy ? "Average consumption · last 30 km" : "16:42 arrival · 9 min · 6.8 km");
+        label(self, PRIMARY_ID, demo.energy ? "168 Wh/km" : "600 m");
+        label(self, DETAIL_ID, demo.energy ? "Projected range 312 km" : "Keep right · Centrum");
+        previous_pane = demo.energy;
+    }
+    if (demo.parked != previous_park || demo.paused != previous_pause) {
+        label(self, MODE_ID, demo.parked ? "Parked" : "Autosteer");
+        color(self, MODE_ID, demo.parked ? 0x87929f : 0x559fff);
+        color(self, PARK_ID, demo.parked ? 0xf6f7f9 : 0x59616d);
+        color(self, DRIVE_ID, demo.parked ? 0x59616d : 0x559fff);
+        label(self, CRUISE_ID, demo.parked ? "" : "75");
+        label(self, MAX_ID, demo.parked ? "" : "MAX");
+        label(self, PAUSE_ID, demo.paused ? "Demo paused" : "");
+        if (demo.parked != previous_park)
+            picture(self, BACKGROUND_ID, demo.parked ? ASSET "base-park.png" : ASSET "base.png");
+        previous_park = demo.parked; previous_pause = demo.paused;
+    }
 }
 
 static int on_timer(void *self, int id) {
-    if (id == DEBUG_TIMER) { wifi_debug_poll(); show_wifi(self); show_debug(self); }
+    if (id == DEMO_TIMER) {
+        demo_tick(&demo);
+        render_demo(self);
+        /* The network adapter is polled in seconds; graphics run at 10 Hz. */
+        if (++network_ticks == 10) { network_ticks = 0; wifi_debug_poll(); }
+    }
     return 1;
 }
-
 static int on_timer_secondary(void *self, int id) {
     return on_timer((void **)self - 1, id);
 }
-
 static void on_create(void *self) {
-    base_on_create(self); /* Wire the framework's button listeners. */
-    usb_debug_collect();
-    taps = 0;
-    show_count(self);
+    base_on_create(self);
+    demo_init(&demo);
+    previous_speed = previous_frame = previous_pane = previous_park = previous_pause = -1;
+    network_ticks = 0;
     wifi_debug_retry();
-    show_wifi(self);
-    show_debug(self);
-    register_timer(self, DEBUG_TIMER, 1000);
-    log_line("screen-created\n");
+    render_demo(self);
+    register_timer(self, DEMO_TIMER, 100);
+    log_line("cluster-created: simulated-data\n");
 }
-
 static void on_click(void *self, void *control) {
     int id = control_id(control);
-    if (id == TAP_ID) {
-        ++taps;
-        show_count(self);
-        log_line("touch\n");
-    } else if (id == DEBUG_ID) {
-        usb_debug_toggle();
-        show_debug(self);
-    } else if (id == WIFI_ID) {
-        if (usb_debug_owned()) usb_debug_toggle_wifi();
-        else if (!usb_debug_wifi_active()) {
-            if (*wifi_debug_ip()) usb_debug_toggle_wifi();
-            else wifi_debug_retry();
-        }
-        show_wifi(self);
-        show_debug(self);
-    } else if (id == STOCK_ID && stock_screen && *stock_screen) {
-        log_line("open-original\n");
-        open_activity(context, stock_screen, (void *)0);
-    }
+    if (id == ROAD_ID) { demo_toggle_park(&demo); log_line("demo: park-drive\n"); }
+    else if (id == PANE_ID) { demo_toggle_pane(&demo); log_line("demo: navigation-energy\n"); }
+    else if (id == SPEED_BUTTON_ID) { demo_toggle_pause(&demo); log_line("demo: pause-resume\n"); }
+    render_demo(self);
 }
 
 static void destroy(void *self) { activity_dtor(self); free(self); }
@@ -192,7 +198,8 @@ static int bind_runtime(void) {
     BIND(find_control, "_ZN7BaseApp15findControlByIDEi");
     BIND(control_id, "_ZNK6ZKBase5getIDEv");
     BIND(set_text, "_ZN10ZKTextView7setTextEPKc");
-    BIND(open_activity, "_ZN13EasyUIContext12openActivityEPKcP6Intent");
+    BIND(set_picture, "_ZN6ZKBase16setBackgroundPicEPKc");
+    BIND(set_color, "_ZN10ZKTextView12setTextColorEi");
     BIND(register_timer, "_ZN7BaseApp13registerTimerEii");
 #undef BIND
     void **original = dlsym(runtime, "_ZTV8Activity");
@@ -207,13 +214,11 @@ static int bind_runtime(void) {
     table[7] = (void *)on_timer;
     table[15] = (void *)destroy_secondary;
     table[16] = (void *)on_timer_secondary;
-    usb_debug_bind(runtime, log_line);
     wifi_debug_bind(stock, log_line);
     return 1;
 }
 
 EXPORT void onEasyUIInit(void *ctx) {
-    context = ctx;
     log_line("startup\n");
     stock = dlopen("/res/lib/libzkgui.so", 1);
     if (!stock) { log_line("original-library-unavailable\n"); return; }
@@ -246,7 +251,6 @@ EXPORT const char *onStartupApp(void *ctx) {
 }
 
 EXPORT void onEasyUIDeinit(void *ctx) {
-    usb_debug_shutdown();
     if (prepared) { destroy(prepared); prepared = (void *)0; }
     log_line("shutdown\n");
     if (stock_deinit) stock_deinit(ctx);

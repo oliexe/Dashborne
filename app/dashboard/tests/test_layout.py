@@ -20,13 +20,17 @@ class LayoutTest(unittest.TestCase):
         controls = [v for k, v in layout.items() if "__" in k]
         ids = [v["id"] for v in controls]
         self.assertEqual(len(ids), len(set(ids)))
-        self.assertTrue({50003, 50004, 50005, 20001, 20002, 20003, 20004}.issubset(ids))
+        self.assertTrue({50001, 50003, 50010, 50019, 20001, 20002, 20003}.issubset(ids))
         for control in controls:
             p = control["position"]
             self.assertTrue(0 <= p["left"] < p["left"] + p["width"] <= 1920)
             self.assertTrue(0 <= p["top"] < p["top"] + p["height"] <= 480)
+        for control in controls:
+            if "backgroundPic" in control:
+                path = ROOT / "card/ui/cluster" / Path(control["backgroundPic"]).name
+                self.assertEqual(path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
         buttons = [v for k, v in layout.items() if k.startswith("button__")]
-        self.assertEqual(len(buttons), 4)
+        self.assertEqual(len(buttons), 3)
         for i, first in enumerate(buttons):
             a = first["position"]
             for second in buttons[i + 1:]:

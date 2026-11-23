@@ -18,4 +18,6 @@ ${HOST_CC:-cc} -std=c11 -Wall -Wextra -Werror -fno-strict-aliasing -fsanitize=ad
 for scenario in normal missing-api missing-config invalid-config read-failure timeout; do
     ./build/wifi-debug-test "$scenario"
 done
+${HOST_CC:-cc} -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -g tests/demo_test.c -o build/demo-test
+./build/demo-test
 python3 -m unittest discover -s tests -p 'test_*.py'
