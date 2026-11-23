@@ -24,7 +24,7 @@ def screen():
         rows=5,cols=1,rowSpacing=15,colSpacing=0,item=item,hasScrollbar=False,
         autoRollback=True,dragMaxDis=12,beepEnable=True,backgroundColor=0)
     root['textview__menu']=dict(id=599200,position=pos(122,270,38,186),
-        backgroundPic='dash/settings/btn_settings_n.png',touchable=False)
+        backgroundPic='../../../mnt/extsd/Dashborne/extensions/extra-menu/assets/tweaks.png',touchable=False)
     panel=dict(id=119201,position=pos(700,20,1000,436),
                backgroundPic='dash/settings/unpair_bg.png')
     panel['textview__entry']=dict(label(599202,'Extra',30,22,940,64,32),bold=True)
