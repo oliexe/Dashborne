@@ -1,0 +1,7 @@
+{
+  "id": "screen-mirroring",
+  "title": "Enable Screen Mirroring",
+  "description": "Experimental iPhone AirPlay receiver through the official projection service. Join the DASH hotspot to connect.",
+  "abi": 1,
+  "sources": ["extension.c", "memory.c"]
+}

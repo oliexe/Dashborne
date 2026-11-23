@@ -102,3 +102,6 @@ See the [extension SDK](app/extensions/README.md) and the
 
 The [Contrast plugin](extensions/contrast) adds an entry to the official Settings
 menu with temporary display contrast and luminance controls.
+
+The experimental [Enable Screen Mirroring plugin](extensions/screen-mirroring)
+enables the bundled AirPlay receiver through the official projection service.
