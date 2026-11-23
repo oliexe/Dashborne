@@ -34,8 +34,6 @@ def wifi_config_bytes(path):
 
 def stage(card, restore=False, build=None, wifi_config=None):
     card = Path(card).resolve()
-    if not card.is_dir() or (card / "DASH_SD_PROBE_V1").read_bytes() != b"DASH_SD_TEST\n":
-        raise ValueError("Select the existing DASH test card")
     config_path = card / "EasyUI.cfg"
     previous = card / "Dashborne/EasyUI.previous.cfg"
     raw_config = config_path.read_bytes()

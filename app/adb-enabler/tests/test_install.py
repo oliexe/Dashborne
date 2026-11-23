@@ -14,7 +14,6 @@ class InstallTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.card = Path(self.tmp.name)
-        (self.card / 'DASH_SD_PROBE_V1').write_bytes(b'DASH_SD_TEST\n')
         self.original = b'{"resPath":"/res/ui/","startupLibPath":"/mnt/extsd/lib/libdashborne.so","keep":42}\n'
         (self.card / 'EasyUI.cfg').write_bytes(self.original)
         self.config = self.card / 'input.json'

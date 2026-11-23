@@ -13,7 +13,6 @@ class StageTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.card = Path(self.temp.name)
-        (self.card / "DASH_SD_PROBE_V1").write_bytes(b"DASH_SD_TEST\n")
         self.original = b'{"resPath":"/res/ui/","startupLibPath":"previous.so","keepMe":42}\n'
         (self.card / "EasyUI.cfg").write_bytes(self.original)
 
@@ -56,11 +55,12 @@ class StageTest(unittest.TestCase):
             stage(self.card, build=self.card / "missing")
         self.assertEqual((self.card / "EasyUI.cfg").read_bytes(), self.original)
 
-    def test_wrong_card_does_not_change_config(self):
-        (self.card / "DASH_SD_PROBE_V1").write_text("other")
+    def test_wrong_resource_root_does_not_change_config(self):
+        other = b'{"resPath":"/other/ui/","startupLibPath":"other.so"}\n'
+        (self.card / "EasyUI.cfg").write_bytes(other)
         with self.assertRaises(ValueError):
             stage(self.card)
-        self.assertEqual((self.card / "EasyUI.cfg").read_bytes(), self.original)
+        self.assertEqual((self.card / "EasyUI.cfg").read_bytes(), other)
 
     def test_restore_does_not_overwrite_another_launcher(self):
         with self.assertRaises(ValueError):

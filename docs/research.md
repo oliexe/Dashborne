@@ -9,8 +9,8 @@
 - A card-root `EasyUI.cfg` selecting our library through `startupLibPath` caused
   its constructor to execute. A generated success marker and process memory map
   independently confirmed the result.
-- The probe declared the installed `/res/lib/libzkgui.so` as a runtime dependency.
-  Both libraries were mapped. The probe did not replace or flash that application.
+- The initial test library declared the installed `/res/lib/libzkgui.so` as a
+  runtime dependency. Both libraries were mapped in the existing UI process.
 - This worked with `zkdebug` set to false in the card configuration.
 - `/res` was read-only ext4, `/late` the read-only configuration partition, and
   `/data` writable ext4. Startup configuration references application and backup
@@ -136,7 +136,7 @@ build/upload/restart/capture development cycle without removing the card.
 
 - [FlyThings: launch from microSD](https://developer.flythings.cn/zh-hans/start_from_sdcard.html).
   Documents FAT32 and a card-root application configuration; verified on our unit
-  by the probe described above.
+  by the initial load experiment and the ADB Enabler reboot test.
 - [ZKSWE/FlyThings](https://github.com/zkswe): platform vendor.
 - [Independent ZKSWE format research](https://github.com/atomicstack/tc002-customisation):
   useful background on another device. Its hardware details, partition sizes and

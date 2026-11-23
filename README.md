@@ -25,6 +25,42 @@ The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
 [manual]: https://fccid.io/2BUSZ-S3XYDASH/User-Manual/User-manual-9104334.pdf
 [chipsets]: https://fccid.io/2BUSZ-S3XYDASH/Attestation-Statements/Kaspersky-Statement-9104348.pdf
 
+## Loading from microSD
+
+The DASH boots its installed Linux system from eMMC. Its UI service starts
+`/bin/zkgui`, the FlyThings launcher. With a FAT32 microSD inserted, the card
+mounts at `/mnt/extsd` and a card-root `EasyUI.cfg` selects the application library
+through `startupLibPath`. This path has been verified on our DASH, including a
+full reboot with ADB Enabler. See the [on-device findings](docs/research.md) and
+[FlyThings SD startup documentation](https://developer.flythings.cn/zh-hans/start_from_sdcard.html).
+
+Our tested card uses an MBR with an 8 GB FAT32 partition. For ADB Enabler, the
+relevant files on that partition are:
+
+```text
+EasyUI.cfg
+lib/libadb-enabler.so
+ui/adb-enabler.ftu
+adb-enabler/wifi.conf
+```
+
+In the card's existing `EasyUI.cfg`, set this field:
+
+```json
+"startupLibPath": "/mnt/extsd/lib/libadb-enabler.so"
+```
+
+Preserve the other configuration fields, including display/touch rotation,
+fonts and `resPath: "/res/ui/"`. Our ARMv7 hard-float library forwards the installed
+application's initialization callbacks and registers its own screen with the
+existing framework. The kernel, drivers and platform services continue running.
+
+The [ADB Enabler installer](app/adb-enabler/README.md) copies the files, saves the
+previous launcher configuration and selects the helper. Insert the card with the
+DASH powered off, then power it on. Removing the card while powered off and
+starting again returns to the installed dashboard. Once ADB is connected, updated
+app files and UI restarts can be handled remotely.
+
 ## Progress
 
 MicroSD code execution is confirmed on a physical DASH. Our ARM library loaded
@@ -38,6 +74,5 @@ development loader.
 
 - [Research](docs/research.md)
 - [Roadmap](docs/roadmap.md)
-- [SD probe: build and test](app/sd-probe/README.md)
 - [Dashboard: build and test](app/dashboard/README.md)
 - [ADB Enabler: setup and development loader](app/adb-enabler/README.md)

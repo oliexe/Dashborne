@@ -23,8 +23,6 @@ PAYLOAD = ("lib/libadb-enabler.so", "ui/adb-enabler.ftu")
 
 def install(card, wifi_config=None, restore=False, build=None):
     card = Path(card)
-    if (card / "DASH_SD_PROBE_V1").read_bytes() != b"DASH_SD_TEST\n":
-        raise ValueError("Select the existing DASH test card")
     raw = (card / "EasyUI.cfg").read_bytes()
     config = json.loads(raw)
     if restore:
@@ -69,11 +67,11 @@ def deploy(device, adb, wifi_config=None, restore=False):
     with tempfile.TemporaryDirectory() as tmp:
         card = Path(tmp) / "card"
         card.mkdir()
-        for name in ("DASH_SD_PROBE_V1", "EasyUI.cfg", BACKUP, WIFI):
+        for name in ("EasyUI.cfg", BACKUP, WIFI):
             target = card / name
             target.parent.mkdir(parents=True, exist_ok=True)
             result = subprocess.run(command + ["pull", "/mnt/extsd/" + name, str(target)], capture_output=True)
-            if result.returncode and name in ("DASH_SD_PROBE_V1", "EasyUI.cfg"):
+            if result.returncode and name == "EasyUI.cfg":
                 raise ValueError("Cannot read the DASH SD card configuration")
         changed = install(card, wifi_config, restore)
         for name in changed:

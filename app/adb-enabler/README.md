@@ -37,7 +37,7 @@ and converts it to the card format. Install over an existing ADB connection:
 python3 app/adb-enabler/install.py --device <ip>:5555 --wifi-config /path/to/wifi.json
 ```
 
-Or install on the existing test card mounted on the laptop:
+Or install on the DASH card containing `EasyUI.cfg` mounted on the laptop:
 
 ```sh
 python3 app/adb-enabler/install.py --card /Volumes/DASH_TEST --wifi-config /path/to/wifi.json

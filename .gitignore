@@ -2,8 +2,6 @@
 __pycache__/
 *.py[cod]
 .venv/
-app/sd-probe/build/
-app/sd-probe/card/
 app/dashboard/build/
 app/dashboard/card/
 app/adb-enabler/build/
