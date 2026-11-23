@@ -73,6 +73,7 @@ screen capture and remote UI updates. A separate **ADB Enabler** helper provides
 a minimal SD startup screen with automatic Wi-Fi ADB and a centered connection
 address. Remote cluster previews preserve that helper as the startup selection.
 
+- [Official UI development copy](docs/official-ui.md)
 - [Research](docs/research.md)
 - [Roadmap](docs/roadmap.md)
 - [Dashboard: build and test](app/dashboard/README.md)
