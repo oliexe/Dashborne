@@ -29,6 +29,8 @@ static int debug_control, debug_button, debug_toggles, timer_calls;
 void usb_debug_bind(void *p, void (*logger)(const char *)) { assert(p == (void *)2 && logger); }
 void usb_debug_toggle(void) { ++debug_toggles; }
 void usb_debug_shutdown(void) { }
+void usb_debug_collect(void) { }
+void usb_debug_poll(void) { }
 const char *usb_debug_status(void) { return "ADB: off"; }
 int usb_debug_owned(void) { return 0; }
 static void timer(void *p, int id, int interval) {

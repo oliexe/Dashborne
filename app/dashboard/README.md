@@ -98,3 +98,20 @@ laptop's `adb devices` result confirms a connection.
 
 Event logs are flushed to the card after each entry. They record debug requests
 and state changes alongside touch and screen lifecycle events.
+
+## USB diagnostics
+
+The first USB test reported that the legacy control interface could not be read.
+This does not identify the connector's wiring. The downloaded application package
+also contains a ConfigFS-based USB helper, so the active gadget interface still
+needs to be identified.
+
+Opening the Dashborne screen starts a read-only diagnostic snapshot in a child
+process. Keep the screen open for about ten seconds with the USB data cable
+connected to the laptop, then power off and return the card. The report is
+`Dashborne/usb-diagnostics.txt`; `events.log` records when it is saved or fails.
+
+The report covers USB device controllers, roles, ConfigFS, loaded modules,
+available helpers and USB kernel messages. It neither loads drivers nor changes
+USB configuration. The UI now calls the original failure **legacy USB control
+unavailable** to distinguish it from a hardware finding.

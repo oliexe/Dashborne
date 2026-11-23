@@ -5,4 +5,6 @@ void usb_debug_toggle(void);
 void usb_debug_shutdown(void);
 const char *usb_debug_status(void);
 int usb_debug_owned(void);
+void usb_debug_collect(void);
+void usb_debug_poll(void);
 #endif

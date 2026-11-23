@@ -76,6 +76,20 @@ USB transport, and polls the daemon state and gadget enable node. A running daem
 and enabled gadget do not establish that the laptop has connected. USB enumeration
 and an ADB shell still need to be tested on this device.
 
+The first on-device attempt reported the legacy gadget control unavailable;
+the event log confirms the app skipped the ADB start request. This check groups
+open/read failures and unexpected contents, so it cannot establish that the port
+lacks data wiring.
+
+The downloaded 6.11.4 application package includes a `setusbconfig` helper that
+uses ConfigFS, FunctionFS and `/sys/class/udc`, rather than the legacy path in the
+captured init script. Its presence is evidence of another supported software path,
+not proof that a controller is active or connected to the populated connector on
+this unit. The new read-only snapshot checks the running system before selecting
+a backend. See the kernel's
+[ConfigFS gadget documentation](https://docs.kernel.org/usb/gadget_configfs.html)
+for controller binding and gadget setup.
+
 ## Public references
 
 - [FlyThings: launch from microSD](https://developer.flythings.cn/zh-hans/start_from_sdcard.html).

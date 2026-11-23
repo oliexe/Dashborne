@@ -6,14 +6,27 @@
 #define read fake_read
 #define write fake_write
 #define close fake_close
+#define fork fake_fork
+#define waitpid fake_waitpid
+#define fsync fake_fsync
 #include "../usb_debug.c"
 
 static const char *scenario, *daemon = "stopped";
 static int gadget, writes, starts, stops, failure_used;
+static int forks, polls, flushes;
+static char last_log[128];
 static char tcp_port[PROPERTY_BUFFER] = "5555";
 static char usb_config[PROPERTY_BUFFER] = "none";
 static int is(const char *s) { return !strcmp(scenario, s); }
-static void log_message(const char *s) { assert(s && *s); }
+static void log_message(const char *s) { assert(s && *s); snprintf(last_log, sizeof(last_log), "%s", s); }
+int fake_fork(void) { ++forks; return 123; }
+int fake_waitpid(int pid, int *status, int flags) {
+    assert(pid == 123 && flags == 1);
+    if (!polls++) return 0;
+    *status = is("diagnostic-failure") ? 127 << 8 : 0;
+    return pid;
+}
+int fake_fsync(int fd) { assert(fd == 20); ++flushes; return 0; }
 static int get(const char *name, char *out, const char *fallback) {
     const char *value = fallback;
     if (!strcmp(name, "init.svc.adbd")) value = daemon;
@@ -42,6 +55,7 @@ void *fake_dlsym(void *handle, const char *name) {
     assert(!strcmp(name, "_ZN16SystemProperties9setStringEPKcS1_")); return (void *)set;
 }
 int fake_open(const char *path, int flags, ...) {
+    if (!strcmp(path, REPORT)) { assert(flags & 1); return 20; }
     assert(!strcmp(path, USB_ENABLE) && (flags == 0 || flags == 1));
     if (is("missing-usb")) return -1;
     if (flags == 1 && is("write-denied")) return -1;
@@ -54,11 +68,20 @@ int fake_read(int fd, void *buf, unsigned int count) {
 int fake_write(int fd, const void *buf, unsigned int count) {
     assert(fd == 11 && count == 2 && !memcmp(buf, "0\n", 2)); gadget = 0; return 2;
 }
-int fake_close(int fd) { assert(fd == 10 || fd == 11); return 0; }
+int fake_close(int fd) { assert(fd == 10 || fd == 11 || fd == 20); return 0; }
 
 int main(int argc, char **argv) {
     assert(argc == 2); scenario = argv[1];
     usb_debug_bind((void *)2, log_message);
+    if (is("diagnostics") || is("diagnostic-failure")) {
+        usb_debug_collect(); usb_debug_collect();
+        assert(forks == 1);
+        usb_debug_poll(); assert(diagnostic_pid == 123 && !flushes);
+        usb_debug_poll(); assert(!diagnostic_pid && flushes == 1);
+        assert(strstr(last_log, is("diagnostic-failure") ? "failed" : "saved"));
+        assert(!writes && !starts && !stops);
+        printf("PASS: %s\n", scenario); return 0;
+    }
     if (is("external-adb")) daemon = "running";
     if (is("unknown-service")) daemon = "unknown";
     if (is("unset-service")) daemon = "";

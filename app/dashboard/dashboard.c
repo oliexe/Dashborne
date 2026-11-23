@@ -84,6 +84,7 @@ static void show_count(void *self) {
 }
 
 static void show_debug(void *self) {
+    usb_debug_poll();
     static const char *previous_status;
     const char *status = usb_debug_status();
     void *label = find_control(self, DEBUG_STATUS_ID);
@@ -108,6 +109,7 @@ static int on_timer_secondary(void *self, int id) {
 
 static void on_create(void *self) {
     base_on_create(self); /* Wire the framework's button listeners. */
+    usb_debug_collect();
     taps = 0;
     show_count(self);
     show_debug(self);

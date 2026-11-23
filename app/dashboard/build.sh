@@ -11,3 +11,4 @@ done
 "$linker" -shared -soname /res/lib/libzkgui.so build/dependency-stub.o -o build/installed-app-link-stub.so
 "$linker" -shared -z noexecstack -soname libdashborne.so --no-as-needed build/installed-app-link-stub.so build/dashboard.o build/usb_debug.o -o card/lib/libdashborne.so
 python3 layout.py
+cp usb-diagnostics.sh card/Dashborne/usb-diagnostics.sh

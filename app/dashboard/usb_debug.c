@@ -5,6 +5,12 @@ extern int open(const char *, int, ...);
 extern int read(int, void *, unsigned int);
 extern int write(int, const void *, unsigned int);
 extern int close(int);
+extern int fsync(int);
+extern int fork(void);
+extern int dup2(int, int);
+extern int execv(const char *, char *const []);
+extern void _exit(int);
+extern int waitpid(int, int *, int);
 
 #define USB_ENABLE "/sys/class/zkswe_usb/zkswe0/enable"
 /* Android property_get requires room for PROPERTY_VALUE_MAX (92 bytes). */
@@ -15,6 +21,39 @@ static void (*log_event)(const char *);
 static int owned;
 static char previous_tcp_port[PROPERTY_BUFFER];
 static const char *error;
+static int diagnostic_pid;
+#define REPORT "/mnt/extsd/Dashborne/usb-diagnostics.txt"
+#define SCRIPT "/mnt/extsd/Dashborne/usb-diagnostics.sh"
+
+void usb_debug_collect(void) {
+    if (diagnostic_pid) return;
+    int fd = open(REPORT, 1 | 0100 | 01000, 0600);
+    if (fd < 0) { log_event("usb-diagnostics: output-open-failed\n"); return; }
+    int pid = fork();
+    if (pid == 0) {
+        if (dup2(fd, 1) < 0 || dup2(fd, 2) < 0) _exit(126);
+        if (fd > 2) (void)close(fd);
+        char *const args[] = {"/bin/sh", SCRIPT, (char *)0};
+        execv(args[0], args);
+        _exit(127);
+    }
+    (void)close(fd);
+    if (pid < 0) log_event("usb-diagnostics: fork-failed\n");
+    else { diagnostic_pid = pid; log_event("usb-diagnostics: started\n"); }
+}
+
+void usb_debug_poll(void) {
+    if (!diagnostic_pid) return;
+    int status = 0;
+    int result = waitpid(diagnostic_pid, &status, 1); /* WNOHANG */
+    if (!result) return;
+    /* Keep polling after a transient wait error; never block the UI. */
+    if (result < 0) return;
+    diagnostic_pid = 0;
+    int fd = open(REPORT, 1);
+    if (fd >= 0) { (void)fsync(fd); (void)close(fd); }
+    log_event(status == 0 ? "usb-diagnostics: saved\n" : "usb-diagnostics: failed; inspect report\n");
+}
 
 static int equal(const char *a, const char *b) {
     while (*a && *a == *b) { ++a; ++b; }
@@ -77,7 +116,7 @@ void usb_debug_toggle(void) {
     }
     int enabled = usb_enabled();
     if (enabled != 0) {
-        error = enabled < 0 ? "ADB: USB interface unavailable" : "ADB: USB already in use";
+        error = enabled < 0 ? "ADB: legacy USB control unavailable" : "ADB: USB already in use";
         log_event("adb-start-skipped: usb-unavailable-or-busy\n");
         return;
     }
@@ -109,7 +148,7 @@ const char *usb_debug_status(void) {
     }
     if (error) return error;
     int enabled = usb_enabled();
-    if (enabled < 0) return "ADB: USB interface unavailable";
+    if (enabled < 0) return "ADB: legacy USB control unavailable";
     if (owned == 2) return "ADB: stopping";
     if (equal(daemon, "running"))
         return enabled ? "ADB: running; USB enabled" : "ADB: running; USB disabled";
@@ -119,5 +158,6 @@ const char *usb_debug_status(void) {
 }
 
 void usb_debug_shutdown(void) {
+    usb_debug_poll();
     if (owned) { (void)stop_owned(); (void)usb_debug_status(); }
 }

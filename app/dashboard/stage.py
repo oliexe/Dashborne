@@ -46,12 +46,14 @@ def stage(card, restore=False, build=None):
         raise ValueError("Expected a 32-bit ARM hard-float library; run build.sh")
     layout = (build / "ui/dashborne.ftu").read_bytes()
     decode(layout)
+    diagnostic_script = (build / "Dashborne/usb-diagnostics.sh").read_bytes()
     if config.get("startupLibPath") != STARTUP:
         atomic_write(previous, raw_config)
     elif not previous.is_file():
         raise ValueError("The previous launcher configuration is missing")
     atomic_write(card / "lib/libdashborne.so", library)
     atomic_write(card / "ui/dashborne.ftu", layout)
+    atomic_write(card / "Dashborne/usb-diagnostics.sh", diagnostic_script)
     config["startupLibPath"] = STARTUP
     atomic_write(config_path, (json.dumps(config, indent=2) + "\n").encode())
 

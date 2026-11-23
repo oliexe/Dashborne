@@ -26,6 +26,7 @@ class StageTest(unittest.TestCase):
         self.assertEqual((self.card / "Dashborne/EasyUI.previous.cfg").read_bytes(), self.original)
         self.assertTrue((self.card / "lib/libdashborne.so").is_file())
         self.assertTrue((self.card / "ui/dashborne.ftu").is_file())
+        self.assertTrue((self.card / "Dashborne/usb-diagnostics.sh").is_file())
         stage(self.card, restore=True)
         self.assertEqual((self.card / "EasyUI.cfg").read_bytes(), self.original)
 

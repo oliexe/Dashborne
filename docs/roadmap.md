@@ -17,6 +17,8 @@
 ## Debugging
 
 - [x] Add USB ADB controls and live service status to the app.
+- [x] Add read-only USB diagnostics after the legacy control path proved unavailable.
+- [ ] Identify the active USB controller and gadget configuration interface.
 - [ ] Verify USB enumeration and an ADB shell on the development laptop.
 
 ## Dashboard features
