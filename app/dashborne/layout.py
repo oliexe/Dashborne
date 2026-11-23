@@ -46,14 +46,14 @@ def screen():
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
     config['textview__5'] = label(50013, 'DASHBORNE', 242, 416, 340, 30, 23, 0xf0f2ff)
     config['textview__6'] = label(50014, f'v{VERSION}  /  https://github.com/oliexe/Dashborne', 180, 449, 440, 20, 14, 0x79849a)
-    for id, key, text, y in [(20006, 'patches', 'Patches', 40), (20007, 'adb', 'ADB', 116)]:
+    for id, key, text, y in [(20006, 'patches', 'Patches', 40), (20007, 'adb', 'ADB', 116), (20008, 'loader', 'Loader', 192)]:
         config['button__nav_'+key] = button(id, text, 180, y, 400, 64)
         config['button__nav_'+key].update(backgroundColor=0x000000,
             textPosition=position(36, 0, 340, 64),
             picTab={'pic0': '../../../mnt/extsd/Dashborne/ui/nav-idle.png',
                     'pic1': '../../../mnt/extsd/Dashborne/ui/nav-pressed.png',
                     'pic2': '../../../mnt/extsd/Dashborne/ui/nav-selected.png'})
-        config['textview__active_'+key] = dict(id=50020+(id-20006),
+        config['textview__active_'+key] = dict(id=50035 if id == 20008 else 50020+(id-20006),
             position=position(196, y+22, 3, 20), backgroundColor=0x8eb5ff, touchable=False)
     adb = dict(id=110003, position=position(680, 24, 1060, 376), visible=False,
                backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
@@ -92,6 +92,30 @@ def screen():
         hasScrollbar=True, scrollbarColor=0x596173, autoRollback=True,
         dragMaxDis=12, beepEnable=False, backgroundColor=0x07080a)
     patches['textview__empty'] = label(50019, 'No patches found on microSD', 24, 94, 1000, 36, 22, 0x79849a)
+    browser = dict(id=110005, position=position(680, 24, 1060, 376), visible=False,
+        backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
+    browser['textview__heading'] = dict(label(50040, 'Loader', 24, 16, 500, 36, 28, 0xf0f2ff), bold=True)
+    browser['textview__header_line'] = dict(id=50043, position=position(24, 64, 1012, 1),
+        backgroundColor=0x202228, touchable=False)
+    browser['textview__path'] = label(50041, '/mnt/extsd', 24, 68, 768, 40, 18, 0x9ba6bd)
+    for id, key, text, x, w in [(20009, 'up', 'Up', 804, 80), (20010, 'refresh', 'Refresh', 900, 136)]:
+        browser['button__'+key] = dict(label(id, text, x, 68, w, 40, 18, 0x8eb5ff, 37),
+            touchable=True, bgColorTab={'color0': 0x07080a, 'color1': 0x15171d})
+    file_item = label(24010, '', 0, 0, 1060, 50, 20, 0xe6e9f1)
+    file_item.update(touchable=True, textPosition=position(24, 0, 748, 50),
+        bgColorTab={'color0': 0x07080a, 'color1': 0x1b1e26, 'color2': 0x15171d},
+        subItem=[label(24011, '', 796, 0, 240, 50, 16, 0x79849a, 38),
+                 dict(id=24012, position=position(24, 49, 1012, 1), backgroundColor=0x202228, touchable=False)])
+    browser['listview__files'] = dict(id=80002, position=position(0, 112, 1060, 200),
+        rows=4, cols=1, rowSpacing=0, colSpacing=0, item=file_item,
+        hasScrollbar=True, scrollbarColor=0x596173, autoRollback=True,
+        dragMaxDis=12, beepEnable=False, backgroundColor=0x07080a)
+    browser['textview__status'] = label(50042, 'Select an app', 24, 324, 760, 32, 17, 0x9ba6bd)
+    browser['button__load'] = dict(label(20011, 'Load app', 816, 320, 220, 40, 20, 0xffffff, 37),
+        touchable=True, visible=False,
+        picTab={'pic0': '../../../mnt/extsd/Dashborne/ui/continue.png',
+                'pic1': '../../../mnt/extsd/Dashborne/ui/continue-pressed.png'})
+    config['window__browser'] = browser
     config['window__adb'] = adb
     config['window__patches'] = patches
     config['textview__footer_line'] = dict(id=50022, position=position(180, 406, 1560, 1),

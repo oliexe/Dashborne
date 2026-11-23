@@ -54,6 +54,10 @@ Dashborne/settings.conf
 Dashborne/wifi.conf
 ```
 
+The **Loader** category browses the microSD and starts compatible native DASH
+apps for one session. See [loading an app](app/dashborne/README.md#load-an-app-from-microsd)
+for the app format and resource paths.
+
 The [Dashborne installer](app/dashborne/README.md) builds this card layout, saves
 the previous startup configuration and selects the loader. It preserves display
 and touch rotation, fonts and the installed `/res/ui/` resource root. Power off

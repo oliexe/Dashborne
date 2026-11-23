@@ -67,6 +67,28 @@ int extensions_start(const char *const *ids, unsigned int count, void *s, void *
 }
 const char *extensions_activity(const char *name) { return name; }
 int extensions_stop(void) { return 1; }
+static int browser_prepared, browser_cancelled, browser_opens, restarts;
+void browser_init(void) { ++browser_opens; }
+void browser_refresh(void) {}
+void browser_up(void) {}
+void browser_select(unsigned int i) { (void)i; }
+unsigned int browser_count(void) { return 0; }
+const struct browser_entry *browser_entry(unsigned int i) { (void)i;return NULL; }
+const char *browser_path(void) { return "/mnt/extsd"; }
+const char *browser_selection(void) { return ""; }
+const char *browser_status(void) { return "Select an app"; }
+int browser_can_load(void) { return 1; }
+int browser_prepare(void) { ++browser_prepared;return strcmp(scenario,"browser-prepare-failure")!=0; }
+void browser_cancel_request(void) { ++browser_cancelled; }
+int browser_take_request(char *path) {
+    if(!strcmp(scenario,"external-app") || !strcmp(scenario,"external-empty") || !strcmp(scenario,"external-load-failure") || !strcmp(scenario,"external-symbol-failure") || !strcmp(scenario,"external-self")) { strcpy(path,"/mnt/extsd/app.so");return 1; }
+    return !strcmp(scenario,"external-invalid") ? -1 : 0;
+}
+int browser_take_return(void) { return !strcmp(scenario,"external-return"); }
+static int restart_prop(const char *key,const char *value) {
+    assert(!strcmp(key,"ctl.restart") && !strcmp(value,"zkswe"));++restarts;
+    return !strcmp(scenario,"browser-restart-failure") ? -1 : 0;
+}
 static const char *ip = "";
 void debug_bind(void *s, void *r, void (*logger)(const char *)) { assert(s == (void *)1 && r == (void *)2 && logger); }
 void debug_poll(void) { ++adb_polls; }
@@ -81,7 +103,7 @@ static void timer(void *p, int id, int interval) {
 static int is(const char *s) { return !strcmp(scenario, s); }
 static void original_init(void *p) { assert(p == (void *)123); ++init_calls; }
 static void original_deinit(void *p) { assert(p == (void *)123); ++deinit_calls; }
-static const char *original_start(void *p) { assert(p == (void *)123); ++start_calls; return "installedActivity"; }
+static const char *original_start(void *p) { assert(p == (void *)123); ++start_calls; return !strcmp(scenario,"external-empty") ? "" : "installedActivity"; }
 static void *factory(void) { return (void *)456; }
 static void reg_activity(void *f, const char *n, void *(*fn)(void)) {
     assert(init_calls == 1 && f == (void *)456 && !strcmp(n, ACTIVITY)); registered = fn;
@@ -103,8 +125,8 @@ static void *find(void *p, int id) {
     assert(control_count < 40); controls[control_count].id = id;
     return &controls[control_count++];
 }
-static void attach_adapter(void *p, void *a) { assert(p && a); bound_adapter = a; }
-static void attach_listener(void *p, void *a) { assert(p && a); bound_listener = a; }
+static void attach_adapter(void *p, void *a) { assert(p && a); if (((struct mock_control *)p)->id == LIST_ID) bound_adapter = a; }
+static void attach_listener(void *p, void *a) { assert(p && a); if (((struct mock_control *)p)->id == LIST_ID) bound_listener = a; }
 static void refresh(void *p) { assert(p); ++list_refreshes; }
 static void *subitem(void *p, int id) { return find(p, id); }
 static void item_click(void *p, int index) {
@@ -133,10 +155,13 @@ static void navigate(void *p, const char *activity, void *intent) {
 void *fake_dlopen(const char *path, int flags) {
     assert(flags == 1);
     if (!strcmp(path, "/res/lib/libzkgui.so")) return (void *)1;
+    if (!strcmp(path, "/mnt/extsd/app.so")) return is("external-load-failure") ? NULL : (void *)3;
     assert(!strcmp(path, "/lib/libeasyui.so")); return (void *)2;
 }
 void *fake_dlsym(void *handle, const char *name) {
-    if (handle == (void *)1) {
+    if(handle == (void *)3 && is("external-symbol-failure") && !strcmp(name,"onStartupApp")) return NULL;
+    if(handle == (void *)3 && is("external-self") && !strcmp(name,"onEasyUIInit")) return (void *)onEasyUIInit;
+    if (handle == (void *)1 || handle == (void *)3) {
         if (!strcmp(name, "onEasyUIInit")) return (void *)original_init;
         if (!strcmp(name, "onEasyUIDeinit")) return (void *)original_deinit;
         if (!strcmp(name, "onStartupApp")) return (void *)original_start;
@@ -164,6 +189,7 @@ void *fake_dlsym(void *handle, const char *name) {
         {"_ZNK10ZKListView10ZKListItem15findSubItemByIDEi", (void *)subitem},
         {"_ZN13EasyUIContext11getInstanceEv", (void *)ui},
         {"_ZN13EasyUIContext12openActivityEPKcP6Intent", (void *)navigate},
+        {"_ZN16SystemProperties9setStringEPKcS1_", (void *)restart_prop},
         {"_ZTV8Activity", original_table}, {"_ZNK7BaseApp10getAppNameEv", (void *)base_name}
     };
     for (unsigned i = 0; i < sizeof(symbols) / sizeof(symbols[0]); ++i)
@@ -200,6 +226,24 @@ int main(int argc, char **argv) {
     onEasyUIInit((void *)123);
     const char *selected = onStartupApp((void *)123);
     assert(init_calls == 1 && start_calls == 1);
+    if(is("external-app") || is("external-empty")) {
+        assert(external_app && !ready && !registered && !applied);
+        assert(is("external-empty") ? !selected && restarts==1 : selected && !strcmp(selected,"installedActivity"));
+        onEasyUIDeinit((void *)123);assert(deinit_calls==1);
+        printf("PASS: %s\n",scenario);return 0;
+    }
+    if(is("browser") || is("browser-prepare-failure") || is("browser-restart-failure") || is("external-return") || is("external-invalid") || is("external-load-failure") || is("external-symbol-failure") || is("external-self")) {
+        assert(!strcmp(selected,ACTIVITY));void *p=registered();
+        if(phase==0) on_click(p,find(p,TAP_ID));
+        on_click(p,find(p,BROWSER_TAB_ID));assert(section==2 && browser_opens==1);
+        on_click(p,find(p,BROWSER_LOAD_ID));assert(browser_prepared==1 && !applied && !opened);
+        if(is("browser-prepare-failure")) assert(phase==1 && !restarts && !released);
+        else if(is("browser-restart-failure")) assert(phase==1 && restarts==1 && browser_cancelled==1);
+        else assert(phase==2 && restarts==1 && released==1);
+        destroy(p);onEasyUIDeinit((void *)123);
+        assert(allocations==frees);printf("PASS: %s\n",scenario);return 0;
+    }
+
     if (is("extension") || is("extension-failure") || is("extension-cleanup-failure") || is("config-on") || is("config-off") || is("list") || is("developer-auto") || is("developer-tap") || is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
         assert(!strcmp(selected, ACTIVITY) && registered && create_calls == 1);
         int marked = is("config-on") || is("config-off");

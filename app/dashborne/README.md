@@ -27,6 +27,8 @@ Configuration includes:
   toggle its patch; each row has a title, description and switch. Incompatible
   patches have a disabled switch. Selections save immediately, and the header
   shows how many patches are enabled.
+- **Loader:** browse microSD folders, select an app, and tap **Load app**.
+  **Up** navigates to the parent folder and **Refresh** rescans the current folder.
 - **Continue booting:** save selections, apply the patches, open the official UI.
 
 Selections are written to `Dashborne/settings.conf`. Network credentials are
@@ -36,6 +38,34 @@ or migrate the existing ADB Enabler Wi-Fi file. New settings always default ADB
 off, including migrations from ADB Enabler. Reinstalling preserves an explicit
 Dashborne selection.
 The badge patch is initially selected when compatible.
+
+## Load an app from microSD
+
+Open **Loader**, enter the app's folder, tap its `.so` file, then tap **Load app**.
+Directories appear first. Selecting a file does not execute it. Unsupported files
+remain visible, but cannot be launched. The browser stays within the microSD root
+and shows up to 256 entries per folder; larger folders display a limit message.
+
+This launches native DASH/FlyThings apps: ARMv7 Linux hard-float shared libraries
+exporting `onEasyUIInit`, `onStartupApp`, and `onEasyUIDeinit`. A Dashborne extension
+is a different interface and belongs in **Patches**. Standalone Linux executables,
+shell scripts, and Android APKs are not supported by this launcher.
+
+Keep the app's resources and dependencies on the card in the paths expected by
+that app. The runtime resource root remains `/res/ui/`; apps can reference their
+own SD layouts with `../../../mnt/extsd/...`, as the dashboard example does.
+Loading an app does not apply the selected dashboard patches.
+
+The loader validates the selected ELF, then writes a one-use request in `/tmp`
+and restarts only the UI service. The new process consumes the request **before**
+loading the library, delegates initialization/startup/shutdown to that app, and
+keeps its module resident. A failed load returns to Loader. If the UI service
+restarts after the app exits or crashes, the consumed request brings it back to
+Dashborne configuration instead of selecting the app again. A hung app still
+requires a restart or power cycle.
+
+`EasyUI.cfg`, the installed OS, and saved patch/ADB choices stay unchanged.
+Power cycling clears the temporary selection and resumes normal Dashborne boot.
 
 ## ADB connection handling
 
