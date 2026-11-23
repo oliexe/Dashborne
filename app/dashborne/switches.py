@@ -40,13 +40,18 @@ def write_boot_button(destination):
     for name, width, height, radius, color in [
         ('continue', 300, 48, 14, (78, 105, 211)),
         ('continue-pressed', 300, 48, 14, (61, 83, 173)),
-        ('nav-idle', 400, 64, 14, (0, 0, 0)),
-        ('nav-selected', 400, 64, 14, (21, 23, 29)),
-        ('nav-pressed', 400, 64, 14, (30, 33, 42)),
+        ('nav-idle', 400, 64, 14, (12, 14, 18)),
+        ('nav-selected', 400, 64, 14, (28, 31, 39)),
+        ('nav-pressed', 400, 64, 14, (36, 40, 50)),
+        ('navigation-panel', 432, 376, 20, (12, 14, 18)),
+        ('content-panel', 1060, 376, 20, (16, 18, 22)),
     ]:
         pixels = bytearray()
         for y in range(height):
             for x in range(width):
+                if radius <= x < width-radius or radius <= y < height-radius:
+                    pixels.extend((*color, 255))
+                    continue
                 covered = 0
                 for sy in range(4):
                     for sx in range(4):
