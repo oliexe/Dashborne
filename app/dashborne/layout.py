@@ -57,7 +57,9 @@ def screen():
             position=position(196, y+22, 3, 20), backgroundColor=0x8eb5ff, touchable=False)
     adb = dict(id=110003, position=position(680, 24, 1060, 376), visible=False,
                backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
-    adb['textview__heading'] = label(50015, 'ADB', 24, 24, 500, 36, 25, 0xdce2ee)
+    adb['textview__heading'] = dict(label(50015, 'ADB', 24, 16, 500, 36, 28, 0xf0f2ff), bold=True)
+    adb['textview__header_line'] = dict(id=50024, position=position(24, 64, 1012, 1),
+        backgroundColor=0x202228, touchable=False)
     adb['button__enable'] = button(20002, 'Enable ADB', 0, 72, 1060, 72)
     adb['button__enable'].update(backgroundColor=0x07080a, bgColorTab={'color1': 0x1b1e26})
     adb['button__enable']['textPosition'] = position(24, 0, 900, 72)
@@ -66,8 +68,10 @@ def screen():
     adb['textview__address'] = label(50003, '', 24, 210, 950, 44, 30, 0x8eb5ff)
     patches = dict(id=110004, position=position(680, 24, 1060, 376), visible=True,
                    backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
-    patches['textview__heading'] = label(50005, 'Patches', 24, 24, 340, 36, 25, 0xdce2ee)
-    patches['textview__count'] = label(50018, '', 440, 27, 596, 30, 17, 0x79849a, 38)
+    patches['textview__heading'] = dict(label(50005, 'Patches', 24, 16, 340, 36, 28, 0xf0f2ff), bold=True)
+    patches['textview__header_line'] = dict(id=50026, position=position(24, 64, 1012, 1),
+        backgroundColor=0x202228, touchable=False)
+    patches['textview__count'] = label(50018, '', 440, 20, 596, 28, 17, 0x79849a, 38)
     item = label(24000, '', 0, 0, 1060, 56, 22, 0xe6e9f1)
     item.update(touchable=True, textPosition=position(24, 1, 900, 28),
                 bgColorTab={'color0': 0x07080a, 'color1': 0x1b1e26},
