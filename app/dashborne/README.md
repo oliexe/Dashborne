@@ -133,9 +133,16 @@ short and failed reads, invalid credentials, wrong SSIDs, stale/invalid addresse
 lost links, unsupported wireless checks, and malformed listener records. They
 exercise cancellation at each connection stage and 10,000 deterministic mixed
 fault/toggle events. Native tests run with AddressSanitizer and UndefinedBehaviorSanitizer.
-These simulations verify controller behavior; the new connection checks still
-need validation against the DASH's Wi-Fi driver and the actual network.
-
+The deployed library was read back over Wi-Fi ADB and matched the build's SHA-256.
+A framebuffer capture confirms the sidebar and ADB controls render correctly.
+This DASH reports **limited Wi-Fi verification**: its driver does not support at
+least one of the additional wireless ioctls. The controller's fallback works on
+hardware, and the Mac can establish an ADB session and transfer files. Seven
+successful shell checks across one minute found no controller transitions or
+changes to the running TCP service state. A physical off/on cycle also passed:
+the UI and log reported Disabled, TCP 5555 became unreachable, and enabling ADB
+restored the listener and a working Mac shell session. Repeated cycles and
+network-failure recovery remain to be checked on hardware.
 
 The native callback tests cover automatic launch, tap-to-cancel, switch actions,
 category navigation, list adapter callbacks and selecting entries beyond the
