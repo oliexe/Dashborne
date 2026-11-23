@@ -43,8 +43,8 @@ The build creates its link dependency stub locally; the running app loads
 
 Local tests cover the simulation, pause/Park behavior, native control callbacks,
 lifecycle forwarding, compatibility fallbacks, layout bounds and SD staging.
-The C tests run with address and undefined-behavior sanitizers. Rendering and
-remote deployment have also been checked on the physical DASH.
+The C tests run with address and undefined-behavior sanitizers. Rendering, remote deployment and all three touchscreen actions have been
+verified on the physical DASH: navigation/energy, Park/Drive and pause/resume.
 
 ## Preview over Wi-Fi ADB
 

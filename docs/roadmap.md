@@ -40,6 +40,7 @@
 - [x] Add navigation/energy, Park/Drive and pause/resume interactions.
 - [x] Test the simulation and native control callbacks locally.
 - [x] Deploy remotely and inspect the rendered screen on the DASH.
+- [x] Verify all three interactions on the physical touchscreen.
 - [x] Preserve ADB Enabler as the startup selection after preview deployment.
 
 ## Dashboard features
