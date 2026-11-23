@@ -19,7 +19,7 @@ static int count(void *s,void *l) {
     return n;
 }
 static void data(void *s,void *l,void *i,int n) {
-    if(topics(l) && n==own_index) {text(i,"Screen Mirroring");selected(i,0);return;}
+    if(topics(l) && n==own_index) {text(i,"* Screen Mirroring");selected(i,0);return;}
     original_data(s,l,i,n);
 }
 static void click(void *s,void *l,int n,int sub) {

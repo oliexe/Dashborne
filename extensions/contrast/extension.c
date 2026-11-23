@@ -73,7 +73,7 @@ static int item_count(void *self,void *list) {
 }
 static void item_data(void *self,void *list,void *item,int index) {
     if(is_topics(list) && index==original_count) {
-        text(item,"Contrast"); select_control(item,is_selected(self)); return;
+        text(item,"* Contrast"); select_control(item,is_selected(self)); return;
     }
     original_data(self,list,item,index);
     if(is_topics(list) && is_selected(self)) select_control(item,0);

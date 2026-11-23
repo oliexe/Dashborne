@@ -18,7 +18,7 @@ int main(void) {
     original_count=previous_count;original_data=previous_data;original_click=previous_click;
     assert(count_secondary(activity+32,&list)==6 && own_index==5);
     assert(count(activity,&other)==8);
-    data_secondary(activity+32,&list,&item,5);assert(!strcmp(label,"Screen Mirroring") && !selected_value && !rows);
+    data_secondary(activity+32,&list,&item,5);assert(!strcmp(label,"* Screen Mirroring") && !selected_value && !rows);
     data(activity,&list,&item,4);assert(rows==1);
     click_secondary(activity+28,&list,5,0);assert(opens==1 && !clicks);
     click(activity,&list,4,0);assert(clicks==1); /* Contrast still receives its row. */
