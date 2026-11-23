@@ -1,4 +1,5 @@
 /* Original C adapter for the inspected ARM FlyThings Activity ABI. */
+#include "usb_debug.h"
 typedef __SIZE_TYPE__ usize;
 typedef unsigned int u32;
 extern void *dlopen(const char *, int);
@@ -10,6 +11,7 @@ extern int read(int, void *, unsigned int);
 extern int write(int, const void *, unsigned int);
 extern int close(int);
 extern int access(const char *, int);
+extern int fsync(int);
 
 #ifndef RUNTIME_SIZE
 #define RUNTIME_SIZE 826052u
@@ -21,6 +23,9 @@ extern int access(const char *, int);
 #define COUNT_ID 50003
 #define TAP_ID 20001
 #define STOCK_ID 20002
+#define DEBUG_ID 20003
+#define DEBUG_STATUS_ID 50004
+#define DEBUG_TIMER 91001
 
 static void *stock, *runtime, *context;
 static void (*stock_init)(void *), (*stock_deinit)(void *);
@@ -35,6 +40,7 @@ static void *(*find_control)(void *, int);
 static int (*control_id)(void *);
 static void (*set_text)(void *, const char *);
 static void (*open_activity)(void *, const char *, void *);
+static void (*register_timer)(void *, int, int);
 static void *table[17], *prepared;
 static unsigned int taps;
 static int ready;
@@ -43,7 +49,7 @@ static void log_line(const char *s) {
     unsigned int n = 0;
     while (s[n]) ++n;
     int fd = open("/mnt/extsd/Dashborne/events.log", 1 | 0100 | 02000, 0644);
-    if (fd >= 0) { (void)write(fd, s, n); (void)close(fd); }
+    if (fd >= 0) { (void)write(fd, s, n); (void)fsync(fd); (void)close(fd); }
 }
 
 /* Compatibility fingerprint, not an authenticity or security check. */
@@ -77,10 +83,35 @@ static void show_count(void *self) {
     if (label) set_text(label, text);
 }
 
+static void show_debug(void *self) {
+    static const char *previous_status;
+    const char *status = usb_debug_status();
+    void *label = find_control(self, DEBUG_STATUS_ID);
+    if (label) set_text(label, status);
+    void *button = find_control(self, DEBUG_ID);
+    if (button) set_text(button, usb_debug_owned() ? "Disable USB ADB" : "Enable USB ADB");
+    if (status != previous_status) {
+        log_line(status);
+        log_line("\n");
+        previous_status = status;
+    }
+}
+
+static int on_timer(void *self, int id) {
+    if (id == DEBUG_TIMER) show_debug(self);
+    return 1;
+}
+
+static int on_timer_secondary(void *self, int id) {
+    return on_timer((void **)self - 1, id);
+}
+
 static void on_create(void *self) {
     base_on_create(self); /* Wire the framework's button listeners. */
     taps = 0;
     show_count(self);
+    show_debug(self);
+    register_timer(self, DEBUG_TIMER, 1000);
     log_line("screen-created\n");
 }
 
@@ -90,6 +121,9 @@ static void on_click(void *self, void *control) {
         ++taps;
         show_count(self);
         log_line("touch\n");
+    } else if (id == DEBUG_ID) {
+        usb_debug_toggle();
+        show_debug(self);
     } else if (id == STOCK_ID && stock_screen && *stock_screen) {
         log_line("open-original\n");
         open_activity(context, stock_screen, (void *)0);
@@ -124,6 +158,7 @@ static int bind_runtime(void) {
     BIND(control_id, "_ZNK6ZKBase5getIDEv");
     BIND(set_text, "_ZN10ZKTextView7setTextEPKc");
     BIND(open_activity, "_ZN13EasyUIContext12openActivityEPKcP6Intent");
+    BIND(register_timer, "_ZN7BaseApp13registerTimerEii");
 #undef BIND
     void **original = dlsym(runtime, "_ZTV8Activity");
     if (!original || original[6] != (void *)base_on_create ||
@@ -134,7 +169,10 @@ static int bind_runtime(void) {
     table[4] = (void *)on_click;
     table[5] = (void *)layout_name;
     table[6] = (void *)on_create;
+    table[7] = (void *)on_timer;
     table[15] = (void *)destroy_secondary;
+    table[16] = (void *)on_timer_secondary;
+    usb_debug_bind(runtime, log_line);
     return 1;
 }
 
@@ -172,6 +210,7 @@ EXPORT const char *onStartupApp(void *ctx) {
 }
 
 EXPORT void onEasyUIDeinit(void *ctx) {
+    usb_debug_shutdown();
     if (prepared) { destroy(prepared); prepared = (void *)0; }
     log_line("shutdown\n");
     if (stock_deinit) stock_deinit(ctx);

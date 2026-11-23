@@ -37,7 +37,7 @@ OS image. Kernel/bootloader replacement is unnecessary for the project's goal.
 
 ## Open questions
 
-- Does the custom activity render and handle touch correctly on the DASH?
+- Can the app activate USB ADB and establish a shell from the laptop?
 - Does forwarding the original callbacks preserve every required service lifecycle?
 - What local IPC is available for reading vehicle/device data?
 - How should new UI code coexist with pairing, connectivity and power management?
@@ -58,9 +58,23 @@ Our first screen uses those existing controls and event dispatch, with original
 layout content and a small C adapter for the inspected ARM ABI. The adapter checks
 the runtime fingerprint and relevant vtable entries before registering the screen.
 
-The screen is implemented and locally tested with a simulated runtime. Its
-registration, rendering and coexistence with the original UI are not yet confirmed
-on hardware; only the earlier SD probe has run on the device.
+The first screen's rendering and touch input were subsequently confirmed by the
+user on the physical DASH. Full shutdown and service coexistence testing remain.
+
+## USB debugging
+
+The captured init configuration defines a disabled `/bin/adbd` service. A
+`sys.usb.config=adb` action configures the gadget at
+`/sys/class/zkswe_usb/zkswe0`, with USB ID `18d1:d002`. Separate persistent-debug
+triggers start or stop the daemon. The app instead requests the service through
+temporary `ctl.start`/`ctl.stop` properties, matching the
+[Android init service-control mechanism](https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/dev/how_adbd_starts.md).
+
+The inspected runtime's `SystemProperties` string methods directly forward to
+`property_get` and `property_set`. The debug switch uses these methods, selects
+USB transport, and polls the daemon state and gadget enable node. A running daemon
+and enabled gadget do not establish that the laptop has connected. USB enumeration
+and an ADB shell still need to be tested on this device.
 
 ## Public references
 

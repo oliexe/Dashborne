@@ -2,8 +2,16 @@
   "id": 0,
   "caption": "Dashborne",
   "backgroundColor": 790548,
-  "position": {"left": 0, "top": 0, "width": 1920, "height": 480},
-  "resolution": {"width": 1920, "height": 480},
+  "position": {
+    "left": 0,
+    "top": 0,
+    "width": 1920,
+    "height": 480
+  },
+  "resolution": {
+    "width": 1920,
+    "height": 480
+  },
   "visible": true,
   "modal": false,
   "topmost": false,
@@ -12,10 +20,17 @@
   "textview__1": {
     "id": 50001,
     "text": "Dashborne",
-    "fontSize": 72,
+    "fontSize": 64,
     "alignment": 36,
-    "colorTab": {"color0": 15923193},
-    "position": {"left": 80, "top": 76, "width": 780, "height": 110},
+    "colorTab": {
+      "color0": 15923193
+    },
+    "position": {
+      "left": 80,
+      "top": 24,
+      "width": 780,
+      "height": 96
+    },
     "touchable": false
   },
   "textview__2": {
@@ -23,8 +38,15 @@
     "text": "Running from microSD",
     "fontSize": 32,
     "alignment": 36,
-    "colorTab": {"color0": 6874572},
-    "position": {"left": 84, "top": 200, "width": 780, "height": 58},
+    "colorTab": {
+      "color0": 6874572
+    },
+    "position": {
+      "left": 84,
+      "top": 124,
+      "width": 780,
+      "height": 52
+    },
     "touchable": false
   },
   "textview__3": {
@@ -32,8 +54,15 @@
     "text": "Touches: 0",
     "fontSize": 30,
     "alignment": 36,
-    "colorTab": {"color0": 10332601},
-    "position": {"left": 84, "top": 318, "width": 780, "height": 64},
+    "colorTab": {
+      "color0": 10332601
+    },
+    "position": {
+      "left": 84,
+      "top": 190,
+      "width": 780,
+      "height": 52
+    },
     "touchable": false
   },
   "button__1": {
@@ -42,8 +71,15 @@
     "fontSize": 36,
     "alignment": 36,
     "backgroundColor": 2042948,
-    "colorTab": {"color0": 15923193},
-    "position": {"left": 1040, "top": 76, "width": 800, "height": 140}
+    "colorTab": {
+      "color0": 15923193
+    },
+    "position": {
+      "left": 1040,
+      "top": 76,
+      "width": 800,
+      "height": 140
+    }
   },
   "button__2": {
     "id": 20002,
@@ -51,7 +87,46 @@
     "fontSize": 32,
     "alignment": 36,
     "backgroundColor": 1515557,
-    "colorTab": {"color0": 15923193},
-    "position": {"left": 1040, "top": 260, "width": 800, "height": 140}
+    "colorTab": {
+      "color0": 15923193
+    },
+    "position": {
+      "left": 1040,
+      "top": 260,
+      "width": 800,
+      "height": 140
+    }
+  },
+  "textview__4": {
+    "id": 50004,
+    "text": "ADB: off",
+    "fontSize": 28,
+    "alignment": 36,
+    "colorTab": {
+      "color0": 10332601
+    },
+    "position": {
+      "left": 80,
+      "top": 254,
+      "width": 800,
+      "height": 52
+    },
+    "touchable": false
+  },
+  "button__3": {
+    "id": 20003,
+    "text": "Enable USB ADB",
+    "fontSize": 32,
+    "alignment": 36,
+    "backgroundColor": 2042948,
+    "colorTab": {
+      "color0": 15923193
+    },
+    "position": {
+      "left": 80,
+      "top": 334,
+      "width": 800,
+      "height": 100
+    }
   }
 }

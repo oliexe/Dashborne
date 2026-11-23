@@ -11,8 +11,13 @@
 - [x] Map launcher callbacks and essential initialization.
 - [x] Choose an integration with the existing framework and services.
 - [x] Build an original screen with local lifecycle and fallback tests.
-- [ ] Render a custom screen and verify touch input.
+- [x] Render a custom screen and verify touch input.
 - [ ] Verify startup, shutdown and return to the installed application.
+
+## Debugging
+
+- [x] Add USB ADB controls and live service status to the app.
+- [ ] Verify USB enumeration and an ADB shell on the development laptop.
 
 ## Dashboard features
 

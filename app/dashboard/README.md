@@ -1,8 +1,9 @@
 # First Dashborne screen
 
 A 1920 × 480 screen with a touch counter and an **Open original dashboard**
-button. It runs inside the installed FlyThings process and forwards the original
-initialization and shutdown callbacks. Vehicle data is not connected yet.
+button, plus a USB ADB debug switch. It runs inside the installed FlyThings process
+and forwards the original initialization and shutdown callbacks. Display and touch
+have been verified on the DASH. Vehicle data is not connected yet.
 
 ## Build and check
 
@@ -71,5 +72,29 @@ python3 app/dashboard/stage.py /Volumes/DASH_TEST --restore
 5. Power off before removing the card. Starting without it selects the installed
    dashboard. Reconnect the card to the laptop to inspect the event log.
 
-Rendering, physical touch, original-dashboard navigation and shutdown remain
-pending hardware tests.
+Rendering and physical touch are confirmed on hardware. Full original-dashboard
+navigation and shutdown checks remain.
+
+## USB ADB
+
+1. Boot this build from the card and connect the DASH to the laptop with a USB
+   data cable.
+2. Tap **Enable USB ADB**. The status line refreshes once per second and reports
+   the local daemon and USB gadget state.
+3. On the laptop, run `adb devices -l`, then `adb shell` once the device appears
+   with state `device`. Connection and shell access are still pending testing.
+
+The switch requests the existing init service, uses the existing USB gadget
+trigger, and sets the temporary ADB TCP port to zero to select USB. It does not
+change persistent debug settings. **Disable USB ADB** requests daemon shutdown
+and disables the gadget; status polling completes cleanup after init reports the
+daemon stopped. The previous temporary TCP setting is then restored. Application
+shutdown also requests cleanup; reboot clears the temporary debug settings.
+
+The switch leaves an already-running daemon or an already-enabled USB gadget
+alone and reports that state. Failed requests stay visible, with a retry available
+for incomplete shutdown. The status line describes the device side; only the
+laptop's `adb devices` result confirms a connection.
+
+Event logs are flushed to the card after each entry. They record debug requests
+and state changes alongside touch and screen lifecycle events.

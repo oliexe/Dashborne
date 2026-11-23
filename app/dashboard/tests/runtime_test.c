@@ -13,6 +13,7 @@
 #define access fake_access
 #define calloc fake_calloc
 #define free fake_free
+#define fsync fake_fsync
 #include "../dashboard.c"
 #undef calloc
 #undef free
@@ -24,6 +25,15 @@ static void *(*registered)(void);
 static void *original_table[17];
 static char label[32];
 static int counter_control;
+static int debug_control, debug_button, debug_toggles, timer_calls;
+void usb_debug_bind(void *p, void (*logger)(const char *)) { assert(p == (void *)2 && logger); }
+void usb_debug_toggle(void) { ++debug_toggles; }
+void usb_debug_shutdown(void) { }
+const char *usb_debug_status(void) { return "ADB: off"; }
+int usb_debug_owned(void) { return 0; }
+static void timer(void *p, int id, int interval) {
+    assert(p && id == DEBUG_TIMER && interval == 1000); ++timer_calls;
+}
 static int is(const char *s) { return !strcmp(scenario, s); }
 static void original_init(void *p) { assert(p == (void *)123); ++init_calls; }
 static void original_deinit(void *p) { assert(p == (void *)123); ++deinit_calls; }
@@ -43,9 +53,17 @@ static int create(void *p) {
     ((void (*)(void *))v[4])(p);
     return 1;
 }
-static void *find(void *p, int id) { assert(p && id == COUNT_ID); return &counter_control; }
+static void *find(void *p, int id) {
+    assert(p);
+    if (id == COUNT_ID) return &counter_control;
+    if (id == DEBUG_STATUS_ID) return &debug_control;
+    assert(id == DEBUG_ID); return &debug_button;
+}
 static int get_id(void *p) { return *(int *)p; }
-static void text(void *p, const char *s) { assert(p == &counter_control); snprintf(label, sizeof(label), "%s", s); }
+static void text(void *p, const char *s) {
+    if (p == &counter_control) snprintf(label, sizeof(label), "%s", s);
+    else assert(p == &debug_control || p == &debug_button);
+}
 static void navigate(void *p, const char *s, void *intent) {
     assert(p == (void *)123 && !strcmp(s, "installedActivity") && !intent); ++opens;
 }
@@ -71,6 +89,7 @@ void *fake_dlsym(void *handle, const char *name) {
         {"_ZN7BaseApp15findControlByIDEi", (void *)find}, {"_ZNK6ZKBase5getIDEv", (void *)get_id},
         {"_ZN10ZKTextView7setTextEPKc", (void *)text},
         {"_ZN13EasyUIContext12openActivityEPKcP6Intent", (void *)navigate},
+        {"_ZN7BaseApp13registerTimerEii", (void *)timer},
         {"_ZTV8Activity", original_table}, {"_ZNK7BaseApp10getAppNameEv", (void *)base_name}
     };
     for (unsigned i = 0; i < sizeof(symbols) / sizeof(symbols[0]); ++i)
@@ -89,6 +108,7 @@ int fake_read(int fd, void *buf, unsigned int count) {
 }
 int fake_write(int fd, const void *buf, unsigned int count) { assert(fd == 11 && buf); return (int)count; }
 int fake_close(int fd) { assert(fd == 10 || fd == 11); return 0; }
+int fake_fsync(int fd) { assert(fd == 11); return 0; }
 int fake_access(const char *path, int mode) { assert(!strcmp(path, LAYOUT) && mode == 4); return is("missing-layout") ? -1 : 0; }
 void *fake_calloc(usize n, usize size) {
     if (is("allocation-failure")) return NULL;
@@ -112,7 +132,14 @@ int main(int argc, char **argv) {
             void *p = registered();
             assert(!prepared && allocations == 1);
             void **v = *(void ***)p;
-            int tap = TAP_ID, stock_button = STOCK_ID, other = 999;
+            int tap = TAP_ID, stock_button = STOCK_ID, other = 999, debug = DEBUG_ID;
+            assert(timer_calls == 1);
+            ((void (*)(void *, void *))v[2])(p, &debug);
+            assert(debug_toggles == 1);
+            assert(((int (*)(void *, int))v[5])(p, DEBUG_TIMER) == 1);
+            void *secondary = (void **)p + 1;
+            void **sv = *(void ***)secondary;
+            assert(((int (*)(void *, int))sv[2])(secondary, DEBUG_TIMER) == 1);
             for (int i = 0; i < 12; ++i) ((void (*)(void *, void *))v[2])(p, &tap);
             assert(!strcmp(label, "Touches: 12"));
             ((void (*)(void *, void *))v[2])(p, &other);
