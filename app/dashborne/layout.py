@@ -46,11 +46,9 @@ def screen():
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
     config['textview__5'] = label(50013, 'DASHBORNE', 242, 416, 340, 30, 23, 0xf0f2ff)
     config['textview__6'] = label(50014, f'v{VERSION}  /  https://github.com/oliexe/Dashborne', 180, 449, 440, 20, 14, 0x79849a)
-    config['textview__navigation_panel'] = dict(id=50023, position=position(164, 24, 432, 376),
-        backgroundPic='../../../mnt/extsd/Dashborne/ui/navigation-panel.png', touchable=False)
     for id, key, text, y in [(20006, 'patches', 'Patches', 40), (20007, 'adb', 'ADB', 116)]:
         config['button__nav_'+key] = button(id, text, 180, y, 400, 64)
-        config['button__nav_'+key].update(backgroundColor=0x0c0e12,
+        config['button__nav_'+key].update(backgroundColor=0x000000,
             textPosition=position(36, 0, 340, 64),
             picTab={'pic0': '../../../mnt/extsd/Dashborne/ui/nav-idle.png',
                     'pic1': '../../../mnt/extsd/Dashborne/ui/nav-pressed.png',
@@ -61,7 +59,7 @@ def screen():
                backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
     adb['textview__heading'] = label(50015, 'ADB', 24, 24, 500, 36, 25, 0xdce2ee)
     adb['button__enable'] = button(20002, 'Enable ADB', 0, 72, 1060, 72)
-    adb['button__enable'].update(backgroundColor=0x101216, bgColorTab={'color1': 0x1b1e26})
+    adb['button__enable'].update(backgroundColor=0x07080a, bgColorTab={'color1': 0x1b1e26})
     adb['button__enable']['textPosition'] = position(24, 0, 900, 72)
     adb['textview__toggle'] = switch(50016, 964, 90)
     adb['textview__status'] = label(50002, 'Disabled', 24, 170, 950, 32, 20, 0x9ba6bd)
@@ -72,7 +70,7 @@ def screen():
     patches['textview__count'] = label(50018, '', 440, 27, 596, 30, 17, 0x79849a, 38)
     item = label(24000, '', 0, 0, 1060, 56, 22, 0xe6e9f1)
     item.update(touchable=True, textPosition=position(24, 1, 900, 28),
-                bgColorTab={'color0': 0x101216, 'color1': 0x1b1e26},
+                bgColorTab={'color0': 0x07080a, 'color1': 0x1b1e26},
                 subItem=[label(24001, '', 24, 27, 900, 23, 16, 0x79849a),
                          switch(24002, 964, 10),
                          dict(id=24003, position=position(24, 55, 1012, 1),
@@ -80,7 +78,7 @@ def screen():
     patches['listview__patches'] = dict(id=80001, position=position(0, 72, 1060, 280),
         rows=5, cols=1, rowSpacing=0, colSpacing=0, item=item,
         hasScrollbar=True, scrollbarColor=0x596173, autoRollback=True,
-        dragMaxDis=12, beepEnable=False, backgroundColor=0x101216)
+        dragMaxDis=12, beepEnable=False, backgroundColor=0x07080a)
     patches['textview__empty'] = label(50019, 'No patches found on microSD', 24, 94, 1000, 36, 22, 0x79849a)
     config['window__adb'] = adb
     config['window__patches'] = patches
