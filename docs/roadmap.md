@@ -9,8 +9,8 @@
 - [x] Compose multiple selected additive patches against the installed base layout.
 - [x] Render configuration and live ADB status on the DASH.
 - [x] Verify the automatic splash-to-official-dashboard transition on hardware.
-- [ ] Verify tapping the splash cancels automatic launch on hardware.
-- [ ] Verify normal startup from the persisted card selection after reboot.
+- [x] Verify tapping the splash cancels automatic launch on hardware.
+- [x] Verify normal startup from the persisted card selection after reboot.
 
 ## Official app patches
 

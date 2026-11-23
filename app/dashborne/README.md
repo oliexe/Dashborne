@@ -100,7 +100,10 @@ migration, preserving choices, and restoring the exact previous configuration.
 The configuration screen renders on hardware, including the supplied icon and
 live Wi-Fi ADB status. The splash automatically opens the official dashboard with
 the selected badge patch, confirmed on the DASH. The loader is installed as the
-card's startup selection. Physical splash-tap and full-reboot checks are pending.
+card's startup selection. After a full reboot, tapping the splash opens
+configuration and cancels automatic launch, also confirmed on the touchscreen.
+Rebooting into configuration clears the patch: the installed layout matches its
+original SHA-256 byte-for-byte.
 
 Wi-Fi ADB works in configuration. It becomes unreachable after the official
 dashboard starts; keeping it available alongside the official UI remains open.
