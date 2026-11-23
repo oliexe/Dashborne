@@ -1,0 +1,57 @@
+{
+  "id": 0,
+  "caption": "Dashborne",
+  "backgroundColor": 790548,
+  "position": {"left": 0, "top": 0, "width": 1920, "height": 480},
+  "resolution": {"width": 1920, "height": 480},
+  "visible": true,
+  "modal": false,
+  "topmost": false,
+  "beepEnable": false,
+  "hideTimeout": -1,
+  "textview__1": {
+    "id": 50001,
+    "text": "Dashborne",
+    "fontSize": 72,
+    "alignment": 36,
+    "colorTab": {"color0": 15923193},
+    "position": {"left": 80, "top": 76, "width": 780, "height": 110},
+    "touchable": false
+  },
+  "textview__2": {
+    "id": 50002,
+    "text": "Running from microSD",
+    "fontSize": 32,
+    "alignment": 36,
+    "colorTab": {"color0": 6874572},
+    "position": {"left": 84, "top": 200, "width": 780, "height": 58},
+    "touchable": false
+  },
+  "textview__3": {
+    "id": 50003,
+    "text": "Touches: 0",
+    "fontSize": 30,
+    "alignment": 36,
+    "colorTab": {"color0": 10332601},
+    "position": {"left": 84, "top": 318, "width": 780, "height": 64},
+    "touchable": false
+  },
+  "button__1": {
+    "id": 20001,
+    "text": "Tap to test",
+    "fontSize": 36,
+    "alignment": 36,
+    "backgroundColor": 2042948,
+    "colorTab": {"color0": 15923193},
+    "position": {"left": 1040, "top": 76, "width": 800, "height": 140}
+  },
+  "button__2": {
+    "id": 20002,
+    "text": "Open original dashboard",
+    "fontSize": 32,
+    "alignment": 36,
+    "backgroundColor": 1515557,
+    "colorTab": {"color0": 15923193},
+    "position": {"left": 1040, "top": 260, "width": 800, "height": 140}
+  }
+}

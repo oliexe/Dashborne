@@ -8,8 +8,9 @@
 
 ## Minimal alternative screen
 
-- [ ] Map launcher callbacks and essential initialization.
-- [ ] Choose an integration with the existing framework and services.
+- [x] Map launcher callbacks and essential initialization.
+- [x] Choose an integration with the existing framework and services.
+- [x] Build an original screen with local lifecycle and fallback tests.
 - [ ] Render a custom screen and verify touch input.
 - [ ] Verify startup, shutdown and return to the installed application.
 

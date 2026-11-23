@@ -37,12 +37,30 @@ OS image. Kernel/bootloader replacement is unnecessary for the project's goal.
 
 ## Open questions
 
-- Which initialization must remain active when the original UI is replaced?
-- What are the exact launcher callback contracts and shutdown behavior?
-- Which framework interfaces are suitable for our independently written UI?
+- Does the custom activity render and handle touch correctly on the DASH?
+- Does forwarding the original callbacks preserve every required service lifecycle?
 - What local IPC is available for reading vehicle/device data?
 - How should new UI code coexist with pairing, connectivity and power management?
 - Does the installed launcher impose watchdog or fallback requirements?
+
+## Launcher and first screen — static analysis
+
+The loader resolves `onEasyUIInit(context)`, `onStartupApp(context)` and
+`onEasyUIDeinit(context)`. The startup callback returns an activity name.
+These contracts agree with the
+[FlyThings project documentation](https://docs.flythings.cn/zh-hans/project_structure.html).
+The inspected application initialization starts logging, `enhcom`, and its widget
+loader. Dashborne forwards that initialization instead of recreating it.
+
+The captured framework exports an activity factory and base activity methods.
+Its resource loader reads a compressed JSON layout inside an FTU envelope.
+Our first screen uses those existing controls and event dispatch, with original
+layout content and a small C adapter for the inspected ARM ABI. The adapter checks
+the runtime fingerprint and relevant vtable entries before registering the screen.
+
+The screen is implemented and locally tested with a simulated runtime. Its
+registration, rendering and coexistence with the original UI are not yet confirmed
+on hardware; only the earlier SD probe has run on the device.
 
 ## Public references
 

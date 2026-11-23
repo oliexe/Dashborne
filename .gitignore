@@ -4,3 +4,5 @@ __pycache__/
 .venv/
 app/sd-probe/build/
 app/sd-probe/card/
+app/dashboard/build/
+app/dashboard/card/

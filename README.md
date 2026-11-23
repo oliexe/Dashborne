@@ -28,10 +28,12 @@ The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
 ## Progress
 
 MicroSD code execution is confirmed on a physical DASH. Our ARM library loaded
-alongside the installed application and produced diagnostic results. Next is a
-minimal custom screen, followed by integration with the existing communication
-service.
+alongside the installed application and produced diagnostic results. The first
+custom screen now builds with a touch counter and a button to open the original
+dashboard. Local lifecycle and fallback tests pass; display and touch verification
+on the DASH are next, followed by integration with the communication service.
 
 - [Research](docs/research.md)
 - [Roadmap](docs/roadmap.md)
 - [SD probe: build and test](app/sd-probe/README.md)
+- [Dashboard: build and test](app/dashboard/README.md)
