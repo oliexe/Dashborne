@@ -104,6 +104,13 @@ Local tests cover setup, delayed endpoints, binding failures, unbinding and repe
 enable. Hardware enumeration remains unverified. An exposed controller does not
 establish which board connector, if any, has its data pins routed.
 
+On the next physical test, the UI reported the gadget bound. In this build that
+requires the ADB daemon to report running, its FunctionFS endpoints to exist,
+and the controller-binding write to succeed. The Mac nevertheless showed neither
+the expected `18d1:d002` USB device nor an ADB transport. The original status label
+grouped several kernel states as “enumerating”; it did not prove host enumeration.
+The revised code distinguishes those states and logs the raw kernel value.
+
 ## Public references
 
 - [FlyThings: launch from microSD](https://developer.flythings.cn/zh-hans/start_from_sdcard.html).

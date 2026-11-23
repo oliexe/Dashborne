@@ -132,12 +132,28 @@ int usb_configfs_stop(void) {
 }
 
 const char *usb_configfs_status(void) {
+    static char previous_state[64];
+    static int have_state;
     if (failure) return failure;
     if (!bound) return "ADB: waiting for USB endpoints";
     char state[64];
     if (get(UDC "/state", state, sizeof(state)) < 0) return "ADB: bound; USB state unreadable";
+    if (!have_state || !same(state, previous_state)) {
+        have_state = 1;
+        unsigned int i = 0;
+        do { previous_state[i] = state[i]; } while (state[i++]);
+        log_event("configfs-kernel-state=");
+        log_event(*state ? state : "[empty]");
+        log_event("\n");
+    }
     if (same(state, "configured")) return "ADB: USB configured";
     if (same(state, "not-attached")) return "ADB: waiting for USB host";
     if (same(state, "suspended")) return "ADB: USB suspended";
-    return "ADB: bound; USB enumerating";
+    if (same(state, "attached")) return "ADB: USB attached; not configured";
+    if (same(state, "powered")) return "ADB: USB powered; no address";
+    if (same(state, "default")) return "ADB: USB default address";
+    if (same(state, "addressed")) return "ADB: USB addressed; not configured";
+    if (same(state, "reconnecting")) return "ADB: USB reconnecting";
+    if (same(state, "unauthenticated")) return "ADB: USB unauthenticated";
+    return "ADB: bound; unknown USB state";
 }
