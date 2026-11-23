@@ -1,6 +1,9 @@
 /* Forward the official UI unchanged; reconnect development Wi-Fi once. */
 #include "../dashboard/wifi_debug.h"
 #include "../adb-enabler/tcp_adb.h"
+#ifdef DASHBORNE_PATCH_INJECTOR
+#include "../injector/patch.h"
+#endif
 typedef unsigned long thread_id;
 extern void *dlopen(const char *, int);
 extern void *dlsym(void *, const char *);
@@ -44,6 +47,9 @@ static void *connect_development_wifi(void *unused) {
     return (void *)0;
 }
 EXPORT void onEasyUIInit(void *context) {
+#ifdef DASHBORNE_PATCH_INJECTOR
+    injector_apply(log_line);
+#endif
     void *original = dlopen("/res/lib/libzkgui.so", 1);
     if (!original) { log_line("official-ui: library unavailable\n"); return; }
     *(void **)(&original_init) = dlsym(original, "onEasyUIInit");

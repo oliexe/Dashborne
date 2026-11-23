@@ -1,5 +1,10 @@
 # Official UI development copy
 
+Current development uses the [patch injector](../app/injector/README.md) against
+the installed app. Its first additive label rendered on the official dashboard.
+The downloaded full resource copy described below is retained as a research
+path; the injector does not require it.
+
 The official 6.11.4 update contains the display application partition: native
 libraries, communication helpers, fonts, translations, layouts and artwork.
 It runs with the DASH's existing Linux kernel and FlyThings runtime.

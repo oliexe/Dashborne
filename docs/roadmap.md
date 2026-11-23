@@ -1,5 +1,18 @@
 # Roadmap
 
+## Official app patches
+
+- [x] Forward the installed official app from an SD launcher and confirm rendering.
+- [x] Build a separate additive layout patch and a native patch engine.
+- [x] Generate patched resources on the device and override individual files.
+- [x] Add version compatibility checks, preview recovery and explicit restoration.
+- [x] Verify the badge renders within the official dashboard on hardware.
+- [x] Verify reboot clears the override and restores the original layout byte-for-byte.
+- [x] Verify the preview timer automatically reboots into the previous SD app.
+- [ ] Keep Wi-Fi ADB reachable alongside the official dashboard.
+- [ ] Verify a confirmed injector card reapplies the patch after reboot.
+- [ ] Extend the patch format for further visual changes and behavior hooks.
+
 ## Completed
 
 - [x] Identify the application package and platform.
@@ -43,9 +56,9 @@
 - [x] Verify all three interactions on the physical touchscreen.
 - [x] Preserve ADB Enabler as the startup selection after preview deployment.
 
-## Dashboard features
+## Future extensions
 
 - [ ] Map the local communication service interface.
-- [ ] Display live data through existing services.
+- [ ] Extend the official app's live-data screens through existing services.
 - [ ] Choose and implement the first additional features.
 - [ ] Test state handling, reconnects and UI behavior.

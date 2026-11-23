@@ -1,0 +1,25 @@
+{
+  "id": "dashborne-badge",
+  "target": "/res/ui/dash1act.ftu",
+  "base": {
+    "version": "6.11.2",
+    "sha256": "23c4185111b23a29c11f67ee4820eeb77c110c59a4f7213e079ac641344b69f2",
+    "size": 19739,
+    "crc32": "e040e3e2",
+    "plain_size": 194340,
+    "plain_crc32": "827d3dc7"
+  },
+  "operation": "append-root-control",
+  "key": "textview__900001",
+  "control": {
+    "id": 59001,
+    "caption": "DASHBORNE_BADGE",
+    "text": "DASHBORNE",
+    "alignment": 38,
+    "fontSize": 18,
+    "colorTab": {"color0": 65484},
+    "touchable": false,
+    "visible": true,
+    "position": {"left": 825, "top": 450, "width": 270, "height": 26}
+  }
+}

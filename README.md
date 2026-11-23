@@ -1,10 +1,11 @@
 # Dashborne
 
-An alternative UI for the S3XY DASH, built on its existing Linux OS.
+A microSD patch loader for the S3XY DASH's official app.
 
-Dashborne keeps the installed kernel, drivers and platform services while adding
-a new interface and features. Development starts on microSD; removing the card
-and restarting returns to the installed dashboard.
+Dashborne loads the installed official UI and applies separate patches for visual
+changes and extensions. The existing Linux, drivers and app remain the foundation.
+Patches are applied from microSD; powering off, removing the card and booting
+again returns to the installed dashboard. See the [patch injector](app/injector/README.md).
 
 ## Hardware
 
@@ -63,10 +64,15 @@ app files and UI restarts can be handled remotely.
 
 ## Progress
 
-The dashboard now includes a Tesla-inspired instrument cluster with simulated
-speed, animated lanes and traffic, navigation and energy panels, and a Park view.
-It runs at the DASH's native 1920 × 480 resolution using the installed UI framework.
-See [the dashboard guide](app/dashboard/README.md) for controls and deployment.
+Development now focuses on patching the official app. The first injector applies
+a version-matched, additive layout patch and forwards the original app callbacks.
+Its initial patch adds a small Dashborne label; generated resources stay on the
+card and override individual files through temporary mounts.
+The label has been verified on the official dashboard. Timed reboot recovery
+restores ADB Enabler and leaves the installed layout byte-for-byte unchanged.
+
+The earlier Tesla-inspired [simulated cluster](app/dashboard/README.md) remains
+available as a prototype. Its display and touch controls were verified on the DASH.
 
 Wi-Fi ADB is verified on hardware, including a root shell, file transfers,
 screen capture and remote UI updates. A separate **ADB Enabler** helper provides
@@ -74,6 +80,7 @@ a minimal SD startup screen with automatic Wi-Fi ADB and a centered connection
 address. Remote cluster previews preserve that helper as the startup selection.
 
 - [Official UI development copy](docs/official-ui.md)
+- [Patch injector: build, preview and restore](app/injector/README.md)
 - [Research](docs/research.md)
 - [Roadmap](docs/roadmap.md)
 - [Dashboard: build and test](app/dashboard/README.md)
