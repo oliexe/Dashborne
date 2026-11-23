@@ -37,7 +37,8 @@ Dashborne shows a small centered icon and **Tap screen to enter configuration**.
 Tap within three seconds to open configuration. Otherwise, it applies the
 selected patches and opens the installed official dashboard.
 
-Configuration provides Wi-Fi ADB with a live status/address, a selectable list
+Configuration provides developer-only Wi-Fi ADB (off by default) with a live
+status/address, a selectable list
 of patches installed on the card, and **Launch dashboard**. Settings are saved
 on the card and remain selected on the next boot.
 
@@ -77,7 +78,8 @@ available as a prototype. Its display and touch controls were verified on the DA
 
 Wi-Fi ADB is verified on hardware, including a root shell, file transfers,
 screen capture and remote UI updates in configuration. It currently becomes
-unreachable after the official dashboard starts. Dashborne incorporates the
+unreachable after the official dashboard starts. Dashborne stops managing Wi-Fi
+at handoff so the official app controls its hotspot. Dashborne incorporates the
 configuration and Wi-Fi ADB controls; the earlier ADB Enabler remains available
 as a development fallback.
 

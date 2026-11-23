@@ -13,7 +13,8 @@ from the installed app in flash.
 
 Configuration includes:
 
-- **Wi-Fi ADB:** enable/disable TCP ADB and display connection status/address.
+- **Wi-Fi ADB:** developer opt-in, off by default; enable/disable TCP ADB
+  and display connection status/address in configuration.
 - **Patches on microSD:** check individual compatible patches. Four are shown
   per page, with navigation for a catalog of up to 16.
 - **Launch dashboard:** save selections, apply the patches, open the official UI.
@@ -21,8 +22,9 @@ Configuration includes:
 Selections are written to `Dashborne/settings.conf`. Network credentials are
 loaded from `Dashborne/wifi.conf`, with an SSID line followed by a passphrase
 line. The installer can read a local JSON file containing `ssid` and `password`,
-or migrate the existing ADB Enabler Wi-Fi file. An existing helper installation
-also retains its enabled Wi-Fi ADB setting; a fresh installation defaults off.
+or migrate the existing ADB Enabler Wi-Fi file. New settings always default ADB
+off, including migrations from ADB Enabler. Reinstalling preserves an explicit
+Dashborne selection.
 The badge patch is initially selected when compatible.
 
 ## Build and install
@@ -105,5 +107,9 @@ configuration and cancels automatic launch, also confirmed on the touchscreen.
 Rebooting into configuration clears the patch: the installed layout matches its
 original SHA-256 byte-for-byte.
 
-Wi-Fi ADB works in configuration. It becomes unreachable after the official
-dashboard starts; keeping it available alongside the official UI remains open.
+Developer Wi-Fi connections are managed only while configuration is open.
+The splash never requests station mode, even with ADB selected. Handoff stops
+the network timer; Dashborne makes no Wi-Fi reconnect or ADB restart requests
+while the official UI runs. Its CarPlay/Android Auto hotspot remains under the
+official app's control. An existing ADB connection may drop when that app changes
+network mode; debugging through the hotspot is not yet implemented.

@@ -3,7 +3,7 @@ set -eu
 cd "$(dirname "$0")"
 mkdir -p build
 ${HOST_CC:-cc} -std=c11 -Wall -Wextra -Werror -fno-strict-aliasing -fsanitize=address,undefined -g tests/runtime_test.c -o build/runtime-test
-for scenario in normal tapped toggles patch-failure save-failure shutdown-prepared wrong-runtime read-error missing-layout missing-symbol wrong-vtable create-failure allocation-failure; do
+for scenario in normal developer-auto developer-tap tapped toggles patch-failure save-failure shutdown-prepared wrong-runtime read-error missing-layout missing-symbol wrong-vtable create-failure allocation-failure; do
     build/runtime-test "$scenario"
 done
 python3 -m unittest discover -s tests -p 'test_*.py' -v

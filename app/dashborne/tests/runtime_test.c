@@ -31,6 +31,7 @@ static struct mock_control controls[40];
 static int control_count;
 void state_load(struct settings *s) {
     *s = (struct settings){0}; s->count = 2;
+    s->wifi_adb = !strcmp(scenario, "developer-auto") || !strcmp(scenario, "developer-tap");
     strcpy(s->patches[0].id, "badge"); strcpy(s->patches[0].title, "Badge");
     s->patches[0].compatible = 1; s->patches[0].enabled = 1;
     strcpy(s->patches[1].id, "incompatible");
@@ -85,7 +86,7 @@ static void text(void *p, const char *s) {
 static void visibility(void *p, int shown) { ((struct mock_control *)p)->shown = shown; }
 static void text_color(void *p, int rgb) { assert(p && rgb); }
 static int id_of(void *p) { return ((struct mock_control *)p)->id; }
-static void cancel_timer(void *p, int id) { assert(p && id == BOOT_TIMER); ++cancelled; }
+static void cancel_timer(void *p, int id) { assert(p && (id == BOOT_TIMER || id == NETWORK_TIMER)); ++cancelled; }
 static void *ui(void) { return (void *)789; }
 static void navigate(void *p, const char *activity, void *intent) {
     assert(p == (void *)789 && !strcmp(activity, "installedActivity") && !intent); ++opened;
@@ -153,7 +154,7 @@ int main(int argc, char **argv) {
     onEasyUIInit((void *)123);
     const char *selected = onStartupApp((void *)123);
     assert(init_calls == 1 && start_calls == 1);
-    if (is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
+    if (is("developer-auto") || is("developer-tap") || is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
         assert(!strcmp(selected, ACTIVITY) && registered && create_calls == 1);
         assert(phase == 0 && timer_calls == 2 && !opened && !retried);
         if (!is("shutdown-prepared")) {
@@ -162,9 +163,16 @@ int main(int argc, char **argv) {
             void **v = *(void ***)p;
             void (*click)(void *, void *) = (void (*)(void *, void *))v[2];
             int (*tick)(void *, int) = (int (*)(void *, int))v[5];
-            if (is("tapped") || is("toggles")) {
+            for (int i = 0; i < 120; ++i) tick(p, NETWORK_TIMER);
+            assert(!retried && !wifi_polls && !adb_polls);
+            if (is("developer-tap") || is("tapped") || is("toggles")) {
                 click(p, find(p, TAP_ID));
                 assert(phase == 1 && cancelled == 1);
+                if (is("developer-tap")) {
+                    assert(retried == 1);
+                    tick(p, NETWORK_TIMER);
+                    assert(wifi_polls == 1 && adb_polls == 1);
+                }
                 tick(p, BOOT_TIMER); assert(!opened && !applied);
                 if (is("toggles")) {
                     click(p, find(p, WIFI_ID)); assert(settings.wifi_adb && retried == 1);
@@ -180,6 +188,9 @@ int main(int argc, char **argv) {
             else {
                 assert(phase == 3 && opened == 1 && applied == 1);
                 tick(p, BOOT_TIMER); click(p, find(p, LAUNCH_ID)); assert(opened == 1);
+                int retries_before = retried, polls_before = wifi_polls, adb_before = adb_polls;
+                for (int i = 0; i < 200; ++i) tick(p, NETWORK_TIMER);
+                assert(retried == retries_before && wifi_polls == polls_before && adb_polls == adb_before);
             }
             ((void (*)(void *))v[1])(p);
         }

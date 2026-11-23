@@ -20,8 +20,8 @@ class InstallTests(unittest.TestCase):
             self.assertEqual((card/install.BACKUP).read_bytes(),original)
             self.assertEqual(json.loads((card/'EasyUI.cfg').read_bytes())['startupLibPath'],install.STARTUP)
             self.assertEqual((card/'Dashborne/wifi.conf').read_bytes(),(card/'adb-enabler/wifi.conf').read_bytes())
-            self.assertTrue((card/'Dashborne/settings.conf').read_text().startswith('wifi_adb=1\n'))
-            settings=b'wifi_adb=0\npatch.dashborne-badge=0\n'
+            self.assertTrue((card/'Dashborne/settings.conf').read_text().startswith('wifi_adb=0\n'))
+            settings=b'wifi_adb=1\npatch.dashborne-badge=0\n'
             (card/'Dashborne/settings.conf').write_bytes(settings)
             install.stage(card)
             self.assertEqual((card/'Dashborne/settings.conf').read_bytes(),settings)

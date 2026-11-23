@@ -51,7 +51,7 @@ static void *(*find_control)(void *, int);
 static void (*set_text)(void *, const char *);
 static void (*register_timer)(void *, int, int);
 static void *table[17], *prepared;
-static unsigned int reconnect_ticks, official_ticks;
+static unsigned int reconnect_ticks;
 static struct settings settings;
 static int phase, page, settings_ok = 1;
 static int (*control_id)(void *);
@@ -149,16 +149,15 @@ static void launch(void *self) {
         label(self, NOTICE_ID, "Patch could not be applied. Uncheck it to continue.");
         return;
     }
-    phase = 3; official_ticks = 0; log_line("official-selected\n");
+    phase = 3; unregister_timer(self, NETWORK_TIMER);
+    log_line("official-selected\n");
     open_activity(ui_instance(), stock_screen, (void *)0);
 }
 static int on_timer(void *self, int id) {
     if (id == BOOT_TIMER && phase == 0) { launch(self); return 1; }
-    if (id == NETWORK_TIMER && settings.wifi_adb) {
-        if (phase == 3) {
-            if (++official_ticks == 15) { wifi_debug_retry(); reconnect_ticks = 0; }
-            if (official_ticks < 15) return 1;
-        }
+    /* Only configuration owns a developer Wi-Fi connection. Never compete
+       with the official app's hotspot or CarPlay/Android Auto networking. */
+    if (id == NETWORK_TIMER && phase == 1 && settings.wifi_adb) {
         wifi_debug_poll();
         if (*wifi_debug_ip()) reconnect_ticks = 0;
         else if (++reconnect_ticks >= 95) { reconnect_ticks = 0; wifi_debug_retry(); }
@@ -179,8 +178,8 @@ static void on_create(void *self) {
         extern int unlink(const char *);
         (void)unlink("/mnt/extsd/Dashborne/config.once"); phase = 1;
     }
-    if (settings.wifi_adb) wifi_debug_retry();
-    else tcp_adb_stop();
+    if (settings.wifi_adb && phase == 1) wifi_debug_retry();
+    else if (!settings.wifi_adb) tcp_adb_stop();
     render(self);
     register_timer(self, NETWORK_TIMER, 1000);
     if (!phase) register_timer(self, BOOT_TIMER, 3000);
@@ -190,6 +189,7 @@ static void on_click(void *self, void *control) {
     int id = control_id(control);
     if (id == TAP_ID && phase == 0) {
         phase = 1; unregister_timer(self, BOOT_TIMER); log_line("configuration-entered\n");
+        if (settings.wifi_adb) { reconnect_ticks = 0; wifi_debug_retry(); }
     } else if (phase != 1) return;
     else if (id == LAUNCH_ID) { launch(self); return; }
     else if (id == WIFI_ID) {

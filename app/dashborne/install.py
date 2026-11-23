@@ -41,9 +41,7 @@ def stage(card, wifi_config=None, configure=False, restore=False, build=None):
         atomic_write(card / 'Dashborne/wifi.conf', (card / 'adb-enabler/wifi.conf').read_bytes())
         changed.append('Dashborne/wifi.conf')
     if not (card / 'Dashborne/settings.conf').exists():
-        migrate_adb = (config.get('startupLibPath') == '/mnt/extsd/lib/libadb-enabler.so' and
-                       (card / 'Dashborne/wifi.conf').exists())
-        settings = 'wifi_adb=' + ('1' if migrate_adb else '0') + '\npatch.dashborne-badge=1\n'
+        settings = 'wifi_adb=0\npatch.dashborne-badge=1\n'
         atomic_write(card / 'Dashborne/settings.conf', settings.encode())
         changed.append('Dashborne/settings.conf')
     build = Path(build) if build else ROOT / 'build/card'
