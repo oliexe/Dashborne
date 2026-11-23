@@ -11,6 +11,7 @@
 #define write fake_write
 #define close fake_close
 #define access fake_access
+#define unlink fake_unlink
 #define calloc fake_calloc
 #define free fake_free
 #define fsync fake_fsync
@@ -24,15 +25,16 @@ static int allocations, frees, reads;
 static void *(*registered)(void);
 static void *original_table[17];
 static char status_label[128], address[32];
-static int timer_calls, wifi_polls, adb_polls;
+static int timer_calls, adb_polls, released;
 static int opened, applied, saved, stopped, retried, cancelled, list_refreshes;
 static void *bound_adapter, *bound_listener;
+static int force_save_failure;
 struct mock_control { int id; char text[256]; int shown, selected; };
 static struct mock_control controls[40];
 static int control_count;
 void state_load(struct settings *s) {
     *s = (struct settings){0}; s->count = 2;
-    s->wifi_adb = !strcmp(scenario, "developer-auto") || !strcmp(scenario, "developer-tap");
+    s->wifi_adb = !strcmp(scenario, "developer-auto") || !strcmp(scenario, "developer-tap") || !strcmp(scenario, "config-on");
     strcpy(s->patches[0].id, "badge"); strcpy(s->patches[0].title, "Badge");
     s->patches[0].compatible = 1; s->patches[0].enabled = 1;
     strcpy(s->patches[1].id, "incompatible");
@@ -42,20 +44,17 @@ void state_load(struct settings *s) {
         s->patches[63].compatible = 1;
     }
 }
-int state_save(const struct settings *s) { assert(s->count == 2 || s->count == 64); ++saved; return strcmp(scenario, "save-failure") != 0; }
+int state_save(const struct settings *s) { assert(s->count == 2 || s->count == 64); ++saved; return !force_save_failure && strcmp(scenario, "save-failure") != 0; }
 int state_apply(const struct settings *s, void (*log)(const char *)) {
     assert((s->count == 2 || s->count == 64) && log); ++applied; return !strcmp(scenario, "patch-failure") ? -1 : 1;
 }
-void tcp_adb_stop(void) { ++stopped; }
 static const char *ip = "";
-void tcp_adb_bind(void *p, void (*logger)(const char *)) { assert(p == (void *)2 && logger); }
-void tcp_adb_poll(int network_ready) { assert(network_ready == !!*ip); ++adb_polls; }
-const char *tcp_adb_status(void) { return "Wi-Fi ADB ready"; }
-void wifi_debug_bind(void *p, void (*logger)(const char *)) { assert(p == (void *)1 && logger); }
-void wifi_debug_poll(void) { ++wifi_polls; }
-void wifi_debug_retry(void) { ++retried; }
-const char *wifi_debug_status(void) { return "Wi-Fi: connecting..."; }
-const char *wifi_debug_ip(void) { return ip; }
+void debug_bind(void *s, void *r, void (*logger)(const char *)) { assert(s == (void *)1 && r == (void *)2 && logger); }
+void debug_poll(void) { ++adb_polls; }
+void debug_set_enabled(int enabled) { if (enabled) ++retried; else ++stopped; }
+void debug_release(void) { ++released; }
+const char *debug_status(void) { return "ADB listening"; }
+const char *debug_ip(void) { return ip; }
 static void timer(void *p, int id, int interval) {
     assert(p && ((id == NETWORK_TIMER && interval == 1000) || (id == BOOT_TIMER && interval == 3000))); ++timer_calls;
 }
@@ -164,7 +163,8 @@ int fake_read(int fd, void *buf, unsigned int count) {
 int fake_write(int fd, const void *buf, unsigned int count) { assert(fd == 11 && buf); return (int)count; }
 int fake_close(int fd) { assert(fd == 10 || fd == 11); return 0; }
 int fake_fsync(int fd) { assert(fd == 11); return 0; }
-int fake_access(const char *path, int mode) { if (mode == 0) return -1; assert(!strcmp(path, LAYOUT) && mode == 4); return is("missing-layout") ? -1 : 0; }
+int fake_unlink(const char *path) { assert(!strcmp(path, "/mnt/extsd/Dashborne/config.once")); return 0; }
+int fake_access(const char *path, int mode) { if (mode == 0) return (is("config-on") || is("config-off")) ? 0 : -1; assert(!strcmp(path, LAYOUT) && mode == 4); return is("missing-layout") ? -1 : 0; }
 void *fake_calloc(usize n, usize size) {
     if (is("allocation-failure")) return NULL;
     ++allocations; return calloc(n, size);
@@ -180,9 +180,11 @@ int main(int argc, char **argv) {
     onEasyUIInit((void *)123);
     const char *selected = onStartupApp((void *)123);
     assert(init_calls == 1 && start_calls == 1);
-    if (is("list") || is("developer-auto") || is("developer-tap") || is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
+    if (is("config-on") || is("config-off") || is("list") || is("developer-auto") || is("developer-tap") || is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
         assert(!strcmp(selected, ACTIVITY) && registered && create_calls == 1);
-        assert(phase == 0 && timer_calls == 2 && !opened && !retried);
+        int marked = is("config-on") || is("config-off");
+        assert(phase == marked && timer_calls == (marked ? 1 : 2) && !opened);
+        assert(retried == (is("config-on") ? 1 : 0));
         if (!is("shutdown-prepared")) {
             void *p = registered();
             assert(!prepared && allocations == 1);
@@ -190,22 +192,29 @@ int main(int argc, char **argv) {
             void (*click)(void *, void *) = (void (*)(void *, void *))v[2];
             int (*tick)(void *, int) = (int (*)(void *, int))v[5];
             for (int i = 0; i < 120; ++i) tick(p, NETWORK_TIMER);
-            assert(!retried && !wifi_polls && !adb_polls);
-            if (is("list") || is("developer-tap") || is("tapped") || is("toggles")) {
-                click(p, find(p, TAP_ID));
-                assert(phase == 1 && cancelled == 1);
+            assert(retried == (is("config-on") ? 1 : 0));
+            assert(adb_polls == ((marked || !settings.wifi_adb) ? 120 : 0));
+            adb_polls = 0;
+            if (marked || is("list") || is("developer-tap") || is("tapped") || is("toggles")) {
+                if (!marked) click(p, find(p, TAP_ID));
+                assert(phase == 1 && cancelled == (marked ? 0 : 1));
                 if (is("developer-tap")) {
                     assert(retried == 1);
                     tick(p, NETWORK_TIMER);
-                    assert(wifi_polls == 1 && adb_polls == 1);
+                    assert(adb_polls == 1);
                 }
                 tick(p, BOOT_TIMER); assert(!opened && !applied);
                 if (is("toggles")) {
                     click(p, find(p, ADB_TAB_ID)); assert(section == 1);
+                    force_save_failure = 1;
+                    click(p, find(p, WIFI_ID)); assert(!settings.wifi_adb && !retried && !settings_ok);
+                    force_save_failure = 0;
                     click(p, find(p, WIFI_ID)); assert(settings.wifi_adb && retried == 1);
                     ip = "192.0.2.42"; tick(p, NETWORK_TIMER);
                     assert(!strcmp(address, "192.0.2.42:5555") && adb_polls == 1);
-                    click(p, find(p, WIFI_ID)); assert(!settings.wifi_adb && stopped == 2);
+                    force_save_failure = 1;
+                    click(p, find(p, WIFI_ID)); assert(!settings.wifi_adb && stopped == 4 && !settings_ok);
+                    force_save_failure = 0;
                     click(p, find(p, PATCHES_TAB_ID)); assert(section == 0);
                     item_click(p, 0); assert(!settings.patches[0].enabled);
                     item_click(p, 1); assert(!settings.patches[1].enabled);
@@ -236,9 +245,10 @@ int main(int argc, char **argv) {
             else {
                 assert(phase == 3 && opened == 1 && applied == 1);
                 tick(p, BOOT_TIMER); click(p, find(p, LAUNCH_ID)); assert(opened == 1);
-                int retries_before = retried, polls_before = wifi_polls, adb_before = adb_polls;
+                assert(released == 1);
+                int retries_before = retried, adb_before = adb_polls;
                 for (int i = 0; i < 200; ++i) tick(p, NETWORK_TIMER);
-                assert(retried == retries_before && wifi_polls == polls_before && adb_polls == adb_before);
+                assert(retried == retries_before && adb_polls == adb_before);
             }
             ((void (*)(void *))v[1])(p);
         }

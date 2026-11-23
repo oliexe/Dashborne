@@ -1,7 +1,6 @@
 /* Original C adapter for the inspected ARM FlyThings Activity ABI. */
-#include "../adb-enabler/tcp_adb.h"
+#include "debug.h"
 #include "state.h"
-#include "../dashboard/wifi_debug.h"
 typedef __SIZE_TYPE__ usize;
 typedef unsigned int u32;
 extern void *dlopen(const char *, int);
@@ -56,7 +55,6 @@ static void *(*find_control)(void *, int);
 static void (*set_text)(void *, const char *);
 static void (*register_timer)(void *, int, int);
 static void *table[17], *prepared;
-static unsigned int reconnect_ticks;
 static struct settings settings;
 static int phase, section, settings_ok = 1;
 static void *list_owner;
@@ -134,8 +132,8 @@ static void render(void *self) {
     label(self, WIFI_ID, "Enable ADB");
     label(self, WIFI_TOGGLE_ID, settings.wifi_adb ? "1" : "0");
     color(self, WIFI_ID, settings.wifi_adb ? 0x8eb5ff : 0xd8deeb);
-    const char *ip = wifi_debug_ip();
-    label(self, STATUS_ID, settings.wifi_adb ? (*ip ? tcp_adb_status() : wifi_debug_status()) : "Disabled");
+    const char *ip = debug_ip();
+    label(self, STATUS_ID, debug_status());
     char address[40] = "";
     if (settings.wifi_adb && *ip) {
         unsigned int n = append(address, 0, ip, sizeof(address));
@@ -197,6 +195,7 @@ static void launch(void *self) {
         return;
     }
     phase = 3; unregister_timer(self, NETWORK_TIMER);
+    debug_release();
     log_line("official-selected\n");
     open_activity(ui_instance(), stock_screen, (void *)0);
 }
@@ -204,11 +203,8 @@ static int on_timer(void *self, int id) {
     if (id == BOOT_TIMER && phase == 0) { launch(self); return 1; }
     /* Only configuration owns a developer Wi-Fi connection. Never compete
        with the official app's hotspot or CarPlay/Android Auto networking. */
-    if (id == NETWORK_TIMER && phase == 1 && settings.wifi_adb) {
-        wifi_debug_poll();
-        if (*wifi_debug_ip()) reconnect_ticks = 0;
-        else if (++reconnect_ticks >= 95) { reconnect_ticks = 0; wifi_debug_retry(); }
-        tcp_adb_poll(*wifi_debug_ip() != 0);
+    if (id == NETWORK_TIMER && (phase == 1 || (phase == 0 && !settings.wifi_adb))) {
+        debug_poll();
         if (phase == 1) render(self);
     }
     return 1;
@@ -231,8 +227,7 @@ static void on_create(void *self) {
         extern int unlink(const char *);
         (void)unlink("/mnt/extsd/Dashborne/config.once"); phase = 1;
     }
-    if (settings.wifi_adb && phase == 1) wifi_debug_retry();
-    else if (!settings.wifi_adb) tcp_adb_stop();
+    if (phase == 1 || !settings.wifi_adb) debug_set_enabled(settings.wifi_adb);
     render(self);
     register_timer(self, NETWORK_TIMER, 1000);
     if (!phase) register_timer(self, BOOT_TIMER, 3000);
@@ -242,7 +237,7 @@ static void on_click(void *self, void *control) {
     int id = control_id(control);
     if (id == TAP_ID && phase == 0) {
         phase = 1; unregister_timer(self, BOOT_TIMER); log_line("configuration-entered\n");
-        if (settings.wifi_adb) { reconnect_ticks = 0; wifi_debug_retry(); }
+        debug_set_enabled(settings.wifi_adb);
     } else if (phase != 1) return;
     else if (id == LAUNCH_ID) { launch(self); return; }
     else if (id == PATCHES_TAB_ID) section = 0;
@@ -250,8 +245,10 @@ static void on_click(void *self, void *control) {
     else if (id == WIFI_ID && section == 1) {
         settings.wifi_adb = !settings.wifi_adb;
         settings_ok = state_save(&settings);
-        if (settings.wifi_adb) { reconnect_ticks = 0; wifi_debug_retry(); }
-        else tcp_adb_stop();
+        /* A failed save must never grant developer access. Disable immediately
+           even if the card cannot persist that choice; keep the error visible. */
+        if (!settings_ok && settings.wifi_adb) settings.wifi_adb = 0;
+        debug_set_enabled(settings.wifi_adb);
     }
     render(self);
 }
@@ -310,8 +307,7 @@ static int bind_runtime(void) {
     table[7] = (void *)on_timer;
     table[15] = (void *)destroy_secondary;
     table[16] = (void *)on_timer_secondary;
-    tcp_adb_bind(runtime, log_line);
-    wifi_debug_bind(stock, log_line);
+    debug_bind(stock, runtime, log_line);
     return 1;
 }
 
@@ -348,7 +344,8 @@ EXPORT const char *onStartupApp(void *ctx) {
 }
 
 EXPORT void onEasyUIDeinit(void *ctx) {
-    /* Keep the init-owned ADB daemon available across UI replacements. */
+    /* Leave the init-owned daemon alone, but cancel all pending work. */
+    debug_release();
     if (prepared) { destroy(prepared); prepared = (void *)0; }
     log_line("shutdown\n");
     if (stock_deinit) stock_deinit(ctx);

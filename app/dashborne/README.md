@@ -34,6 +34,33 @@ off, including migrations from ADB Enabler. Reinstalling preserves an explicit
 Dashborne selection.
 The badge patch is initially selected when compatible.
 
+## ADB connection handling
+
+Enable ADB manages a developer connection only inside configuration. The controller
+confirms the previous TCP daemon has stopped, validates `wifi.conf`, requests station
+mode when needed, waits for association, then starts ADB. A healthy existing
+connection to the configured SSID can be reused. The toggle remains your saved
+choice; the status below it reports the actual progress or failure.
+
+An address is shown only when the station interface is up, the vendor reports a
+connection, the driver association/SSID checks pass, and the daemon has a TCP 5555
+listener on that address or a wildcard address. Drivers that explicitly do not
+support the additional wireless checks show **limited Wi-Fi verification**.
+**ADB listening** verifies the device's local state, not reachability from the
+Mac: router isolation, routing and driver faults can still block the connection.
+
+The controller clears stale displayed addresses, retries failed Wi-Fi connections
+and missing ADB listeners up to three times, and reports a failure rather than
+retrying forever. Toggle off/on to retry after correcting the cause. Disabling
+cancels connection retries, stops TCP ADB, and reports **Disabled** only after the
+service confirms it stopped. Stop failures remain visible. An ADB daemon using a
+different transport is left alone and identified in the status.
+
+If saving an enabled selection fails, ADB stays off. A disable request takes
+effect even if saving fails, with the card-write error shown. Pending work is
+cancelled on dashboard handoff or loader shutdown; the official app then owns
+networking. No further reconnect or daemon restart requests are issued by Dashborne.
+
 ## Build and install
 
 ```sh
@@ -99,6 +126,16 @@ app preferences under `/data` are managed by the vendor app; restoring the loade
 selection does not reset those preferences.
 
 ## Development checks
+
+The ADB controller tests inject delayed and failed service operations, rapid
+switch changes, a queued start cancelled by disable, missing APIs/configuration,
+short and failed reads, invalid credentials, wrong SSIDs, stale/invalid addresses,
+lost links, unsupported wireless checks, and malformed listener records. They
+exercise cancellation at each connection stage and 10,000 deterministic mixed
+fault/toggle events. Native tests run with AddressSanitizer and UndefinedBehaviorSanitizer.
+These simulations verify controller behavior; the new connection checks still
+need validation against the DASH's Wi-Fi driver and the actual network.
+
 
 The native callback tests cover automatic launch, tap-to-cancel, switch actions,
 category navigation, list adapter callbacks and selecting entries beyond the
