@@ -3,5 +3,5 @@
   "title": "Enable Screen Mirroring",
   "description": "AirPlay mode in the projection widget. Turn off and relaunch for CarPlay/Android Auto. Join the DASH hotspot to mirror.",
   "abi": 1,
-  "sources": ["extension.c", "memory.c"]
+  "sources": ["extension.c", "memory.c", "awake.c"]
 }

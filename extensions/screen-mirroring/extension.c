@@ -1,5 +1,6 @@
 #include "dashborne_extension.h"
 #include "memory.h"
+#include "awake.h"
 typedef __SIZE_TYPE__ usize;
 typedef __UINTPTR_TYPE__ uintptr;
 extern int open(const char *, int, ...), close(int), read(int, void *, unsigned int);
@@ -71,10 +72,12 @@ static int activate(const struct dashborne_host *api) {
        Enabling CarPlay simultaneously lets its auto-reconnect reclaim video.
        The following store writes config.function_mask at offset 0x18. */
     if(instruction_apply(&patch)) {log_message("screen-mirroring: instruction update failed");return -1;}
+    if(awake_install(host,image.base)) {log_message("screen-mirroring: sleep inhibitor setup failed");return -1;}
     log_message("screen-mirroring: exclusive AirPlay mode selected; awaiting projection startup");
     return 0;
 }
 static int deactivate(void) {
+    if(awake_restore()) {log_message("screen-mirroring: callback restore pending; restart required");return -1;}
     int changed=patch.touched;
     if(instruction_restore(&patch)) {log_message("screen-mirroring: restore pending; restart required");return -1;}
     /* This uses the app's existing restart queue, never a plugin-owned worker. */
