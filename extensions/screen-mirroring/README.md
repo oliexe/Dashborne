@@ -7,7 +7,8 @@ The plugin toggle selects the projection mode for the next dashboard launch.
 ## Use
 
 1. Select **Enable Screen Mirroring** in Dashborne → Patches, then launch the dashboard.
-2. Enable the official app's phone projection feature and show its projection widget.
+2. Show the official phone projection widget. Opening the dashboard with this
+   widget starts a two-minute discovery window, including in vehicle standby.
 3. Join the DASH's Wi-Fi hotspot from the iPhone. Open Control Center →
    **Screen Mirroring**, then look for the DASH's configured device name.
 4. To return to CarPlay/Android Auto, stop mirroring, reboot into Dashborne
@@ -15,6 +16,11 @@ The plugin toggle selects the projection mode for the next dashboard launch.
 
 The plugin does not manage Wi-Fi or enable ADB. Hotspot setup, receiver name,
 video decoding and audio routing remain with the official projection service.
+The discovery window requests receiver startup once through the official
+projection API and temporarily inhibits idle sleep. If nobody connects within
+two minutes, the wake hold ends. Leave and reopen the dashboard to retry.
+A later stock projection shutdown cancels the window instead of triggering
+repeated startup requests. Manual screen-off cancels it too.
 While selected, AirPlay is the only enabled projection protocol, preventing
 CarPlay auto-reconnection from taking over its video. When unselected, the
 original CarPlay/Android Auto startup mask is used. This switch is in Dashborne
@@ -38,8 +44,11 @@ the mapping's protection and flushes the instruction cache after each change.
 There are no plugin callbacks in the projection worker.
 
 The dashboard's existing timer, resume and pause callbacks also maintain a
-dedicated `DisplayController::inhibitDisplayOff` bit (`0x80`) while visible
-AirPlay video is active. Stock inhibitor bits are preserved. Both timer vtable
+dedicated `DisplayController::inhibitDisplayOff` bit (`0x80`) during the bounded
+discovery window or while visible AirPlay video is active. The window uses
+`CLOCK_MONOTONIC` and starts only when a projection widget is bound. The stock
+`lk::enable_projection` queue handles the startup request; no vehicle occupancy
+flags or saved settings are changed. Stock inhibitor bits are preserved. Both timer vtable
 entries, including the secondary base thunk, are guarded against their verified
 symbol addresses. Original callback results and the timer's `this` adjustment
 are preserved. Manual display-off retains priority; no Wi-Fi watchdog or new
@@ -84,7 +93,11 @@ pause/resume, secondary-base dispatch, callback return values, preserving
 other inhibitors, conflicting hooks and failed permission restoration/retries.
 Presentation tests cover missing/removed widgets, stock UI gates, avoiding
 repeated refreshes, disconnect, preserving existing grants and later revocation,
-and repeated cleanup. ARM cross-build passes.
+and repeated cleanup. Discovery and callback integration tests cover a receiver
+initially disabled, an already running receiver, the exact timeout boundary,
+clock failure/overflow, widget removal, pause/resume, manual screen-off, video
+takeover, disconnect, and later stock revocation without a restart loop.
+ARM cross-build passes.
 The projection library, daemon and AirPlay library read from the test DASH match
 the copies inspected in the 6.11.4 update package.
 The plugin binary, manifest and catalog were deployed to microSD and read back
@@ -113,3 +126,13 @@ The presentation build passes host checks and ARM cross-compilation. Its binary,
 manifest and catalog are installed on microSD and verified by read-back. Visible
 mirroring, audio, manual screen-off and switching back to stock mode still need
 confirmation on hardware.
+
+The next captured launch activated the presentation build successfully, but the
+official app logged `projection disabled, skipping link play` and then shut down
+its hotspot without starting AirPlay. The installed binary matched the build.
+Static inspection found the initial standby path calling `disable_projection`
+and `setAwaitingOccupant(true)`. This motivated the bounded discovery window:
+waiting for decoded video before holding the display awake cannot help a
+receiver that never starts. The discovery change passes host tests and the ARM
+build. Its binary, manifest and catalog are installed on microSD and verified
+byte-for-byte; discovery and visible video still need a new hardware check.

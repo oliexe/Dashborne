@@ -1,10 +1,13 @@
 #include "awake.h"
 #include "presentation.h"
+#include "discovery.h"
 typedef __UINTPTR_TYPE__ uintptr;
 extern int mprotect(void *, __SIZE_TYPE__, int);
 extern void *fopen(const char *, const char *);
 extern char *fgets(char *, int, void *);
 extern int fclose(void *), sscanf(const char *, const char *, ...);
+struct monotonic_time {long seconds, nanoseconds;};
+extern int clock_gettime(int, struct monotonic_time *);
 
 /* Verified 6.11.2 uses inhibitor bits 1, 2 and 4. Own only this unused bit. */
 #define MIRROR_INHIBIT 0x80u
@@ -14,6 +17,8 @@ static int protection, installed, resumed, held;
 static void *(*instance)(void);
 static void (*inhibit)(void *, unsigned int, int);
 static int (*user_off)(void *), (*link_type)(void), (*video_shown)(void);
+static int (*projection_enabled)(void), (*enable_projection)(void);
+static struct mirroring_discovery discovery;
 static int (*original_timer)(void *, int);
 static void (*original_resume)(void *), (*original_pause)(void *);
 
@@ -21,12 +26,34 @@ static void hold(int enable) {
     if(enable==held)return;
     inhibit(controller,MIRROR_INHIBIT,enable);
     held=enable;
-    api->log(api,enable?"screen-mirroring: visible AirPlay inhibits idle sleep":
+    api->log(api,enable?"screen-mirroring: discovery or visible AirPlay inhibits idle sleep":
                         "screen-mirroring: idle sleep inhibition released");
 }
 static void update(void) {
-    int active=resumed && !user_off(controller) && link_type()==10 && video_shown();
-    hold(active);
+    int off=user_off(controller);
+    int active=resumed && !off && link_type()==10 && video_shown();
+    int action=0;
+    if(resumed) {
+        struct monotonic_time now;
+        long seconds=clock_gettime(1,&now)?-1:now.seconds;
+        action=discovery_step(&discovery,presentation_has_widget(),off,active,
+                              projection_enabled(),seconds);
+    }
+    hold(active || (action&DISCOVERY_HOLD));
+    if(action&DISCOVERY_BEGIN)
+        api->log(api,"screen-mirroring: opening 120-second discovery window");
+    if(action&DISCOVERY_REQUEST) {
+        /* Use the stock queue once; never change Wi-Fi configuration or
+           repeatedly override a later projection disable request. */
+        if(enable_projection())
+            api->log(api,"screen-mirroring: requested official receiver startup");
+        else {
+            discovery.phase=2;hold(active);
+            api->log(api,"screen-mirroring: receiver startup request failed");
+        }
+    }
+    if(action&DISCOVERY_END)
+        api->log(api,"screen-mirroring: discovery window ended");
     presentation_update(active);
 }
 static int timer(void *self,int id) {
@@ -42,11 +69,13 @@ static int timer_secondary(void *self,int id) {
 }
 static void resume(void *self) {
     original_resume(self);
+    discovery=(struct mirroring_discovery){0,0};
     resumed=1;
     update();
 }
 static void pause(void *self) {
     resumed=0;
+    discovery=(struct mirroring_discovery){0,0};
     presentation_release();
     hold(0);
     original_pause(self);
@@ -89,6 +118,8 @@ int awake_install(const struct dashborne_host *host,void *image_base) {
     BIND(user_off,"_ZN17DisplayController17getUserDisplayOffEv",0x11584c);
     BIND(link_type,"_ZN2lk15get_lylink_typeEv",0x132a90);
     BIND(video_shown,"_ZN7lkvideo12isVideoShownEv",0xf26e4);
+    BIND(projection_enabled,"_ZN2lk21is_projection_enabledEv",0x132c78);
+    BIND(enable_projection,"_ZN2lk17enable_projectionEv",0x132f00);
     BIND(table,"_ZTV16dash1actActivity",0x350d98);
 #undef BIND
     controller=instance();
@@ -113,6 +144,7 @@ int awake_restore(void) {
     presentation_reset();
     if(held)hold(0);
     resumed=0;
+    discovery=(struct mirroring_discovery){0,0};
     if(installed) {
         for(unsigned int i=0;i<HOOK_COUNT;++i)
             if(table[hooks[i].slot]!=hooks[i].replacement && table[hooks[i].slot]!=hooks[i].saved)return -1;

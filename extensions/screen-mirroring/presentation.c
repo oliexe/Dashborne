@@ -9,6 +9,9 @@ static unsigned char *manager;
 static void (*refresh)(void *);
 static int acquired;
 static unsigned char saved_grant;
+int presentation_has_widget(void) {
+    return manager && *(unsigned int *)(manager+16)!=0;
+}
 /* 6.11.2 ProjectionManager: widget at +16; resource grant at +24;
    visible state at +25; transition/modal gates at +26/+27.
    AirPlay delivers frames without the CP/AA resource-grant notification. */
@@ -24,7 +27,7 @@ void presentation_release(void) {
 }
 void presentation_update(int active) {
     if(!manager)return;
-    if(!active || !*(unsigned int *)(manager+16)) {
+    if(!active || !presentation_has_widget()) {
         presentation_release();
         return;
     }

@@ -1,4 +1,9 @@
 #include <assert.h>
+struct monotonic_time;
+static int fake_clock(int, struct monotonic_time *);
+static int fake_widget(void);
+#define clock_gettime fake_clock
+#define presentation_has_widget fake_widget
 static int protect_calls, fail_protect;
 static int fake_mprotect(void *p, __SIZE_TYPE__ length, int flags) {
     (void)p; (void)length; (void)flags;
@@ -7,6 +12,16 @@ static int fake_mprotect(void *p, __SIZE_TYPE__ length, int flags) {
 #define mprotect fake_mprotect
 #include "../awake.c"
 #undef mprotect
+#undef clock_gettime
+#undef presentation_has_widget
+static int widget, enabled=1, requests;
+static long seconds=100;
+static int fake_clock(int id, struct monotonic_time *t) {
+    assert(id==1);t->seconds=seconds;t->nanoseconds=0;return 0;
+}
+static int fake_widget(void) {return widget;}
+static int get_enabled(void) {return enabled;}
+static int request_receiver(void) {++requests;enabled=1;return 1;}
 static unsigned char display[12];
 static int type, shown, off, changes, timer_calls, pause_calls, resume_calls;
 static int clear_video_in_timer;
@@ -33,6 +48,7 @@ int main(void) {
     char activity[32]; expected_self=activity;
     api=&host; controller=display;
     inhibit=set_inhibit; link_type=get_type; video_shown=get_shown; user_off=get_off;
+    projection_enabled=get_enabled;enable_projection=request_receiver;
     original_timer=saved_timer; original_pause=saved_pause; original_resume=saved_resume;
     display[8]=5; /* Other official owners must survive all transitions. */
     type=10; shown=1;
@@ -54,6 +70,26 @@ int main(void) {
     timer(activity,42); assert(!held); /* Stray paused timers cannot reacquire. */
     resume(activity); assert(held);
     assert(awake_restore()==0 && !held && !api && display[8]==5);
+
+    /* Receiver startup works without an existing AirPlay connection, once.
+       The same UI timer keeps the window bounded and respects screen-off. */
+    api=&host;controller=display;widget=1;shown=0;type=0;enabled=0;
+    resume(activity);
+    assert(held && requests==1 && display[8]==0x85);
+    seconds=219;timer(activity,42);assert(held && requests==1);
+    seconds=220;timer(activity,42);assert(!held);
+    enabled=0;timer(activity,42);assert(!held && requests==1);
+    pause(activity);resume(activity);assert(held && requests==2);
+    off=1;timer(activity,42);assert(!held);
+    off=0;timer(activity,42);assert(!held && requests==2);
+    widget=0;timer(activity,42);widget=1;timer(activity,42);
+    assert(held && requests==2); /* Existing receiver is not restarted. */
+    type=10;shown=1;timer(activity,42);assert(held);
+    shown=0;timer(activity,42);assert(!held); /* No hold after disconnect. */
+    pause(activity);resume(activity);assert(held);
+    enabled=0;timer(activity,42);assert(!held && requests==2);
+    timer(activity,42);assert(requests==2); /* No override of stock disable. */
+    assert(awake_restore()==0 && !held && display[8]==5 && !discovery.phase);
 
     /* Failed permission restoration must keep the extension loaded for retry. */
     void *vtable[25]={0};
