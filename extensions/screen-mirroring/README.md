@@ -1,138 +1,84 @@
 # Enable Screen Mirroring
 
-Enables the DASH's bundled AirPlay receiver through its official projection
-service and displays mirroring in the existing phone projection widget.
-The plugin toggle selects the projection mode for the next dashboard launch.
+Adds **Screen Mirroring** to the official Settings categories. Selecting it
+opens a separate viewing window and switches the bundled projection service
+to AirPlay. **Back** closes that window, returns to the previous Settings page,
+and requests the original CarPlay/Android Auto mode again.
 
 ## Use
 
-1. Select **Enable Screen Mirroring** in Dashborne → Patches, then launch the dashboard.
-2. Show the official phone projection widget. Opening the dashboard with this
-   widget starts a two-minute discovery window, including in vehicle standby.
-3. Join the DASH's Wi-Fi hotspot from the iPhone. Open Control Center →
-   **Screen Mirroring**, then look for the DASH's configured device name.
-4. To return to CarPlay/Android Auto, stop mirroring, reboot into Dashborne
-   configuration, turn this plugin off and launch the dashboard.
+1. Enable this plugin in Dashborne → Patches, then launch the dashboard.
+2. Open the official Settings and select **Screen Mirroring** in the left list.
+3. Join the DASH hotspot on the iPhone. In Control Center → Screen Mirroring,
+   select the DASH.
+4. Tap **Back** to return to Settings and restore CarPlay/Android Auto.
 
-The plugin does not manage Wi-Fi or enable ADB. Hotspot setup, receiver name,
-video decoding and audio routing remain with the official projection service.
-The discovery window requests receiver startup once through the official
-projection API and temporarily inhibits idle sleep. If nobody connects within
-two minutes, the wake hold ends. Leave and reopen the dashboard to retry.
-A later stock projection shutdown cancels the window instead of triggering
-repeated startup requests. Manual screen-off cancels it too.
-While selected, AirPlay is the only enabled projection protocol, preventing
-CarPlay auto-reconnection from taking over its video. When unselected, the
-original CarPlay/Android Auto startup mask is used. This switch is in Dashborne
-configuration; there is no live mode switch in the official dashboard yet.
-While AirPlay video is visible on the dashboard, the plugin inhibits automatic
-display sleep. Leaving the dashboard, stopping mirroring or manually turning
-the display off releases that inhibition.
-Touch control of the iPhone and playback of protected video are not provided.
+The receiver takes a few seconds to switch modes. **Retry** restarts a failed
+or disconnected mirroring attempt. The screen remains awake while this window
+is open; manual screen-off takes priority. The plugin does not configure Wi-Fi
+or enable ADB. The official projection service manages the hotspot and pairing.
+Touch control of the iPhone and protected-video playback are not provided.
 
-To disable it, reboot into Dashborne configuration, turn the plugin off and launch
-the dashboard. Booting without the card also restores the original startup mask.
+Selecting the plugin only adds the Settings entry. The dashboard's existing
+CarPlay/Android Auto widget and projection mode stay unchanged until the
+mirroring window opens. The previous widget cover patch and two-minute
+discovery window have been removed.
 
 ## Implementation
 
-The verified official 6.11.2 app passes a 76-byte configuration to
-`lylinkapi_start`. Its function mask at offset `0x18` is `0x12`.
-The bundled `lylinkapp_ab` dispatcher starts its AirPlay receiver when bit
-`0x400` is present. The plugin changes that startup mask to `0x400` using one
-aligned ARM instruction in the process's private executable mapping. It restores
-the mapping's protection and flushes the instruction cache after each change.
-There are no plugin callbacks in the projection worker.
+The supported installed app is 6.11.2. Full-file size/CRC guards cover the app,
+UI runtime, projection library, receiver daemon and AirPlay library. Exported
+function addresses and the original startup-mask instruction are also checked.
 
-The dashboard's existing timer, resume and pause callbacks also maintain a
-dedicated `DisplayController::inhibitDisplayOff` bit (`0x80`) during the bounded
-discovery window or while visible AirPlay video is active. The window uses
-`CLOCK_MONOTONIC` and starts only when a projection widget is bound. The stock
-`lk::enable_projection` queue handles the startup request; no vehicle occupancy
-flags or saved settings are changed. Stock inhibitor bits are preserved. Both timer vtable
-entries, including the secondary base thunk, are guarded against their verified
-symbol addresses. Original callback results and the timer's `this` adjustment
-are preserved. Manual display-off retains priority; no Wi-Fi watchdog or new
-background worker is introduced.
+The Settings list adapters append an action row and delegate all existing rows.
+They can chain with Contrast in either load order. Cleanup restores the saved
+callbacks in reverse extension order and refuses to overwrite a later hook.
+No Settings layout overlay is needed.
 
-The same UI callbacks bridge AirPlay into the official `ProjectionManager`
-resource-grant state. The stock CP/AA session notifications normally supply this
-state; AirPlay can deliver decoded frames without it, leaving the opaque standby
-cover over the video layer. While decoded AirPlay is visible and a projection
-widget exists, the plugin grants presentation and calls the original cover
-refresh method. It preserves the other UI gates. Disconnect, pause, explicit
-screen-off and cleanup release the temporary grant. The manager mapping,
-exported method anchor and private refresh entry are checked before use.
+The separate native Activity uses an original microSD layout with a header,
+Back/Retry controls and a `ZKVideoView` that exposes the hardware video plane.
+The host registers it through a resident factory trampoline, so an unloaded
+plugin never leaves a dangling constructor. Live activities and queued opens
+must finish before the plugin can be unloaded.
 
-Full-file size/CRC checks cover the installed app, projection UI library, AB
-daemon and AirPlay library before any modification. Symbol addresses, mapping
-permissions and the original instruction are checked too. A different build is
-rejected. Activation requires projection to be stopped; normally it has not yet
-started while Dashborne configuration is open.
+On entry, an aligned instruction changes the next receiver startup mask from
+`0x12` to `0x400`. The plugin requests startup and a forced restart through the
+official projection queue, with a 1888×384 viewport. It observes the official
+video status, requests playback after AirPlay connects, and presents only a
+new AirPlay generation with decoded frames and matching dimensions. Old
+CarPlay frames cannot be shown while a restart is pending. The video plane is
+placed at physical `(16, 16, 384, 1888)` for the rotated panel.
 
-Cleanup releases the temporary presentation grant and owned sleep inhibitor,
-then restores the dashboard callbacks
-and their mapping permissions before restoring the original instruction.
-If projection is running, it requests a restart through the official app's
-existing queue. A failed memory/cache/
-protection restore remains a cleanup failure so the engine will not silently
-unload it. A process restart discards the private mapping regardless.
+Back, Activity pause and cleanup hide the video, release the owned display
+inhibitor (`0x80`), restore the original instruction, and request a stock restart
+using the dashboard widget's original size. A rapid Back supersedes the queued
+AirPlay restart. Restore failures remain retryable and block unsafe unloading.
+No vehicle-occupancy flags or saved official settings are changed.
 
-## Validation
+## Build and validation
 
 ```sh
+python3 extensions/screen-mirroring/generate.py
 sh extensions/screen-mirroring/test.sh
+sh extensions/contrast/test.sh
+sh app/extensions/test.sh
+sh app/dashborne/test.sh
 DASHBORNE_CC=/opt/homebrew/opt/llvm/bin/clang \
 DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld sh app/dashborne/build.sh
 ```
 
-Host tests exercise incompatible instructions, duplicate activation, normal
-restoration, conflicting changes, failed permission changes, failed cache
-synchronization and cleanup retries under ASan/UBSan. Callback tests cover
-AirPlay visibility, other protocols, disconnect, explicit display-off,
-pause/resume, secondary-base dispatch, callback return values, preserving
-other inhibitors, conflicting hooks and failed permission restoration/retries.
-Presentation tests cover missing/removed widgets, stock UI gates, avoiding
-repeated refreshes, disconnect, preserving existing grants and later revocation,
-and repeated cleanup. Discovery and callback integration tests cover a receiver
-initially disabled, an already running receiver, the exact timeout boundary,
-clock failure/overflow, widget removal, pause/resume, manual screen-off, video
-takeover, disconnect, and later stock revocation without a restart loop.
-ARM cross-build passes.
-The projection library, daemon and AirPlay library read from the test DASH match
-the copies inspected in the 6.11.4 update package.
-The plugin binary, manifest and catalog were deployed to microSD and read back
-byte-for-byte. The initial combined-protocol build (`0x412`) was confirmed to
-appear in iPhone Screen Mirroring, accept a connection and briefly show mirrored
-video in the projection widget, before returning to CarPlay. The AirPlay-only
-build was then installed and verified by read-back.
+Host tests cover guarded instruction changes and rollback, stale video,
+protocol/geometry checks, decoder readiness, disconnect/reconnect, rapid Back,
+manual screen-off, failed startup and failed restoration. Settings and window
+callback tests cover row delegation, secondary-base adjustments, duplicate taps,
+closing timers and live-callback cleanup. Engine tests exercise factory lifetime
+across unloading/reactivation and partial activation failures. The native
+loader and Contrast regression tests pass, as does ARM cross-compilation.
 
-A subsequent capture showed AirPlay reaching video decoder startup, followed
-about 0.8 seconds later by the official display controller requesting projection
-disable. Bluetooth and the hotspot shut down next, interrupting the stream.
-The user confirmed no projection or network settings were changed. Static
-inspection traced this request to the display-off branch of
-`DisplayController::updateDisplayState`; this motivated the visible-video
-sleep inhibitor. The iPhone's “no internet” message alone does not identify the
-cause of a disconnect.
+The updated loader, Contrast adapter, mirroring plugin, manifest, layout and
+catalog are installed on microSD and verified by read-back. The loader restarted
+into configuration and ADB reconnected.
 
-With sleep inhibition installed, the user reported a sustained connection but
-no visible picture. Captures confirmed decoded 496×720 frames and a video layer
-under the framebuffer, while the UI kept its opaque standby cover. This led to
-the presentation-grant bridge. Another capture also showed an official
-projection restart during a session; that reconnect behavior remains under
-investigation.
-
-The presentation build passes host checks and ARM cross-compilation. Its binary,
-manifest and catalog are installed on microSD and verified by read-back. Visible
-mirroring, audio, manual screen-off and switching back to stock mode still need
-confirmation on hardware.
-
-The next captured launch activated the presentation build successfully, but the
-official app logged `projection disabled, skipping link play` and then shut down
-its hotspot without starting AirPlay. The installed binary matched the build.
-Static inspection found the initial standby path calling `disable_projection`
-and `setAwaitingOccupant(true)`. This motivated the bounded discovery window:
-waiting for decoded video before holding the display awake cannot help a
-receiver that never starts. The discovery change passes host tests and the ARM
-build. Its binary, manifest and catalog are installed on microSD and verified
-byte-for-byte; discovery and visible video still need a new hardware check.
+The earlier widget-based build was confirmed to discover, connect and display
+AirPlay video. The dedicated window, live return to CarPlay/Android Auto, audio,
+and repeated switching still need confirmation on hardware.

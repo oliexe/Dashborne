@@ -50,7 +50,7 @@ int dbx_umount(const char*a,int b) {(void)a;(void)b;++stub_unmounts;
         self.temp.cleanup()
 
     def plugin(self, id, *, abi=1, declared_id=None, activate_fail=0, cleanup_fail=0,
-               overlay=None, target=None, missing_getter=False, activity=None):
+               overlay=None, target=None, missing_getter=False, activity=None, registered=None):
         folder = self.card/'extensions'/id; folder.mkdir()
         (folder/'asset').write_bytes(b'own theme')
         source = folder/'source.c'
@@ -59,8 +59,14 @@ int dbx_umount(const char*a,int b) {(void)a;(void)b;++stub_unmounts;
             operation = 'if (h->overlay_file(h,'+json.dumps(overlay)+','+json.dumps(str(target or self.target))+')) return -1;'
         if activity is not None:
             operation += 'if(h->set_startup_activity(h,'+json.dumps(activity)+'))return -1;'
+        factory = ''
+        if registered is not None:
+            factory = 'static void *create(void){return (void *)123;}'
+            operation += 'if(!h->owns_callback(h,(void *)create))return -1;'
+            operation += 'if(h->register_activity(h,'+json.dumps(registered)+',create))return -1;'
         source.write_text('''#include "dashborne_extension.h"
 #include <stdio.h>
+FACTORY
 static void record(const char *s) {FILE*f=fopen(EVENTS,"a");if(f){fputs(s,f);fclose(f);}}
 static int activate(const struct dashborne_host*h) {
  if(!h || h->abi_version!=1 || h->struct_size<sizeof(*h) || !h->resolve || !h->official_library || !h->ui_runtime) return -1;
@@ -71,15 +77,15 @@ DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *GETTER(void) {
  static const struct dashborne_extension d={ABI,sizeof(d),DECLARED_ID,activate,deactivate};return &d;
 }
 '''.replace('EVENTS',json.dumps(str(self.events))).replace('ID+',id+'+').replace('ID-',id+'-')
-            .replace('OPERATION',operation).replace('ACTIVATE_FAIL',str(activate_fail))
+            .replace('FACTORY',factory).replace('OPERATION',operation).replace('ACTIVATE_FAIL',str(activate_fail))
             .replace('CLEANUP_FAIL',str(cleanup_fail)).replace('DECLARED_ID',json.dumps(declared_id or id))
             .replace('ABI',str(abi)).replace('GETTER','different_getter' if missing_getter else 'dashborne_extension_v1'))
         subprocess.run(['cc','-shared','-fPIC','-Wall','-Wextra','-Werror','-I',str(ROOT),str(source),'-o',str(folder/'libextension.so')],check=True)
         return folder
 
-    def start(self,*ids,protected=None):
+    def start(self,*ids,protected=None,runtime=2):
         array=(ctypes.c_char_p*len(ids))(*(id.encode() for id in ids))
-        return self.lib.extensions_start(array,len(ids),1,2,str(protected).encode() if protected else None,self.logger)
+        return self.lib.extensions_start(array,len(ids),1,runtime,str(protected).encode() if protected else None,self.logger)
 
     def value(self,key,value=None):
         v=ctypes.c_int.in_dll(self.lib,key)
@@ -105,6 +111,43 @@ DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *GETTER(void) {
         self.assertEqual(self.lib.extensions_activity(b'officialActivity'),b'officialActivity')
         self.assertEqual(self.start('one','two'),-1)
         self.assertEqual(self.lib.extensions_activity(b'officialActivity'),b'officialActivity')
+
+    def fake_runtime(self):
+        source=self.root/'runtime.c'
+        source.write_text('''static void *(*factory)(void); int registrations;
+void *_ZN15ActivityFactory11getInstanceEv(void){return (void *)1;}
+int _ZN15ActivityFactory16registerActivityEPKcPFP8ActivityvE(void*s,const char*n,void*(*f)(void)){
+ (void)s;(void)n;factory=f;++registrations;return 1;
+}
+void *create_last(void){return factory?factory():0;}
+''')
+        output=self.root/'runtime.so'
+        subprocess.run(['cc','-shared','-fPIC',str(source),'-o',str(output)],check=True)
+        runtime=ctypes.CDLL(str(output));runtime.create_last.restype=ctypes.c_void_p
+        return runtime
+
+    def test_activity_factory_survives_plugin_unload_and_reactivation(self):
+        runtime=self.fake_runtime()
+        self.plugin('one',registered='dashborneExtension_test')
+        self.assertEqual(self.start('one',runtime=runtime._handle),1)
+        self.assertEqual(runtime.create_last(),123)
+        self.assertEqual(self.lib.extensions_stop(),1)
+        self.assertIsNone(runtime.create_last())
+        self.assertEqual(self.start('one',runtime=runtime._handle),1)
+        self.assertEqual(runtime.create_last(),123)
+        self.assertEqual(ctypes.c_int.in_dll(runtime,'registrations').value,1)
+        self.assertEqual(self.lib.extensions_stop(),1)
+        self.assertIsNone(runtime.create_last())
+
+    def test_activity_collision_and_partial_activation_retire_callbacks(self):
+        runtime=self.fake_runtime()
+        self.plugin('one',registered='dashborneExtension_test')
+        self.plugin('two',registered='dashborneExtension_test')
+        self.assertEqual(self.start('one','two',runtime=runtime._handle),-1)
+        self.assertIsNone(runtime.create_last())
+        self.plugin('three',registered='dashborneExtension_failure',activate_fail=1)
+        self.assertEqual(self.start('three',runtime=runtime._handle),-1)
+        self.assertIsNone(runtime.create_last())
 
     def test_failed_activation_rolls_back_partial_module_and_previous_modules(self):
         self.plugin('one',overlay='asset');self.plugin('two',activate_fail=1)

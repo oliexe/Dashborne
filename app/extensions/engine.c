@@ -10,6 +10,8 @@ extern int *__errno_location(void);
 extern char *realpath(const char *, char *);
 extern void *dlopen(const char *, int), *dlsym(void *, const char *);
 extern int dlclose(void *);
+struct image_info {const char *name;void *base;const char *symbol;void *address;};
+extern int dladdr(const void *,struct image_info *);
 #ifndef DBX_ROOT
 #define DBX_ROOT "/mnt/extsd/Dashborne"
 #endif
@@ -71,6 +73,7 @@ static int valid_id(const char *id) {
             return 0;
     return n && n < 32;
 }
+#include "activities.inc"
 static int clean_path(const char *path) {
     if (!*path || length(path) >= PATH_SIZE)
         return 0;
@@ -301,6 +304,7 @@ int extensions_stop(void) {
             ok = 0;
             break;
         }
+        retire_activities(&entry->host);
         if (entry->library)
             dlclose(entry->library);
         --loaded_count;
@@ -351,7 +355,9 @@ int extensions_start(const char *const *ids, unsigned int count, void *official,
                                           plugin_log,
                                           dlsym,
                                           overlay_file,
-                                          set_startup_activity};
+                                          set_startup_activity,
+                                          register_plugin_activity,
+                                          owns_callback};
         e->entered = 1;
         activating = 1;
         int rc = d->activate(&e->host);

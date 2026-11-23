@@ -5,9 +5,10 @@ output=$(mktemp -d)
 trap 'rm -rf "$output"' EXIT
 clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined tests/test_memory.c memory.c -o "$output/memory"
 "$output/memory"
-clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined tests/test_discovery.c discovery.c -o "$output/discovery"
-"$output/discovery"
-clang -std=c11 -Wall -Wextra -Werror -fno-builtin -fsanitize=address,undefined -I../../app/extensions tests/test_awake.c presentation.c discovery.c -o "$output/awake"
-"$output/awake"
-clang -std=c11 -Wall -Wextra -Werror -fno-builtin -fsanitize=address,undefined -I../../app/extensions tests/test_presentation.c -o "$output/presentation"
-"$output/presentation"
+clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined tests/test_session.c session.c -o "$output/session"
+"$output/session"
+for test in settings window; do
+  clang -std=c11 -Wall -Wextra -Werror -fno-builtin -fsanitize=address,undefined -I../../app/extensions "tests/test_$test.c" -o "$output/$test"
+  "$output/$test"
+done
+python3 tests/test_layout.py

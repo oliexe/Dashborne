@@ -197,7 +197,8 @@ static int activate(const struct dashborne_host *api) {
     vtable=host->resolve(host->official_library,"_ZTV19awlsettingsActivity");
     if(!vtable)return -1;
     for(unsigned int i=0;i<69;++i)saved[i]=vtable[i];
-    for(unsigned int i=0;i<HOOKS;++i)if(vtable[hooks[i].index]!=host->resolve(host->official_library,hooks[i].symbol)) {
+    for(unsigned int i=0;i<HOOKS;++i)if(vtable[hooks[i].index]!=host->resolve(host->official_library,hooks[i].symbol) &&
+        (!host->owns_callback || !host->owns_callback(host,vtable[hooks[i].index]))) {
         log_message("contrast: incompatible settings callbacks");return -1;
     }
     *(void **)(&original_click)=saved[4]; *(void **)(&original_create)=saved[6];
@@ -216,6 +217,9 @@ static int activate(const struct dashborne_host *api) {
 static int deactivate(void) {
     if(display_restore(&display)) {log_message("contrast: cleanup could not restore display");return -1;}
     if(installed) {
+        for(unsigned int i=0;i<HOOKS;++i)
+            if(vtable[hooks[i].index]!=hooks[i].replacement &&
+               vtable[hooks[i].index]!=saved[hooks[i].index])return -1;
         if(!protection(1)) {protection(0);return -1;}
         for(unsigned int i=0;i<HOOKS;++i)vtable[hooks[i].index]=saved[hooks[i].index];
         if(!protection(0))return -1;

@@ -15,6 +15,13 @@ struct dashborne_host {
     /* Optional: select an activity registered by this plugin instead of the
        official startup activity. Only one selected plugin may claim it. */
     int (*set_startup_activity)(const struct dashborne_host *, const char *name);
+    /* Activation only. Registers a native Activity through a host-owned
+       trampoline that becomes inert before this plugin is unloaded. The
+       plugin must destroy its live activities before successful deactivate. */
+    int (*register_activity)(const struct dashborne_host *, const char *name, void *(*create)(void));
+    /* True for a callback inside a currently loaded extension. Allows
+       cooperating vtable hooks to chain and unwind in reverse load order. */
+    int (*owns_callback)(const struct dashborne_host *, const void *callback);
 };
 struct dashborne_extension {
     unsigned int abi_version, struct_size;

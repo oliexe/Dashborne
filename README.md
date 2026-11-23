@@ -104,4 +104,5 @@ The [Contrast plugin](extensions/contrast) adds an entry to the official Setting
 menu with temporary display contrast and luminance controls.
 
 The experimental [Enable Screen Mirroring plugin](extensions/screen-mirroring)
-enables the bundled AirPlay receiver through the official projection service.
+adds a dedicated Screen Mirroring window to official Settings. Opening it
+switches to AirPlay; Back returns to Settings and restores CarPlay/Android Auto.

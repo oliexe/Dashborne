@@ -67,6 +67,8 @@ The host provides:
 | `resolve(handle, name)` | Resolve exported symbols with `dlsym`; adapters can call services, register activities or implement hooks. |
 | `log(host, message)` | Record an extension event in `Dashborne/loader.log`. |
 | `overlay_file(host, source, target)` | During activation, bind a file relative to the extension directory over an existing absolute `/res/` file. The resulting mount is read-only. |
+| `register_activity(host, name, create)` | During activation, register a native activity under a `dashborneExtension_` name through a resident host trampoline. It becomes inert before the plugin unloads. |
+| `owns_callback(host, pointer)` | Check whether a callback belongs to a currently loaded extension before chaining a cooperating hook. |
 | `set_startup_activity(host, name)` | During activation, choose an activity registered by the extension instead of the official startup activity. Only one selected extension can claim this. |
 
 An extension can supply its own layouts, icons, fonts and other theme resources,
@@ -78,7 +80,10 @@ extension. The loader does not run a JavaScript/Lua interpreter, but a native
 extension can embed one.
 
 The host structure stays valid until cleanup. `overlay_file` and
-`set_startup_activity` are activation-thread operations. UI calls from workers
+`set_startup_activity` and `register_activity` are activation-thread operations.
+A registered activity must be destroyed, and any queued open completed, before
+its plugin reports successful cleanup. Factory names stay reserved to their
+original extension across reactivation; the host supports 32 names per process. UI calls from workers
 must be marshalled through the runtime's UI-thread mechanism. The extension must
 stop and join its workers, unregister callbacks, release controls and remove hooks
 in `deactivate`, including when `activate` only partially succeeded. Cleanup may
