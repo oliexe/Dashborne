@@ -1,4 +1,5 @@
 #include "usb_debug.h"
+#include "usb_configfs.h"
 
 extern void *dlsym(void *, const char *);
 extern int open(const char *, int, ...);
@@ -19,6 +20,7 @@ static int (*get_property)(const char *, char *, const char *);
 static int (*set_property)(const char *, const char *);
 static void (*log_event)(const char *);
 static int owned;
+static int configfs;
 static char previous_tcp_port[PROPERTY_BUFFER];
 static const char *error;
 static int diagnostic_pid;
@@ -71,6 +73,7 @@ static int usb_enabled(void) {
 }
 
 static int disable_usb(void) {
+    if (configfs) return usb_configfs_stop();
     int fd = open(USB_ENABLE, 1);
     if (fd < 0) return -1;
     int n = write(fd, "0\n", 2);
@@ -115,7 +118,10 @@ void usb_debug_toggle(void) {
         return;
     }
     int enabled = usb_enabled();
-    if (enabled != 0) {
+    configfs = enabled < 0 && usb_configfs_available();
+    if (configfs) {
+        if (usb_configfs_prepare(log_event)) { error = usb_configfs_error(); return; }
+    } else if (enabled != 0) {
         error = enabled < 0 ? "ADB: legacy USB control unavailable" : "ADB: USB already in use";
         log_event("adb-start-skipped: usb-unavailable-or-busy\n");
         return;
@@ -126,7 +132,7 @@ void usb_debug_toggle(void) {
        are set. A nonempty zero explicitly selects USB rather than TCP. */
     if (set_property("service.adb.tcp.port", "0") ||
         set_property("sys.usb.config", "none") ||
-        set_property("sys.usb.config", "adb") ||
+        (!configfs && set_property("sys.usb.config", "adb")) ||
         set_property("ctl.start", "adbd")) {
         error = "ADB: start request failed";
         log_event("adb-start-request-failed\n");
@@ -147,8 +153,15 @@ const char *usb_debug_status(void) {
         else { owned = 0; log_event("adb-stopped\n"); }
     }
     if (error) return error;
+    if (configfs && owned == 2) return "ADB: stopping";
+    if (configfs && owned == 1) {
+        if (!equal(daemon, "running")) return "ADB: starting ConfigFS service";
+        int result = usb_configfs_bind();
+        if (result < 0) { error = usb_configfs_error(); return error; }
+        return usb_configfs_status();
+    }
     int enabled = usb_enabled();
-    if (enabled < 0) return "ADB: legacy USB control unavailable";
+    if (enabled < 0) return usb_configfs_available() ? "ADB: ConfigFS ready to enable" : "ADB: no supported USB interface";
     if (owned == 2) return "ADB: stopping";
     if (equal(daemon, "running"))
         return enabled ? "ADB: running; USB enabled" : "ADB: running; USB disabled";

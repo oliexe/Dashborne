@@ -1,26 +1,33 @@
 #!/bin/sh
-# Snapshot USB support. An optional fixture root supports off-device tests.
+# Only shell builtins and the observed ls utility are required on the DASH.
+# An optional fixture root supports off-device tests.
 set -u
 root=${1:-}
 
 read_node() {
-    printf '\nFILE %s\n' "$1"
+    echo
+    echo "FILE $1"
     if [ -e "$root$1" ]; then
-        head -c 4096 "$root$1" 2>&1 | tr '\000' '\n'
-        printf '\n'
+        count=0
+        while IFS= read -r line || [ -n "$line" ]; do
+            echo "$line"
+            count=$((count + 1))
+            [ "$count" -lt 120 ] || break
+        done < "$root$1"
+        echo
     else
-        printf 'absent\n'
+        echo absent
     fi
 }
 
 list_dir() {
-    printf '\nDIRECTORY %s\n' "$1"
-    if [ -d "$root$1" ]; then ls -la "$root$1" 2>&1; else printf 'absent\n'; fi
+    echo
+    echo "DIRECTORY $1"
+    if [ -d "$root$1" ]; then ls -la "$root$1" 2>&1; else echo absent; fi
 }
 
-printf 'Dashborne USB diagnostics v1\n'
-if [ -z "$root" ]; then id; uname -a; fi
-for path in /proc/filesystems /proc/mounts /proc/modules; do read_node "$path"; done
+echo 'Dashborne USB diagnostics v2'
+for path in /proc/version /proc/self/status /proc/filesystems /proc/mounts /proc/modules; do read_node "$path"; done
 for path in /sys/class/udc /sys/class/usb_role /sys/class/typec \
     /sys/class/zkswe_usb /sys/class/android_usb /sys/kernel/config/usb_gadget \
     /sys/class/sunxi_usb /dev/usb-ffs/adb; do list_dir "$path"; done
@@ -45,16 +52,10 @@ for node in "$root"/sys/bus/platform/devices/*usb* "$root"/sys/bus/platform/devi
     list_dir "$node"
     for field in of_node/status of_node/dr_mode otg_role usb_role; do read_node "$node/$field"; done
 done
-printf '\nInstalled helper availability\n'
+echo
+echo 'Installed helper availability'
 for path in /res/bin/setusbconfig /bin/setusbconfig /bin/adbd; do
-    if [ -e "$root$path" ]; then ls -l "$root$path"; else printf '%s absent\n' "$path"; fi
+    if [ -e "$root$path" ]; then ls -l "$root$path"; else echo "$path absent"; fi
 done
-if [ -z "$root" ]; then
-    printf '\nUSB-related kernel configuration\n'
-    if [ -r /proc/config.gz ]; then
-        gzip -dc /proc/config.gz | grep -E '^CONFIG_(USB|CONFIGFS|PHY_SUN|SUNXI_USB)' | head -n 160
-    else printf '/proc/config.gz unavailable\n'; fi
-    printf '\nRecent USB-related kernel messages\n'
-    dmesg 2>&1 | grep -i -E 'usb|udc|gadget|configfs|musb|dwc|permission|denied' | tail -n 120
-fi
-printf '\nDiagnostic snapshot complete\n'
+echo
+echo 'Diagnostic snapshot complete'

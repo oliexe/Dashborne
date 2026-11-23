@@ -84,12 +84,21 @@ navigation and shutdown checks remain.
 3. On the laptop, run `adb devices -l`, then `adb shell` once the device appears
    with state `device`. Connection and shell access are still pending testing.
 
-The switch requests the existing init service, uses the existing USB gadget
-trigger, and sets the temporary ADB TCP port to zero to select USB. It does not
+The switch requests the existing init service and sets the temporary ADB TCP port
+to zero to select USB. It uses the legacy gadget trigger where available, or
+ConfigFS for the `4100000.udc-controller` observed on the test DASH. It does not
 change persistent debug settings. **Disable USB ADB** requests daemon shutdown
-and disables the gadget; status polling completes cleanup after init reports the
-daemon stopped. The previous temporary TCP setting is then restored. Application
-shutdown also requests cleanup; reboot clears the temporary debug settings.
+and disables or unbinds the gadget; status polling completes cleanup after init
+reports the daemon stopped. The previous temporary TCP setting is then restored.
+Application shutdown also requests cleanup; reboot clears the temporary settings.
+
+The ConfigFS backend creates a `dashborne` gadget, mounts FunctionFS if needed,
+and starts the installed daemon. It waits for ADB endpoints before binding the
+controller. **USB configured** means the host configured the USB device;
+**waiting for USB host** means the gadget is bound but no attachment is reported.
+Neither message confirms an authorized ADB shell. Binding and endpoint waits are
+limited to 15 status polls. Reboot if a previous app process left the debug gadget
+directory behind. ConfigFS USB enumeration is pending its first hardware test.
 
 The switch leaves an already-running daemon or an already-enabled USB gadget
 alone and reports that state. Failed requests stay visible, with a retry available
@@ -103,8 +112,10 @@ and state changes alongside touch and screen lifecycle events.
 
 The first USB test reported that the legacy control interface could not be read.
 This does not identify the connector's wiring. The downloaded application package
-also contains a ConfigFS-based USB helper, so the active gadget interface still
-needs to be identified.
+also contains a ConfigFS-based USB helper. The first snapshot confirmed that
+helper is installed and that `/sys/class/udc/4100000.udc-controller` exists.
+Several expected shell utilities were absent, so the remaining snapshot was
+incomplete. Version 2 uses shell builtins and the observed `ls` utility.
 
 Opening the Dashborne screen starts a read-only diagnostic snapshot in a child
 process. Keep the screen open for about ten seconds with the USB data cable
@@ -112,6 +123,5 @@ connected to the laptop, then power off and return the card. The report is
 `Dashborne/usb-diagnostics.txt`; `events.log` records when it is saved or fails.
 
 The report covers USB device controllers, roles, ConfigFS, loaded modules,
-available helpers and USB kernel messages. It neither loads drivers nor changes
-USB configuration. The UI now calls the original failure **legacy USB control
-unavailable** to distinguish it from a hardware finding.
+process identity and available helpers. It neither loads drivers nor changes
+USB configuration. The ADB button performs configuration separately.

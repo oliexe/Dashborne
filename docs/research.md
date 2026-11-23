@@ -90,6 +90,20 @@ a backend. See the kernel's
 [ConfigFS gadget documentation](https://docs.kernel.org/usb/gadget_configfs.html)
 for controller binding and gadget setup.
 
+The next on-device report confirmed `/sys/class/udc/4100000.udc-controller`,
+`/res/bin/setusbconfig`, and `/bin/adbd`. Thus the running kernel exposes a USB
+device controller. The diagnostic script's other results were incomplete because
+utilities including `printf`, `tr`, and `head` were unavailable. Its replacement
+uses shell builtins and the observed `ls` command.
+
+Dashborne now includes a native ConfigFS backend for that controller. It creates
+its own gadget, prepares FunctionFS, starts the installed ADB daemon, and waits
+for its endpoints before binding. The endpoint paths follow
+[AOSP's ADB definitions](https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/adb.h).
+Local tests cover setup, delayed endpoints, binding failures, unbinding and repeat
+enable. Hardware enumeration remains unverified. An exposed controller does not
+establish which board connector, if any, has its data pins routed.
+
 ## Public references
 
 - [FlyThings: launch from microSD](https://developer.flythings.cn/zh-hans/start_from_sdcard.html).

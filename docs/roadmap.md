@@ -18,7 +18,8 @@
 
 - [x] Add USB ADB controls and live service status to the app.
 - [x] Add read-only USB diagnostics after the legacy control path proved unavailable.
-- [ ] Identify the active USB controller and gadget configuration interface.
+- [x] Identify the exposed USB device controller and installed ConfigFS helper.
+- [x] Add a ConfigFS backend and tests for setup, endpoint waits and unbinding.
 - [ ] Verify USB enumeration and an ADB shell on the development laptop.
 
 ## Dashboard features

@@ -1,4 +1,5 @@
 import subprocess
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,13 +22,19 @@ class UsbDiagnosticsTest(unittest.TestCase):
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(data)
-            result = subprocess.run(["sh", str(SCRIPT), str(root)], capture_output=True,
+            # Reproduce the device's limited utility set: ls is the only external command.
+            commands = root / "commands"
+            commands.mkdir()
+            (commands / "ls").symlink_to("/bin/ls")
+            result = subprocess.run(["/bin/sh", str(SCRIPT), str(root)], capture_output=True,
+                                    env={**os.environ, "PATH": str(commands)},
                                     text=True, timeout=10, check=True)
             for text in ["test-controller", "not-attached", "configfs", "peripheral",
                          "FILE /sys/class/zkswe_usb/zkswe0/enable\nabsent",
                          "Diagnostic snapshot complete"]:
                 self.assertIn(text, result.stdout)
-            after = {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+            self.assertNotIn("not found", result.stderr)
+            after = {str(p.relative_to(root)): p.read_bytes() for p in root.rglob("*") if p.is_file() and not p.is_symlink()}
             self.assertEqual(after, fixture)
 
 

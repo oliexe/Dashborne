@@ -18,6 +18,12 @@ static char last_log[128];
 static char tcp_port[PROPERTY_BUFFER] = "5555";
 static char usb_config[PROPERTY_BUFFER] = "none";
 static int is(const char *s) { return !strcmp(scenario, s); }
+int usb_configfs_available(void) { return is("configfs"); }
+int usb_configfs_prepare(void (*logger)(const char *)) { assert(logger && is("configfs")); return 0; }
+int usb_configfs_bind(void) { assert(is("configfs")); gadget = 1; return 1; }
+int usb_configfs_stop(void) { assert(is("configfs")); gadget = 0; return 0; }
+const char *usb_configfs_status(void) { return "ADB: USB configured"; }
+const char *usb_configfs_error(void) { return "ADB: ConfigFS setup failed"; }
 static void log_message(const char *s) { assert(s && *s); snprintf(last_log, sizeof(last_log), "%s", s); }
 int fake_fork(void) { ++forks; return 123; }
 int fake_waitpid(int pid, int *status, int flags) {
@@ -42,7 +48,7 @@ static int set(const char *name, const char *value) {
     if (!strcmp(name, "service.adb.tcp.port")) snprintf(tcp_port, sizeof(tcp_port), "%s", value);
     else if (!strcmp(name, "sys.usb.config")) snprintf(usb_config, sizeof(usb_config), "%s", value);
     else if (!strcmp(name, "ctl.start")) {
-        assert(!strcmp(value, "adbd") && !strcmp(tcp_port, "0") && !strcmp(usb_config, "adb"));
+        assert(!strcmp(value, "adbd") && !strcmp(tcp_port, "0") && !strcmp(usb_config, is("configfs") ? "none" : "adb"));
         ++starts; /* Simulate init processing the request asynchronously. */
     } else if (!strcmp(name, "ctl.stop")) { assert(!strcmp(value, "adbd")); ++stops; }
     else { assert(!strcmp(name, "sys.usb.state") && !strcmp(value, "none")); }
@@ -57,7 +63,7 @@ void *fake_dlsym(void *handle, const char *name) {
 int fake_open(const char *path, int flags, ...) {
     if (!strcmp(path, REPORT)) { assert(flags & 1); return 20; }
     assert(!strcmp(path, USB_ENABLE) && (flags == 0 || flags == 1));
-    if (is("missing-usb")) return -1;
+    if (is("missing-usb") || is("configfs")) return -1;
     if (flags == 1 && is("write-denied")) return -1;
     return flags ? 11 : 10;
 }
@@ -97,9 +103,9 @@ int main(int argc, char **argv) {
         assert(!usb_debug_owned() && !gadget && !strcmp(tcp_port, "5555"));
     } else {
         assert(starts == 1 && usb_debug_owned() && !strcmp(tcp_port, "0"));
-        assert(!strcmp(usb_debug_status(), "ADB: starting; USB disabled"));
+        assert(!strcmp(usb_debug_status(), is("configfs") ? "ADB: starting ConfigFS service" : "ADB: starting; USB disabled"));
         daemon = "running"; gadget = 1;
-        assert(!strcmp(usb_debug_status(), "ADB: running; USB enabled"));
+        assert(!strcmp(usb_debug_status(), is("configfs") ? "ADB: USB configured" : "ADB: running; USB enabled"));
         if (is("shutdown")) usb_debug_shutdown(); else usb_debug_toggle();
         if (is("stop-failure") || is("write-denied")) {
             assert(usb_debug_owned());
@@ -112,7 +118,7 @@ int main(int argc, char **argv) {
         assert(!strcmp(tcp_port, "0"));
         /* A queued init action briefly re-enables USB after the stop request. */
         gadget = 1; daemon = "stopped";
-        assert(!strcmp(usb_debug_status(), "ADB: off"));
+        assert(!strcmp(usb_debug_status(), is("configfs") ? "ADB: ConfigFS ready to enable" : "ADB: off"));
         assert(!gadget && !usb_debug_owned() && !strcmp(tcp_port, "5555"));
         assert(!strcmp(usb_config, "none"));
     }
