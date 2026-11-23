@@ -50,7 +50,7 @@ int dbx_umount(const char*a,int b) {(void)a;(void)b;++stub_unmounts;
         self.temp.cleanup()
 
     def plugin(self, id, *, abi=1, declared_id=None, activate_fail=0, cleanup_fail=0,
-               overlay=None, target=None, missing_getter=False, activity=None, registered=None):
+               overlay=None, target=None, missing_getter=False, activity=None, registered=None, extra=False, extra_duplicate=False):
         folder = self.card/'extensions'/id; folder.mkdir()
         (folder/'asset').write_bytes(b'own theme')
         source = folder/'source.c'
@@ -64,6 +64,20 @@ int dbx_umount(const char*a,int b) {(void)a;(void)b;++stub_unmounts;
             factory = 'static void *create(void){return (void *)123;}'
             operation += 'if(!h->owns_callback(h,(void *)create))return -1;'
             operation += 'if(h->register_activity(h,'+json.dumps(registered)+',create))return -1;'
+        if extra:
+            factory += """
+static const struct dashborne_host *menu_host;
+static int menu_calls;
+static void extra_open(void){++menu_calls;}
+int menu_count(void){return (int)menu_host->extra_count(menu_host);}
+int menu_item(unsigned int n,struct dashborne_extra_entry *out){return menu_host->extra_entry(menu_host,n,out);}
+int menu_open(unsigned int token){return menu_host->open_extra(menu_host,token);}
+int menu_called(void){return menu_calls;}
+int menu_late_register(void){return menu_host->register_extra(menu_host,"late","Late","",extra_open);}
+"""
+            operation += 'menu_host=h;if(h->register_extra(h,"page","Test page","Details",extra_open))return -1;'
+            if extra_duplicate:
+                operation += 'if(h->register_extra(h,"page","Duplicate","",extra_open))return -1;'
         source.write_text('''#include "dashborne_extension.h"
 #include <stdio.h>
 FACTORY
@@ -111,6 +125,34 @@ DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *GETTER(void) {
         self.assertEqual(self.lib.extensions_activity(b'officialActivity'),b'officialActivity')
         self.assertEqual(self.start('one','two'),-1)
         self.assertEqual(self.lib.extensions_activity(b'officialActivity'),b'officialActivity')
+
+    def test_extra_registry_ownership_stale_tokens_and_rollback(self):
+        class Entry(ctypes.Structure):
+            _fields_=[('token',ctypes.c_uint),('title',ctypes.c_char*64),('description',ctypes.c_char*128)]
+        first=self.plugin('one',extra=True);second=self.plugin('two',extra=True)
+        one=ctypes.CDLL(str(first/'libextension.so'))
+        two=ctypes.CDLL(str(second/'libextension.so'))
+        one.menu_item.argtypes=[ctypes.c_uint,ctypes.POINTER(Entry)]
+        self.assertEqual(self.start('one','two'),2)
+        self.assertEqual(one.menu_count(),2)
+        a,b=Entry(),Entry()
+        self.assertEqual(one.menu_item(0,ctypes.byref(a)),0)
+        self.assertEqual(one.menu_item(1,ctypes.byref(b)),0)
+        self.assertEqual(a.title,b'Test page');self.assertEqual(a.description,b'Details')
+        self.assertNotEqual(a.token,b.token)
+        self.assertEqual(one.menu_open(b.token),0);self.assertEqual(two.menu_called(),1)
+        self.assertEqual(one.menu_called(),0)
+        self.assertEqual(one.menu_late_register(),-1)
+        self.assertEqual(one.menu_item(99,ctypes.byref(a)),-1)
+        self.assertEqual(self.lib.extensions_stop(),1)
+        self.assertEqual(one.menu_count(),0);self.assertEqual(one.menu_open(b.token),-1)
+        self.assertEqual(self.start('one'),1)
+        self.assertEqual(one.menu_count(),1);self.assertEqual(one.menu_open(b.token),-1)
+        self.lib.extensions_stop()
+        self.plugin('bad',extra=True,extra_duplicate=True)
+        self.assertEqual(self.start('one','bad'),-1)
+        self.assertEqual(one.menu_count(),0)
+        self.assertEqual(self.start('one'),1);self.assertEqual(one.menu_count(),1)
 
     def fake_runtime(self):
         source=self.root/'runtime.c'

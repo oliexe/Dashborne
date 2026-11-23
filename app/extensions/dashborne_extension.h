@@ -3,6 +3,10 @@
 /* Stable C interface. Build plugins for ARMv7 Linux, hard-float, as shared objects. */
 #define DASHBORNE_EXTENSION_ABI 1u
 #define DASHBORNE_EXTENSION_EXPORT __attribute__((visibility("default")))
+struct dashborne_extra_entry {
+    unsigned int token;
+    char title[64], description[128];
+};
 struct dashborne_host {
     unsigned int abi_version, struct_size;
     const char *extension_directory;
@@ -22,6 +26,14 @@ struct dashborne_host {
     /* True for a callback inside a currently loaded extension. Allows
        cooperating vtable hooks to chain and unwind in reverse load order. */
     int (*owns_callback)(const struct dashborne_host *, const void *callback);
+    /* UI thread only. Register during activate; ownership is removed before
+       unload. IDs are local to the registering extension. Labels are copied. */
+    int (*register_extra)(const struct dashborne_host *, const char *id,
+                          const char *title, const char *description, void (*open)(void));
+    unsigned int (*extra_count)(const struct dashborne_host *);
+    int (*extra_entry)(const struct dashborne_host *, unsigned int index, struct dashborne_extra_entry *);
+    /* Stable token, not row index: stale selections never open a different entry. */
+    int (*open_extra)(const struct dashborne_host *, unsigned int token);
 };
 struct dashborne_extension {
     unsigned int abi_version, struct_size;

@@ -100,11 +100,15 @@ or register a custom startup activity while using the installed official app.
 See the [extension SDK](app/extensions/README.md) and the
 [lifecycle example](extensions/lifecycle-example).
 
+The core [Extra menu](extensions/extra-menu) adds a button at the bottom right
+of the dashboard. Enabled extensions can register pages there without adding
+categories to stock Settings.
+
 The [Contrast plugin](extensions/contrast) adds an entry to the official Settings
 menu with temporary display contrast and luminance controls.
 
 The experimental [Enable Screen Mirroring plugin](extensions/screen-mirroring)
-adds a dedicated Screen Mirroring window to official Settings. Opening it
-switches to AirPlay; Back returns to Settings and restores CarPlay/Android Auto.
+adds a dedicated Screen Mirroring window to Extra. Opening it
+switches to AirPlay; Back returns to Extra and restores CarPlay/Android Auto.
 An Aspect button cycles between full width, landscape and portrait proportions
 without restarting the mirroring connection.

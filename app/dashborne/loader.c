@@ -203,7 +203,8 @@ static void launch(void *self) {
         phase = 1; render(self);
         return;
     }
-    const char *extensions[MAX_PATCHES]; unsigned int extension_count = 0;
+    const char *extensions[MAX_PATCHES+1]; unsigned int extension_count = 0;
+    if (extension_probe("extra-menu")) extensions[extension_count++] = "extra-menu";
     for (unsigned int i = 0; i < settings.count; ++i)
         if (settings.patches[i].enabled && settings.patches[i].native)
             extensions[extension_count++] = settings.patches[i].id;

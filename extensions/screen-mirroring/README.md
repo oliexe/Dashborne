@@ -1,21 +1,21 @@
 # Enable Screen Mirroring
 
-Adds **Screen Mirroring** to the official Settings categories. Selecting it
-opens a separate viewing window and switches the bundled projection service
-to AirPlay. **Back** closes that window, returns to the previous Settings page,
-and requests the original CarPlay/Android Auto mode again.
+Adds **Screen Mirroring** to Dashborne's **Extra** menu. Opening it switches
+the bundled projection service to AirPlay. **Back** closes the viewer, returns
+to Extra, and requests the original CarPlay/Android Auto mode again.
 
 ## Use
 
 1. Enable this plugin in Dashborne → Patches, then launch the dashboard.
-2. Open the official Settings and select **Screen Mirroring** in the left list.
+2. Tap **Extra** at the bottom right of the dashboard, select **Screen Mirroring**,
+   then tap **Open**.
 3. Join the DASH hotspot on the iPhone. In Control Center → Screen Mirroring,
    select the DASH.
 4. Tap the **aspect icon at the upper left** to cycle through **Full width → 16:9 → 4:3 → 9:16 → 9:19.5**.
    The last two presets suit portrait screens. Narrower presets center the picture
    with black space on either side. Every preset uses the full 480-pixel height;
    Full width fills the 1920×480 display. A two-second hint identifies the preset.
-5. Tap the **back arrow at the lower right** to return to Settings and restore CarPlay/Android Auto.
+5. Tap the **back arrow at the lower right** to return to Extra and restore CarPlay/Android Auto.
 
 Aspect changes apply live without reconnecting the iPhone. These are manual
 display proportions, not automatic source-aspect detection; choose the preset
@@ -30,7 +30,7 @@ is open; manual screen-off takes priority. The plugin does not configure Wi-Fi
 or enable ADB. The official projection service manages the hotspot and pairing.
 Touch control of the iPhone and protected-video playback are not provided.
 
-Selecting the plugin only adds the Settings entry. The dashboard's existing
+Selecting the plugin only adds the Extra entry. The dashboard's existing
 CarPlay/Android Auto widget and projection mode stay unchanged until the
 mirroring window opens. The previous widget cover patch and two-minute
 discovery window have been removed.
@@ -41,10 +41,9 @@ The supported installed app is 6.11.2. Full-file size/CRC guards cover the app,
 UI runtime, projection library, receiver daemon and AirPlay library. Exported
 function addresses and the original startup-mask instruction are also checked.
 
-The Settings list adapters append an action row and delegate all existing rows.
-They can chain with Contrast in either load order. Cleanup restores the saved
-callbacks in reverse extension order and refuses to overwrite a later hook.
-No Settings layout overlay is needed.
+The plugin registers a title, description and window-open callback through the
+host's Extra registry. It does not hook the stock Settings list. The host removes
+the entry before unloading the plugin or rolling back a failed activation.
 
 The separate native Activity uses an original microSD layout with compact
 Back/Retry/Aspect icon controls and a `ZKVideoView` that exposes the hardware video plane.
@@ -91,8 +90,8 @@ Host tests cover guarded instruction changes and rollback, stale video,
 protocol/geometry checks, decoder readiness, disconnect/reconnect, rapid Back,
 manual screen-off, failed startup and failed restoration. Aspect tests cover
 live cycling without receiver restarts, resize failures, reconnects, preset
-retention, rotated coordinates, full-height geometry and transient ratio hints. Settings and window
-callback tests cover row delegation, secondary-base adjustments, duplicate taps,
+retention, rotated coordinates, full-height geometry and transient ratio hints. Window
+callback tests cover secondary-base adjustments, duplicate taps,
 closing timers and live-callback cleanup. Engine tests exercise factory lifetime
 across unloading/reactivation and partial activation failures. The native
 loader and Contrast regression tests pass, as does ARM cross-compilation.
@@ -105,7 +104,8 @@ both files were verified by read-back while configuration was open.
 The full-height update installs the plugin, layout and six original icon images;
 all eight files were verified by read-back while the plugin was unloaded.
 
-The dedicated window's video display and Back returning to Settings and
-CarPlay/Android Auto were confirmed on hardware. The full-height icon layout still
+The dedicated window's video display and Back restoring CarPlay/Android Auto
+were confirmed on hardware before the move to Extra.
+The new menu navigation still needs hardware confirmation. The full-height icon layout still
 needs a hardware check. Audio and repeated switching have not been separately
 verified.

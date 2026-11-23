@@ -1,5 +1,6 @@
 """Compile separate layout edits; no base layout is needed to build them."""
 import json
+import re
 from pathlib import Path
 import struct
 import zlib
@@ -18,7 +19,7 @@ def scalar(value):
     return raw
 
 
-def compile_patch(spec):
+def compile_patch(spec, *, native_controls=False):
     if spec["target"] != TARGET or spec["operation"] not in ("append-root-control", "replace-scalars"):
         raise ValueError("Unsupported patch operation or target")
     base = spec["base"]
@@ -26,10 +27,14 @@ def compile_patch(spec):
         raise ValueError("Invalid base lengths")
     if spec["operation"] == "append-root-control":
         key = spec["key"]
-        if not key.startswith("textview__") or not key.removeprefix("textview__").isdigit():
-            raise ValueError("Expected a textview key")
-        if spec["control"].get("touchable") is not False:
-            raise ValueError("The additive patch must be noninteractive")
+        if native_controls:
+            if not re.fullmatch(r'(button|window|textview)__[a-zA-Z0-9_]+', key):
+                raise ValueError('Invalid native control key')
+        else:
+            if not key.startswith("textview__") or not key.removeprefix("textview__").isdigit():
+                raise ValueError("Expected a textview key")
+            if spec["control"].get("touchable") is not False:
+                raise ValueError("The additive patch must be noninteractive")
         fragment = ("," + json.dumps(key) + ":" + json.dumps(
             spec["control"], separators=(",", ":"), ensure_ascii=True)).encode()
         magic = b"DBP1"

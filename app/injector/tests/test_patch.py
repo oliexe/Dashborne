@@ -58,6 +58,15 @@ class PatchTests(unittest.TestCase):
                                  plain_size=len(plain), plain_crc32=f'{zlib.crc32(plain):08x}')
         self.patch = compile_patch(self.spec)
 
+    def test_native_control_requires_explicit_builder_support(self):
+        self.spec['key']='window__zz_extra'
+        self.spec['control']={'id':119200,'button__extra':{'id':299200,'text':'Extra','touchable':True}}
+        with self.assertRaises(ValueError):compile_patch(self.spec)
+        packet=compile_patch(self.spec,native_controls=True)
+        result=decode(apply(self.base,packet))
+        self.assertEqual(result.pop(self.spec['key']),self.spec['control'])
+        self.assertEqual(result,self.original)
+
     def test_only_appends_our_control(self):
         result = decode(apply(self.base, self.patch))
         added = result.pop(self.spec['key'])

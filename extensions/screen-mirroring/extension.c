@@ -107,12 +107,14 @@ static int activate(const struct dashborne_host *api) {
     bound=operations;bound.enable=projection_enable;bound.type=link_type;
     bound.hide=video_hide;bound.video=video_status;bound.play=video_play;
     session=(struct mirror_session){.ops=&bound};
-    if(window_bind(host,&session) || settings_bind(host))return -1;
-    log_message("screen-mirroring: settings entry ready; stock CarPlay/Android Auto unchanged");
+    if(window_bind(host,&session) || !host->register_extra ||
+       host->register_extra(host,"viewer","Screen Mirroring",
+           "Mirror your iPhone. Back restores CarPlay / Android Auto.",window_open))return -1;
+    log_message("screen-mirroring: Extra entry ready; stock CarPlay/Android Auto unchanged");
     return 0;
 }
 static int deactivate(void) {
-    if(window_cleanup() || settings_cleanup()) {
+    if(window_cleanup()) {
         log_message("screen-mirroring: viewer or callback cleanup pending; restart required");return -1;
     }
     if(instruction_restore(&patch))return -1;

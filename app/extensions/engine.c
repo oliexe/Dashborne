@@ -18,7 +18,7 @@ extern int dladdr(const void *,struct image_info *);
 #ifndef DBX_RES
 #define DBX_RES "/res"
 #endif
-#define MAX_EXTENSIONS 64
+#define MAX_EXTENSIONS 65
 #define MAX_OVERLAYS 128
 #define PATH_SIZE 512
 #define JOURNAL DBX_ROOT "/extensions.mounts"
@@ -74,6 +74,7 @@ static int valid_id(const char *id) {
     return n && n < 32;
 }
 #include "activities.inc"
+#include "extra.inc"
 static int clean_path(const char *path) {
     if (!*path || length(path) >= PATH_SIZE)
         return 0;
@@ -305,6 +306,7 @@ int extensions_stop(void) {
             break;
         }
         retire_activities(&entry->host);
+        retire_extra(&entry->host);
         if (entry->library)
             dlclose(entry->library);
         --loaded_count;
@@ -357,7 +359,8 @@ int extensions_start(const char *const *ids, unsigned int count, void *official,
                                           overlay_file,
                                           set_startup_activity,
                                           register_plugin_activity,
-                                          owns_callback};
+                                          owns_callback,
+                                          register_extra,extra_count,extra_entry_at,open_extra};
         e->entered = 1;
         activating = 1;
         int rc = d->activate(&e->host);

@@ -32,7 +32,7 @@ class StateTests(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory()
         cls.root = Path(cls.temp.name)
         stub = cls.root/'mount.c'
-        stub.write_text('int extension_probe(const char*id){return id[0]==110;}\nint mount(const char*a,const char*b,const char*c,unsigned long d,const void*e){(void)a;(void)b;(void)c;(void)d;(void)e;return 0;}\nint umount2(const char*a,int b){(void)a;(void)b;return 0;}\n')
+        stub.write_text('int core_available; int extension_probe(const char*id){return id[0]==110 || (core_available && id[0]==101);}\nint mount(const char*a,const char*b,const char*c,unsigned long d,const void*e){(void)a;(void)b;(void)c;(void)d;(void)e;return 0;}\nint umount2(const char*a,int b){(void)a;(void)b;return 0;}\n')
         output = cls.root/'state.so'
         subprocess.run(['cc','-shared','-fPIC','-std=c11', '-Wall','-Wextra','-Werror',
                         '-DDASHBORNE_ROOT="'+str(cls.root/'card')+'"',
@@ -48,6 +48,7 @@ class StateTests(unittest.TestCase):
     def tearDownClass(cls): cls.temp.cleanup()
 
     def setUp(self):
+        ctypes.c_int.in_dll(self.lib,"core_available").value=0
         self.card = self.root/'card'
         if self.card.exists(): shutil.rmtree(self.card)
         (self.card/'patches').mkdir(parents=True)
@@ -109,6 +110,19 @@ class StateTests(unittest.TestCase):
         (self.card/'generated.ftu').unlink()
         self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),-1)
         self.assertFalse((self.card/'generated.ftu').exists())
+
+    def test_core_button_is_composed_without_a_user_toggle(self):
+        ctypes.c_int.in_dll(self.lib,"core_available").value=1
+        core=self.card/'extensions/extra-menu/assets';core.mkdir(parents=True)
+        (core/'dashboard.dbp').write_bytes((self.card/'patches/one.dbp').read_bytes())
+        s=self.load();self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),1)
+        self.assertIn('textview__900001',codec.decode((self.card/'generated.ftu').read_bytes()))
+        s.patches[1].enabled=1
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),2)
+        result=codec.decode((self.card/'generated.ftu').read_bytes())
+        self.assertIn('textview__900001',result);self.assertIn('textview__900002',result)
+        (core/'dashboard.dbp').unlink()
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),-1)
 
     def test_unselected_does_not_generate_overlay(self):
         s=self.load();self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),0)

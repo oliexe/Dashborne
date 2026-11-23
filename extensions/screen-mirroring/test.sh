@@ -7,7 +7,7 @@ clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined tests/test_mem
 "$output/memory"
 clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined tests/test_session.c session.c -o "$output/session"
 "$output/session"
-for test in settings window; do
+for test in window; do
   clang -std=c11 -Wall -Wextra -Werror -fno-builtin -fsanitize=address,undefined -I../../app/extensions "tests/test_$test.c" -o "$output/$test"
   "$output/$test"
 done

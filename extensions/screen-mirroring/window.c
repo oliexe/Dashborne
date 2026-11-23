@@ -42,7 +42,7 @@ static void render(void *s) {
     show(s,RETRY_PANEL,state!=MIRROR_PLAYING);
     void *p=find(s,STATUS);
     if(p)text(p,state==MIRROR_PLAYING?"Connected":
-        state==MIRROR_ERROR?"Could not switch projection. Tap the retry arrow or return to Settings.":
+        state==MIRROR_ERROR?"Could not switch projection. Tap the retry arrow or return to Extra.":
         state==MIRROR_CLOSED?"Mirroring stopped. Tap the retry arrow to connect again.":
         "Join the DASH Wi-Fi hotspot to connect.");
 }

@@ -1,0 +1,11 @@
+{
+  "id": "extra-menu",
+  "title": "Extra",
+  "description": "Core dashboard menu for extension pages and actions.",
+  "abi": 1,
+  "core": true,
+  "sources": [
+    "extension.c",
+    "window.c"
+  ]
+}

@@ -39,7 +39,7 @@ int patch_layout_many(const unsigned char *base, unsigned int size,
                       unsigned char **output, unsigned int *output_size) {
     *output = (void *)0;
     *output_size = 0;
-    if (!base || !patches || !count || count > 64 || size < 32 || size > LIMIT ||
+    if (!base || !patches || !count || count > 65 || size < 32 || size > LIMIT ||
         !equal(base, (const unsigned char *)"ZKSW\xaa\x55", 6) ||
         !equal(base + size - 6, (const unsigned char *)"\x55\xaaZKSW", 6))
         return 0;

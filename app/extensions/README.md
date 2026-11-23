@@ -8,8 +8,9 @@ resource overlays. It does not limit native code to a list of visual operations.
 
 The official Linux installation and app remain the base. Extensions activate
 only after the user launches the dashboard or lets the splash expire. Opening
-configuration does not load extension code. A newly installed extension is off
-until selected in the patch list.
+configuration does not load extension code. A newly installed user extension is off
+until selected in the patch list. The bundled Extra menu core loads automatically
+before selected extensions and is omitted from that list.
 
 ## Extension directory
 
@@ -69,6 +70,9 @@ The host provides:
 | `overlay_file(host, source, target)` | During activation, bind a file relative to the extension directory over an existing absolute `/res/` file. The resulting mount is read-only. |
 | `register_activity(host, name, create)` | During activation, register a native activity under a `dashborneExtension_` name through a resident host trampoline. It becomes inert before the plugin unloads. |
 | `owns_callback(host, pointer)` | Check whether a callback belongs to a currently loaded extension before chaining a cooperating hook. |
+| `register_extra(host, id, title, description, open)` | During activation, add an entry to the Extra menu; labels are copied and callbacks retire before unloading. |
+| `extra_count(host)`, `extra_entry(host, index, out)` | Read the active menu entries on the UI thread. |
+| `open_extra(host, token)` | Invoke a registered action on the UI thread using its stable token. |
 | `set_startup_activity(host, name)` | During activation, choose an activity registered by the extension instead of the official startup activity. Only one selected extension can claim this. |
 
 An extension can supply its own layouts, icons, fonts and other theme resources,
@@ -89,6 +93,21 @@ stop and join its workers, unregister callbacks, release controls and remove hoo
 in `deactivate`, including when `activate` only partially succeeded. Cleanup may
 be retried after a reported failure. The engine unloads a library only after its
 cleanup succeeds.
+
+## Extra menu entries
+
+Use [`register_extra`](../../extensions/extra-menu/README.md) for extension
+pages that belong outside stock Settings. The bottom-right Extra button opens
+a Settings-style list. Register a title, description and callback after preparing
+your window. Close that window normally to return to Extra.
+
+Entry IDs are local to an extension. The registry accepts up to 64 entries,
+checks callback ownership and removes registrations during successful cleanup
+or activation rollback. Menu tokens remain unique across reactivation. All
+registry operations run on the UI thread; registrations are activation-only.
+New plugins using these appended ABI-1 methods must check `struct_size` before
+accessing them. The bundled `extra-menu` core is packaged with `core: true`,
+loads first, and uses a reserved slot in addition to 64 selected user extensions.
 
 ## Failure and reversal
 
@@ -117,7 +136,7 @@ the card before starting Dashborne again.
 ## Other patch formats
 
 Layout definitions remain in [`app/injector/patches`](../injector/patches).
-DBP1 adds noninteractive controls; DBP2 changes guarded, equal-length JSON scalar
+DBP1 adds controls (interactive controls require an owning native extension); DBP2 changes guarded, equal-length JSON scalar
 tokens in the inspected dashboard layout. Both compose against the same original
 file; mismatched fingerprints or overlapping scalar edits reject the entire
 batch. [`author.py`](../injector/author.py) produces metadata and offsets from a

@@ -5,6 +5,4 @@
 int window_bind(const struct dashborne_host *, struct mirror_session *);
 void window_open(void);
 int window_cleanup(void);
-int settings_bind(const struct dashborne_host *);
-int settings_cleanup(void);
 #endif

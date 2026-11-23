@@ -1,0 +1,46 @@
+{
+  "id": "extra-menu-button",
+  "title": "Extra menu",
+  "description": "Dashboard entry point for extensions",
+  "target": "/res/ui/dash1act.ftu",
+  "base": {
+    "version": "6.11.2",
+    "sha256": "23c4185111b23a29c11f67ee4820eeb77c110c59a4f7213e079ac641344b69f2",
+    "size": 19739,
+    "crc32": "e040e3e2",
+    "plain_size": 194340,
+    "plain_crc32": "827d3dc7"
+  },
+  "operation": "append-root-control",
+  "key": "window__zz_extra",
+  "control": {
+    "id": 119200,
+    "position": {
+      "left": 1760,
+      "top": 424,
+      "width": 144,
+      "height": 48
+    },
+    "backgroundColor": 1184792,
+    "button__extra": {
+      "id": 299200,
+      "text": "Extra",
+      "fontSize": 22,
+      "alignment": 37,
+      "colorTab": {
+        "color0": 16777215
+      },
+      "position": {
+        "left": 0,
+        "top": 0,
+        "width": 144,
+        "height": 48
+      },
+      "touchable": true,
+      "bgColorTab": {
+        "color0": 1184792,
+        "color1": 2698548
+      }
+    }
+  }
+}
