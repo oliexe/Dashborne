@@ -36,10 +36,14 @@ def write_switches(destination):
 
 
 def write_boot_button(destination):
-    """Antialiased rounded backgrounds for the configuration footer action."""
-    width, height, radius = 300, 52, 16
-    for name, color in [('continue', (78, 105, 211)),
-                        ('continue-pressed', (61, 83, 173))]:
+    """Antialiased rounded backgrounds for navigation and the footer action."""
+    for name, width, height, radius, color in [
+        ('continue', 300, 48, 14, (78, 105, 211)),
+        ('continue-pressed', 300, 48, 14, (61, 83, 173)),
+        ('nav-idle', 400, 64, 14, (0, 0, 0)),
+        ('nav-selected', 400, 64, 14, (21, 23, 29)),
+        ('nav-pressed', 400, 64, 14, (30, 33, 42)),
+    ]:
         pixels = bytearray()
         for y in range(height):
             for x in range(width):
