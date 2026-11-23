@@ -1,5 +1,7 @@
 {
   "id": "dashborne-badge",
+  "title": "Dashborne badge",
+  "description": "Small turquoise label on the official dashboard",
   "target": "/res/ui/dash1act.ftu",
   "base": {
     "version": "6.11.2",

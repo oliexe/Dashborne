@@ -1,5 +1,17 @@
 # Roadmap
 
+## Dashborne startup and configuration
+
+- [x] Combine the SD launcher, Wi-Fi ADB controls and patch injector.
+- [x] Show the supplied icon and a three-second tap-to-configure splash.
+- [x] Add persistent Wi-Fi ADB and patch selections on microSD.
+- [x] Build a patch catalog from the repository definitions, with compatibility checks.
+- [x] Compose multiple selected additive patches against the installed base layout.
+- [x] Render configuration and live ADB status on the DASH.
+- [x] Verify the automatic splash-to-official-dashboard transition on hardware.
+- [ ] Verify tapping the splash cancels automatic launch on hardware.
+- [ ] Verify normal startup from the persisted card selection after reboot.
+
 ## Official app patches
 
 - [x] Forward the installed official app from an SD launcher and confirm rendering.

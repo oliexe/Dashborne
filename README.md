@@ -29,38 +29,38 @@ The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
 ## Loading from microSD
 
 The DASH boots its installed Linux system from eMMC. Its UI service starts
-`/bin/zkgui`, the FlyThings launcher. With a FAT32 microSD inserted, the card
-mounts at `/mnt/extsd` and a card-root `EasyUI.cfg` selects the application library
-through `startupLibPath`. This path has been verified on our DASH, including a
-full reboot with ADB Enabler. See the [on-device findings](docs/research.md) and
-[FlyThings SD startup documentation](https://developer.flythings.cn/zh-hans/start_from_sdcard.html).
+`/bin/zkgui`; a FAT32 microSD card mounted at `/mnt/extsd` supplies `EasyUI.cfg`,
+which selects Dashborne through `startupLibPath`. Our tested card uses an MBR
+with an 8 GB FAT32 partition.
 
-Our tested card uses an MBR with an 8 GB FAT32 partition. For ADB Enabler, the
-relevant files on that partition are:
+Dashborne shows a small centered icon and **Tap screen to enter configuration**.
+Tap within three seconds to open configuration. Otherwise, it applies the
+selected patches and opens the installed official dashboard.
+
+Configuration provides Wi-Fi ADB with a live status/address, a selectable list
+of patches installed on the card, and **Launch dashboard**. Settings are saved
+on the card and remain selected on the next boot.
 
 ```text
 EasyUI.cfg
-lib/libadb-enabler.so
-ui/adb-enabler.ftu
-adb-enabler/wifi.conf
+Dashborne/lib/libdashborne.so
+Dashborne/ui/loader.ftu
+Dashborne/ui/icon.png
+Dashborne/patches/catalog.tsv
+Dashborne/patches/*.dbp
+Dashborne/settings.conf
+Dashborne/wifi.conf
 ```
 
-In the card's existing `EasyUI.cfg`, set this field:
+The [Dashborne installer](app/dashborne/README.md) builds this card layout, saves
+the previous startup configuration and selects the loader. It preserves display
+and touch rotation, fonts and the installed `/res/ui/` resource root. Power off
+before removing the card; booting without it starts the installed official app.
+The patched resource is generated on the card and mounted temporarily, leaving
+the installed resource unchanged.
 
-```json
-"startupLibPath": "/mnt/extsd/lib/libadb-enabler.so"
-```
-
-Preserve the other configuration fields, including display/touch rotation,
-fonts and `resPath: "/res/ui/"`. Our ARMv7 hard-float library forwards the installed
-application's initialization callbacks and registers its own screen with the
-existing framework. The kernel, drivers and platform services continue running.
-
-The [ADB Enabler installer](app/adb-enabler/README.md) copies the files, saves the
-previous launcher configuration and selects the helper. Insert the card with the
-DASH powered off, then power it on. Removing the card while powered off and
-starting again returns to the installed dashboard. Once ADB is connected, updated
-app files and UI restarts can be handled remotely.
+See the [on-device findings](docs/research.md) and
+[FlyThings SD startup documentation](https://developer.flythings.cn/zh-hans/start_from_sdcard.html).
 
 ## Progress
 
@@ -68,17 +68,20 @@ Development now focuses on patching the official app. The first injector applies
 a version-matched, additive layout patch and forwards the original app callbacks.
 Its initial patch adds a small Dashborne label; generated resources stay on the
 card and override individual files through temporary mounts.
-The label has been verified on the official dashboard. Timed reboot recovery
-restores ADB Enabler and leaves the installed layout byte-for-byte unchanged.
+The unified Dashborne loader is installed as the card's startup app. Its splash
+and automatic handoff to the official dashboard with the badge have been verified
+on hardware. Earlier reboot tests restored the installed layout byte-for-byte.
 
 The earlier Tesla-inspired [simulated cluster](app/dashboard/README.md) remains
 available as a prototype. Its display and touch controls were verified on the DASH.
 
 Wi-Fi ADB is verified on hardware, including a root shell, file transfers,
-screen capture and remote UI updates. A separate **ADB Enabler** helper provides
-a minimal SD startup screen with automatic Wi-Fi ADB and a centered connection
-address. Remote cluster previews preserve that helper as the startup selection.
+screen capture and remote UI updates in configuration. It currently becomes
+unreachable after the official dashboard starts. Dashborne incorporates the
+configuration and Wi-Fi ADB controls; the earlier ADB Enabler remains available
+as a development fallback.
 
+- [Dashborne: setup, configuration and patch selection](app/dashborne/README.md)
 - [Official UI development copy](docs/official-ui.md)
 - [Patch injector: build, preview and restore](app/injector/README.md)
 - [Research](docs/research.md)

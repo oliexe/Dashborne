@@ -1,5 +1,10 @@
 # Patch injector
 
+The [Dashborne startup app](../dashborne/README.md) now provides the splash,
+configuration, patch selection and Wi-Fi ADB controls. This directory contains
+the shared patch engine, patch definitions and the earlier standalone preview
+tool used to validate resource overrides.
+
 Dashborne starts the installed official app with small, separate patches. The
 first patch adds a noninteractive turquoise **DASHBORNE** label at the bottom of
 the dashboard. The original screens and controls remain in place.

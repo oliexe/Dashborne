@@ -8,7 +8,7 @@
 #include "../tcp_adb.c"
 static const char *scenario, *daemon = "stopped";
 static char port[128] = "";
-static int writes, starts, offset;
+static int writes, starts, stops, offset;
 static int listening, failure;
 static int is(const char *s) { return !strcmp(scenario, s); }
 static int get(const char *key, char *out, const char *fallback) {
@@ -22,6 +22,7 @@ static int set(const char *key, const char *value) {
     ++writes;
     if (failure) return -1;
     if (!strcmp(key, "service.adb.tcp.port")) { assert(!strcmp(value, "5555")); strcpy(port, value); }
+    else if (!strcmp(key, "ctl.stop")) { assert(!strcmp(value, "adbd")); ++stops; }
     else { assert(!strcmp(key, "ctl.start") && !strcmp(value, "adbd")); ++starts; }
     return 0;
 }
@@ -75,5 +76,7 @@ int main(int argc, char **argv) {
     assert(!listening_line(" 0: x:115B3 x:0 0A "));
     assert(!listening_line(" 0: x:15B3"));
     assert(listening_line(" 0: 00000000:15B3 00000000:0000 0A "));
+    tcp_adb_stop();
+    assert(stops == (!is("missing-api") && strcmp(port, "5555") == 0));
     printf("PASS: enabler TCP %s\n", scenario);
 }

@@ -81,3 +81,11 @@ void tcp_adb_poll(int network_ready) {
     }
 }
 const char *tcp_adb_status(void) { return status; }
+void tcp_adb_stop(void) {
+    if (!get_property || !set_property) return;
+    char port[128];
+    get_property("service.adb.tcp.port", port, "");
+    if (equal(port, "5555")) (void)set_property("ctl.stop", "adbd");
+    cooldown = 0;
+    status = "Disabled";
+}
