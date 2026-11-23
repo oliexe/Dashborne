@@ -99,7 +99,3 @@ from configuration. Extensions can add UI and behavior, replace theme resources,
 or register a custom startup activity while using the installed official app.
 See the [extension SDK](app/extensions/README.md) and the
 [lifecycle example](extensions/lifecycle-example).
-
-### Actually Tesla UI
-
-[Actually Tesla UI](extensions/actually-tesla-ui) is the first full widget theme: Inter typography, revised layouts and coordinated light/dark graphics, applied to the installed dashboard through the native extension engine.

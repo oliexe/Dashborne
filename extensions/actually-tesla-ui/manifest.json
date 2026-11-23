@@ -1,7 +1,0 @@
-{
-  "id": "actually-tesla-ui",
-  "title": "Actually Tesla UI",
-  "description": "Tesla-inspired typography, widget layouts and graphics. Light/dark themes. Disable Dashborne badge first.",
-  "abi": 1,
-  "sources": ["extension.c", "layout_patch.c"]
-}
