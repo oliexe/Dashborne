@@ -1,5 +1,6 @@
 /* Original C adapter for the inspected ARM FlyThings Activity ABI. */
 #include "debug.h"
+#include "../extensions/engine.h"
 #include "state.h"
 typedef __SIZE_TYPE__ usize;
 typedef unsigned int u32;
@@ -57,6 +58,7 @@ static void (*register_timer)(void *, int, int);
 static void *table[17], *prepared;
 static struct settings settings;
 static int phase, section, settings_ok = 1;
+static const char *launch_error;
 static void *list_owner;
 static void (*set_adapter)(void *, void *), (*set_list_listener)(void *, void *);
 static void (*refresh_list)(void *);
@@ -66,7 +68,7 @@ static void (*set_visible)(void *, int), (*set_color)(void *, int), (*set_select
 static void (*unregister_timer)(void *, int);
 static void *(*ui_instance)(void);
 static void (*open_activity)(void *, const char *, void *);
-static int ready;
+static int ready, extension_recovery_ok = 1;
 
 static void log_line(const char *s) {
     unsigned int n = 0;
@@ -150,7 +152,7 @@ static void render(void *self) {
     label(self, COUNT_ID, counts);
     visible(self, EMPTY_ID, settings.count == 0);
     visible(self, LIST_ID, settings.count != 0);
-    label(self, NOTICE_ID, settings_ok ? "Settings are saved to microSD" : "Could not save settings to microSD");
+    label(self, NOTICE_ID, launch_error ? launch_error : settings_ok ? "Settings are saved to microSD" : "Could not save settings to microSD");
 }
 /* Independent C adapters for the runtime's list interfaces. The first two
    virtual slots are destructors; the installed ARM ABI dispatches count at
@@ -175,6 +177,7 @@ static void list_click(void *self, void *list, int index, int subitem) {
     struct patch_entry *p = &settings.patches[index];
     if (!p->compatible) return;
     p->enabled = !p->enabled;
+    launch_error = (const char *)0;
     settings_ok = state_save(&settings);
     refresh_list(list);
     render(list_owner);
@@ -185,19 +188,40 @@ static void **adapter = adapter_table + 2, **list_listener = listener_table + 2;
 
 static void launch(void *self) {
     if (phase == 2 || phase == 3) return;
+    if (!extension_recovery_ok) {
+        launch_error = "Extension cleanup failed. See loader.log before retrying.";
+        phase = 1; render(self);
+        return;
+    }
+    launch_error = (const char *)0;
     if (!state_save(&settings)) { settings_ok = 0; phase = 1; render(self); return; }
     phase = 2; unregister_timer(self, BOOT_TIMER);
     label(self, NOTICE_ID, "Applying selected patches...");
     int result = state_apply(&settings, log_line);
     if (result < 0) {
+        launch_error = "Patch could not be applied. Uncheck it to continue.";
         phase = 1; render(self);
-        label(self, NOTICE_ID, "Patch could not be applied. Uncheck it to continue.");
+        return;
+    }
+    const char *extensions[MAX_PATCHES]; unsigned int extension_count = 0;
+    for (unsigned int i = 0; i < settings.count; ++i)
+        if (settings.patches[i].enabled && settings.patches[i].native)
+            extensions[extension_count++] = settings.patches[i].id;
+    int activated = extensions_start(extensions, extension_count, stock, runtime,
+                                    result > 0 ? "/res/ui/dash1act.ftu" : (const char *)0, log_line);
+    if (activated < 0) {
+        state_restore();
+        extension_recovery_ok = activated != -2;
+        launch_error = extension_recovery_ok ?
+              "Extension failed to activate. Uncheck it to continue." :
+              "Extension cleanup failed. See loader.log before retrying.";
+        phase = 1; render(self);
         return;
     }
     phase = 3; unregister_timer(self, NETWORK_TIMER);
     debug_release();
     log_line("official-selected\n");
-    open_activity(ui_instance(), stock_screen, (void *)0);
+    open_activity(ui_instance(), extensions_activity(stock_screen), (void *)0);
 }
 static int on_timer(void *self, int id) {
     if (id == BOOT_TIMER && phase == 0) { launch(self); return 1; }
@@ -215,7 +239,7 @@ static int on_timer_secondary(void *self, int id) {
 static void on_create(void *self) {
     base_on_create(self);
     state_load(&settings);
-    phase = 0; section = 0;
+    phase = 0; section = 0; launch_error = (const char *)0;
     list_owner = self;
     void *list = find_control(self, LIST_ID);
     if (list) {
@@ -313,6 +337,7 @@ static int bind_runtime(void) {
 
 EXPORT void onEasyUIInit(void *ctx) {
     log_line("startup\n");
+    extension_recovery_ok = extensions_recover(log_line);
     stock = dlopen("/res/lib/libzkgui.so", 1);
     if (!stock) { log_line("original-library-unavailable\n"); return; }
     *(void **)(&stock_init) = dlsym(stock, "onEasyUIInit");
@@ -346,6 +371,7 @@ EXPORT const char *onStartupApp(void *ctx) {
 EXPORT void onEasyUIDeinit(void *ctx) {
     /* Leave the init-owned daemon alone, but cancel all pending work. */
     debug_release();
+    (void)extensions_stop();
     if (prepared) { destroy(prepared); prepared = (void *)0; }
     log_line("shutdown\n");
     if (stock_deinit) stock_deinit(ctx);

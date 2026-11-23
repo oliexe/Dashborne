@@ -1,0 +1,149 @@
+# Native extensions
+
+Dashborne loads selected ARM shared libraries from microSD inside the official
+UI process. Extensions can add controls and activities, use existing app
+services, implement behavior hooks and workers, and replace an entire theme.
+The SDK supplies lifecycle, symbol access, startup activity selection and managed
+resource overlays. It does not limit native code to a list of visual operations.
+
+The official Linux installation and app remain the base. Extensions activate
+only after the user launches the dashboard or lets the splash expire. Opening
+configuration does not load extension code. A newly installed extension is off
+until selected in the patch list.
+
+## Extension directory
+
+The repository example is [`extensions/lifecycle-example`](../../extensions/lifecycle-example).
+Each source extension has a directory under `extensions/`:
+
+```text
+extensions/my-extension/
+  manifest.json
+  extension.c
+  assets/                 # optional files supplied by the extension
+```
+
+```json
+{
+  "id": "my-extension",
+  "title": "My extension",
+  "description": "A short description of its behavior",
+  "abi": 1,
+  "sources": ["extension.c"]
+}
+```
+
+The normal Dashborne build compiles these sources and installs the result as
+`Dashborne/extensions/my-extension/libextension.so`, together with the manifest
+and assets. It adds a native entry to the shared patch catalog. Settings use
+`patch.my-extension=1`, like layout patches; installation preserves choices.
+The catalog determines activation order. IDs must be unique across both types.
+
+The supplied builder handles freestanding C sources. Other languages, C++,
+additional dependencies or custom build systems can produce the same shared
+library ABI: ARMv7 Linux, little-endian, hard-float, with dependencies compatible
+with the installed system. Place those builds and their assets in the same SD
+directory and add a catalog line with the fourth field `native`.
+
+## Lifecycle and host API
+
+Include [`dashborne_extension.h`](dashborne_extension.h) and export
+`dashborne_extension_v1()`. It returns a persistent descriptor with ABI version,
+structure size, matching extension ID, `activate(host)` and `deactivate()`.
+Both lifecycle callbacks return zero on success.
+
+`activate` runs on the UI thread after selected layout patches are prepared and
+before the official startup activity is opened. Official library initialization
+has already occurred so its services are available. Put initialization here,
+not in ELF constructors. Return promptly; longer work belongs to a worker owned
+by the extension.
+
+The host provides:
+
+| Member | Purpose |
+| --- | --- |
+| `extension_directory` | Canonical directory for this extension's files. |
+| `official_library`, `ui_runtime` | Loaded handles for the official app and FlyThings runtime. |
+| `resolve(handle, name)` | Resolve exported symbols with `dlsym`; adapters can call services, register activities or implement hooks. |
+| `log(host, message)` | Record an extension event in `Dashborne/loader.log`. |
+| `overlay_file(host, source, target)` | During activation, bind a file relative to the extension directory over an existing absolute `/res/` file. The resulting mount is read-only. |
+| `set_startup_activity(host, name)` | During activation, choose an activity registered by the extension instead of the official startup activity. Only one selected extension can claim this. |
+
+An extension can supply its own layouts, icons, fonts and other theme resources,
+or generate files from the installed resources during activation. New resources
+can live on the SD card and be referenced by those layouts. `resolve` provides
+access to the actual runtime; it is not a portable widget toolkit or an automatic
+hook generator. Version-dependent symbol signatures and hooks belong to the
+extension. The loader does not run a JavaScript/Lua interpreter, but a native
+extension can embed one.
+
+The host structure stays valid until cleanup. `overlay_file` and
+`set_startup_activity` are activation-thread operations. UI calls from workers
+must be marshalled through the runtime's UI-thread mechanism. The extension must
+stop and join its workers, unregister callbacks, release controls and remove hooks
+in `deactivate`, including when `activate` only partially succeeded. Cleanup may
+be retried after a reported failure. The engine unloads a library only after its
+cleanup succeeds.
+
+## Failure and reversal
+
+All selected modules form one activation transaction. ABI mismatches, missing
+entry points, activation failures, duplicate resource targets and competing
+startup activities trigger cleanup in reverse order. A failed cleanup blocks
+another launch in that process, preserving the library if its callbacks may
+still be live. The configuration screen remains available with an error.
+
+Managed overlays are recorded in `Dashborne/extensions.mounts` before mounting.
+On loader startup, that journal clears stale file mounts from a previous UI
+process before the official library initializes. On normal shutdown or failed
+activation, managed mounts are removed. A selected layout patch and a native
+overlay cannot both own `/res/ui/dash1act.ftu` in one session.
+
+Booting without the card skips the loader and clears temporary mounts. This
+reverses engine-managed resource changes. Native plugins execute in the UI
+process with its privileges; their own persistent writes or external actions
+cannot be automatically undone by Dashborne. Prefer the overlay helper for
+resource changes and implement cleanup for runtime changes.
+
+If a cleanup fails, reboot before retrying. If the log identifies a malformed
+recovery journal, reboot to clear mounts, then remove or repair that journal on
+the card before starting Dashborne again.
+
+## Other patch formats
+
+Layout definitions remain in [`app/injector/patches`](../injector/patches).
+DBP1 adds noninteractive controls; DBP2 changes guarded, equal-length JSON scalar
+tokens in the inspected dashboard layout. Both compose against the same original
+file; mismatched fingerprints or overlapping scalar edits reject the entire
+batch. [`author.py`](../injector/author.py) produces metadata and offsets from a
+local reference. Native overlays support larger structural or complete resource
+replacements without the DBP2 scalar-size restriction.
+
+## Validation
+
+```sh
+sh app/extensions/test.sh
+sh app/injector/test.sh
+sh app/dashborne/test.sh
+DASHBORNE_CC=/opt/homebrew/opt/llvm/bin/clang \
+DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld \
+sh app/dashborne/build.sh
+```
+
+Host tests load real compiled example modules and mock the privileged mount
+calls. They cover lifecycle ordering, partial activation rollback, incompatible
+ABI/IDs/entry points, custom activity selection, resource collisions, path checks,
+read-only remount failure, busy cleanup, and journal recovery. Separate native
+layout tests cover combined edits, corruption, bounds and conflicts. On the physical DASH, the standalone harness loaded two ARM plugins, exercised
+a real read-only overlay using a byte-identical resource copy, removed it on
+cleanup, and recovered it from a separate process through the journal. The
+resource was read back unchanged and the test mount was absent afterward. This
+harness uses a small test symbol provider rather than starting another official
+UI process. The integrated loader is installed on the DASH; configuration and
+ADB are running, the native example is packaged and disabled by default, and
+existing settings are preserved. Feature-specific hooks into the official UI
+still need validation as those extensions are developed.
+
+The harness sources are in `tests/hardware`. Its build needs a private local copy
+of the device's `libc.so.6` and `libdl.so.2` supplied through `DASHBORNE_LINK_LIBS`;
+the normal extension build does not need them.

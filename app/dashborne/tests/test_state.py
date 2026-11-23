@@ -21,7 +21,7 @@ patcher = load_module('fixture_patcher', ROOT.parent / 'injector/package.py')
 
 class Entry(ctypes.Structure):
     _fields_ = [('id', ctypes.c_char*32), ('title', ctypes.c_char*64), ('description', ctypes.c_char*128),
-                ('enabled', ctypes.c_int), ('compatible', ctypes.c_int)]
+                ('enabled', ctypes.c_int), ('compatible', ctypes.c_int), ('native', ctypes.c_int)]
 class Settings(ctypes.Structure):
     _fields_ = [('wifi_adb', ctypes.c_int), ('count', ctypes.c_uint), ('patches', Entry*64)]
 
@@ -32,7 +32,7 @@ class StateTests(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory()
         cls.root = Path(cls.temp.name)
         stub = cls.root/'mount.c'
-        stub.write_text('int mount(const char*a,const char*b,const char*c,unsigned long d,const void*e){(void)a;(void)b;(void)c;(void)d;(void)e;return 0;}\nint umount2(const char*a,int b){(void)a;(void)b;return 0;}\n')
+        stub.write_text('int extension_probe(const char*id){return id[0]==110;}\nint mount(const char*a,const char*b,const char*c,unsigned long d,const void*e){(void)a;(void)b;(void)c;(void)d;(void)e;return 0;}\nint umount2(const char*a,int b){(void)a;(void)b;return 0;}\n')
         output = cls.root/'state.so'
         subprocess.run(['cc','-shared','-fPIC','-std=c11', '-Wall','-Wextra','-Werror',
                         '-DDASHBORNE_ROOT="'+str(cls.root/'card')+'"',
@@ -83,6 +83,30 @@ class StateTests(unittest.TestCase):
         (self.card/'patches/two.dbp').unlink()
         s=self.load();self.assertEqual(s.patches[1].compatible,0);self.assertEqual(s.patches[1].enabled,0)
         (self.card/'patches/one.dbp').write_bytes(b'broken')
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),-1)
+        self.assertFalse((self.card/'generated.ftu').exists())
+
+    def test_native_entries_are_separate_from_layout_patches(self):
+        (self.card/'patches/catalog.tsv').write_text('native\tNative module\tExample\tnative\nwrong\tBad kind\tSkip\tother\n')
+        (self.card/'settings.conf').write_text('patch.native=1\n')
+        s=self.load();self.assertEqual(s.count,1)
+        self.assertTrue(s.patches[0].native and s.patches[0].compatible and s.patches[0].enabled)
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),0)
+        self.assertFalse((self.card/'generated.ftu').exists())
+
+    def test_scalar_and_additive_settings_batch_and_collision(self):
+        author=load_module('patch_author',ROOT.parent/'injector/author.py')
+        spec=author.scalar_patch(self.base,'scalar','Scalar','Example',[(('textview__1','id'),50002)])
+        (self.card/'patches/scalar.dbp').write_bytes(patcher.compile_patch(spec))
+        (self.card/'patches/catalog.tsv').write_text('one\tBadge\tExample\nscalar\tScalar\tExample\n')
+        s=self.load()
+        for i in range(s.count):s.patches[i].enabled=1
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),2)
+        changed=codec.decode((self.card/'generated.ftu').read_bytes())
+        self.assertEqual(changed['textview__1']['id'],50002)
+        self.assertEqual(changed['textview__900001']['text'],'DASHBORNE')
+        (self.card/'patches/one.dbp').write_bytes(patcher.compile_patch(spec))
+        (self.card/'generated.ftu').unlink()
         self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),-1)
         self.assertFalse((self.card/'generated.ftu').exists())
 

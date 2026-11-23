@@ -3,7 +3,9 @@
 The [Dashborne startup app](../dashborne/README.md) now provides the splash,
 configuration, patch selection and Wi-Fi ADB controls. This directory contains
 the shared patch engine, patch definitions and the earlier standalone preview
-tool used to validate resource overrides.
+tool used to validate resource overrides. The shared engine now composes DBP1
+additions with DBP2 guarded scalar edits. Broader UI changes, behavior and themes
+use the [native extension SDK](../extensions/README.md).
 
 Dashborne starts the installed official app with small, separate patches. The
 first patch adds a noninteractive turquoise **DASHBORNE** label at the bottom of

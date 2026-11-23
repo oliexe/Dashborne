@@ -91,3 +91,11 @@ as a development fallback.
 - [Roadmap](docs/roadmap.md)
 - [Dashboard: build and test](app/dashboard/README.md)
 - [ADB Enabler: setup and development loader](app/adb-enabler/README.md)
+
+## Extension development
+
+Dashborne supports versioned layout patches and native ARM extensions selected
+from configuration. Extensions can add UI and behavior, replace theme resources,
+or register a custom startup activity while using the installed official app.
+See the [extension SDK](app/extensions/README.md) and the
+[lifecycle example](extensions/lifecycle-example).

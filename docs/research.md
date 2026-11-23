@@ -141,3 +141,18 @@ build/upload/restart/capture development cycle without removing the card.
 - [Independent ZKSWE format research](https://github.com/atomicstack/tc002-customisation):
   useful background on another device. Its hardware details, partition sizes and
   recovery behavior are not evidence about the DASH.
+
+## Extension engine reference
+
+The downloaded 6.11.4 package and the installed 6.11.2 app contain the same
+`dash1act.ftu`: 19,739 bytes, SHA-256
+`23c4185111b23a29c11f67ee4820eeb77c110c59a4f7213e079ac641344b69f2`.
+This supports using that downloaded layout as the authoring reference while
+checking the actual resource fingerprint on each device. Compatibility is
+resource-specific, rather than inferred from an app version label.
+
+The extension engine has a versioned native C ABI, symbol access to the installed
+app/runtime, optional custom activity selection, and journaled read-only resource
+overlays. Hardware tests verified ARM loading, overlay cleanup and recovery
+from a separate process without changing the original resource bytes. The SDK
+and its lifecycle example are documented in [Native extensions](../app/extensions/README.md).

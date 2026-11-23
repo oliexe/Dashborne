@@ -23,7 +23,11 @@
 - [x] Verify the preview timer automatically reboots into the previous SD app.
 - [ ] Keep Wi-Fi ADB reachable alongside the official dashboard.
 - [ ] Verify a confirmed injector card reapplies the patch after reboot.
-- [ ] Extend the patch format for further visual changes and behavior hooks.
+- [x] Compose guarded scalar edits with additive layout patches.
+- [x] Add a native extension ABI, custom activity selection and managed resource overlays.
+- [x] Roll back failed extension activation and recover journaled mounts after UI restarts.
+- [x] Verify native ARM activation, read-only overlays and cross-process journal recovery on the physical DASH.
+- [ ] Verify feature-specific UI hooks inside the official dashboard.
 
 ## Completed
 

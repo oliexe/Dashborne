@@ -28,16 +28,21 @@ static char status_label[128], address[32];
 static int timer_calls, adb_polls, released;
 static int opened, applied, saved, stopped, retried, cancelled, list_refreshes;
 static void *bound_adapter, *bound_listener;
-static int force_save_failure;
+static int force_save_failure, extension_calls, restored;
 struct mock_control { int id; char text[256]; int shown, selected; };
 static struct mock_control controls[40];
 static int control_count;
+void state_restore(void) { ++restored; }
 void state_load(struct settings *s) {
     *s = (struct settings){0}; s->count = 2;
     s->wifi_adb = !strcmp(scenario, "developer-auto") || !strcmp(scenario, "developer-tap") || !strcmp(scenario, "config-on");
     strcpy(s->patches[0].id, "badge"); strcpy(s->patches[0].title, "Badge");
     s->patches[0].compatible = 1; s->patches[0].enabled = 1;
     strcpy(s->patches[1].id, "incompatible");
+    if (!strcmp(scenario, "extension") || !strcmp(scenario, "extension-failure") || !strcmp(scenario, "extension-cleanup-failure")) {
+        strcpy(s->patches[1].id, "native-example");
+        s->patches[1].native = s->patches[1].enabled = s->patches[1].compatible = 1;
+    }
     if (!strcmp(scenario, "list")) {
         s->count = 64;
         strcpy(s->patches[63].title, "Last patch");
@@ -48,6 +53,18 @@ int state_save(const struct settings *s) { assert(s->count == 2 || s->count == 6
 int state_apply(const struct settings *s, void (*log)(const char *)) {
     assert((s->count == 2 || s->count == 64) && log); ++applied; return !strcmp(scenario, "patch-failure") ? -1 : 1;
 }
+int extensions_recover(void (*logger)(const char *)) { assert(logger); return 1; }
+int extensions_start(const char *const *ids, unsigned int count, void *s, void *r,
+                     const char *protected_target, void (*logger)(const char *)) {
+    assert(ids && s && r && protected_target && logger); ++extension_calls;
+    if (settings.patches[1].native) { assert(count == 1 && !strcmp(ids[0], "native-example")); }
+    else assert(!count);
+    if (!strcmp(scenario, "extension-failure")) return -1;
+    if (!strcmp(scenario, "extension-cleanup-failure")) return -2;
+    return (int)count;
+}
+const char *extensions_activity(const char *name) { return name; }
+int extensions_stop(void) { return 1; }
 static const char *ip = "";
 void debug_bind(void *s, void *r, void (*logger)(const char *)) { assert(s == (void *)1 && r == (void *)2 && logger); }
 void debug_poll(void) { ++adb_polls; }
@@ -180,7 +197,7 @@ int main(int argc, char **argv) {
     onEasyUIInit((void *)123);
     const char *selected = onStartupApp((void *)123);
     assert(init_calls == 1 && start_calls == 1);
-    if (is("config-on") || is("config-off") || is("list") || is("developer-auto") || is("developer-tap") || is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
+    if (is("extension") || is("extension-failure") || is("extension-cleanup-failure") || is("config-on") || is("config-off") || is("list") || is("developer-auto") || is("developer-tap") || is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
         assert(!strcmp(selected, ACTIVITY) && registered && create_calls == 1);
         int marked = is("config-on") || is("config-off");
         assert(phase == marked && timer_calls == (marked ? 1 : 2) && !opened);
@@ -241,7 +258,13 @@ int main(int argc, char **argv) {
                 }
                 click(p, find(p, LAUNCH_ID));
             } else tick(p, BOOT_TIMER);
-            if (is("save-failure") || is("patch-failure")) assert(phase == 1 && !opened);
+            if (is("save-failure") || is("patch-failure") || is("extension-failure") || is("extension-cleanup-failure")) {
+                assert(phase == 1 && !opened);
+                if (is("extension-failure") || is("extension-cleanup-failure")) assert(restored == 1);
+                if (is("extension-cleanup-failure")) {
+                    click(p, find(p, LAUNCH_ID)); assert(extension_calls == 1);
+                }
+            }
             else {
                 assert(phase == 3 && opened == 1 && applied == 1);
                 tick(p, BOOT_TIMER); click(p, find(p, LAUNCH_ID)); assert(opened == 1);

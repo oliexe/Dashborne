@@ -95,18 +95,21 @@ compiles each definition to a small `.dbp` and generates `patches/catalog.tsv`.
 Copy the compiled files and catalog together to `Dashborne/patches` on the card.
 The loader discovers entries from that catalog on startup.
 
-Each entry has a stable ID, title, description, installed-layout fingerprint and
-an additive control definition. The build rejects duplicate IDs/control IDs and
-keys. The initial patch engine supports additive controls in `dash1act.ftu`;
-additional kinds of behavior patches will require further engine support.
+Entries can be versioned layout patches or [native extensions](../extensions/README.md).
+Layout patches add controls or edit guarded scalar properties in `dash1act.ftu`.
+Native extensions can add features, register custom activities, hook existing
+behavior, and override theme resources. They activate only when launching the
+dashboard; installing one leaves it disabled until selected. The build rejects
+duplicate IDs and additive control IDs/keys.
 
 The loader checks each patch against the installed layout. Incompatible or
-missing patches cannot be selected. Selected compatible fragments are combined,
-validated again, and applied to the device's own layout. The result is generated
+missing patches cannot be selected. Selected compatible layout edits are combined,
+validated again for conflicts, and applied to the device's own layout. The result is generated
 as `Dashborne/generated.ftu` and bind-mounted over the original resource. An
 application failure remains in configuration with an error rather than launching
-with a partially built patch set. Selecting no patches opens the official UI
-without a resource override.
+with a partially built patch set. Selecting no layout patches skips that layout override. Enabled native extensions
+then activate as a group; a failure rolls them back and remains in configuration.
+The engine tracks its resource mounts for cleanup and recovery after UI restarts.
 
 ## Reversal
 

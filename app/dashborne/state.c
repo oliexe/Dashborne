@@ -1,4 +1,5 @@
 #include "state.h"
+#include "../extensions/engine.h"
 #include "../injector/patch.h"
 typedef __SIZE_TYPE__ usize;
 extern void *malloc(usize);
@@ -38,18 +39,18 @@ static int valid_id(const char *s) {
         if (!((*s >= 'a' && *s <= 'z') || (*s >= '0' && *s <= '9') || *s == '-' || *s == '_')) return 0;
     return n > 0 && n < 32;
 }
-static unsigned char *load(const char *path, unsigned int *size) {
+static unsigned char *load_limit(const char *path, unsigned int *size, unsigned int limit) {
     int fd = open(path, 0);
     if (fd < 0) return (void *)0;
-    unsigned char *data = malloc(LIMIT + 1);
+    unsigned char *data = malloc(limit + 1);
     if (!data) { close(fd); return (void *)0; }
     unsigned int used = 0; int n;
-    while ((n = read(fd, data + used, LIMIT + 1 - used)) > 0) {
+    while ((n = read(fd, data + used, limit + 1 - used)) > 0) {
         used += (unsigned int)n;
-        if (used > LIMIT) break;
+        if (used > limit) break;
     }
     close(fd);
-    if (n < 0 || used > LIMIT) { free(data); return (void *)0; }
+    if (n < 0 || used > limit) { free(data); return (void *)0; }
     data[used] = 0; *size = used; return data;
 }
 static int save(const char *path, const char *pending, const unsigned char *data, unsigned int size) {
@@ -81,17 +82,18 @@ static void patch_path(char *path, const char *id) {
 static int compatible(const unsigned char *base, unsigned int base_size, const char *id) {
     char path[256]; patch_path(path, id);
     unsigned int size = 0, out_size = 0; unsigned char *out = (void *)0;
-    unsigned char *patch = load(path, &size);
+    unsigned char *patch = load_limit(path, &size, 16412);
     int ok = base && patch && patch_layout(base, base_size, patch, size, &out, &out_size);
     free(out); free(patch); return ok;
 }
+void state_restore(void) { (void)umount2(DASHBORNE_TARGET, 2); }
 void state_load(struct settings *state) {
     *state = (struct settings){0};
     /* Clear a previous Dashborne file override when reloading the SD app. */
     (void)umount2(DASHBORNE_TARGET, 2);
     unsigned int n = 0, base_size = 0;
-    unsigned char *base = load(DASHBORNE_TARGET, &base_size);
-    unsigned char *catalog = load(DASHBORNE_ROOT "/patches/catalog.tsv", &n);
+    unsigned char *base = load_limit(DASHBORNE_TARGET, &base_size, LIMIT);
+    unsigned char *catalog = load_limit(DASHBORNE_ROOT "/patches/catalog.tsv", &n, 16384);
     if (catalog && n < 16384) {
         char *cursor = (char *)catalog, *entry;
         while ((entry = line(&cursor)) && state->count < MAX_PATCHES) {
@@ -103,6 +105,14 @@ void state_load(struct settings *state) {
             while (*description && *description != '\t') ++description;
             if (!*description) continue;
             *description++ = 0;
+            char *kind = description;
+            while (*kind && *kind != '\t') ++kind;
+            int native = 0;
+            if (*kind) {
+                *kind++ = 0;
+                if (!equal(kind, "native")) continue;
+                native = 1;
+            }
             if (!valid_id(entry) || !*title) continue;
             unsigned int i;
             for (i = 0; i < state->count; ++i) if (equal(state->patches[i].id, entry)) break;
@@ -110,11 +120,12 @@ void state_load(struct settings *state) {
             struct patch_entry *p = &state->patches[state->count++];
             copy(p->id, entry, sizeof(p->id)); copy(p->title, title, sizeof(p->title));
             copy(p->description, description, sizeof(p->description));
-            p->compatible = compatible(base, base_size, p->id);
+            p->native = native;
+            p->compatible = native ? extension_probe(p->id) : compatible(base, base_size, p->id);
         }
     }
     free(catalog); free(base);
-    unsigned char *config = load(DASHBORNE_ROOT "/settings.conf", &n);
+    unsigned char *config = load_limit(DASHBORNE_ROOT "/settings.conf", &n, 8192);
     if (config && n < 8192) {
         char *cursor = (char *)config, *entry;
         while ((entry = line(&cursor))) {
@@ -144,40 +155,31 @@ int state_save(const struct settings *state) {
     }
     return save(DASHBORNE_ROOT "/settings.conf", DASHBORNE_ROOT "/settings.conf.next", (unsigned char *)data, n);
 }
-static void put32(unsigned char *p, unsigned int n) {
-    for (int i = 0; i < 4; ++i) { p[i] = (unsigned char)n; n >>= 8; }
-}
 int state_apply(const struct settings *state, void (*log)(const char *)) {
     if (state->count > MAX_PATCHES) return -1;
     unsigned int chosen = 0;
-    for (unsigned int i = 0; i < state->count; ++i) chosen += !!state->patches[i].enabled;
+    for (unsigned int i = 0; i < state->count; ++i) chosen += state->patches[i].enabled && !state->patches[i].native;
+    /* A failed extension activation may return to configuration after a layout
+       override was mounted. Always compose from the installed file again. */
+    (void)umount2(DASHBORNE_TARGET, 2);
     if (!chosen) { log("patches: none selected\n"); return 0; }
-    unsigned int base_size = 0, added = 0;
-    unsigned char *base = load(DASHBORNE_TARGET, &base_size), *combined = malloc(16412);
-    int success = base && combined;
+    unsigned int base_size = 0, loaded = 0;
+    unsigned char *base = load_limit(DASHBORNE_TARGET, &base_size, LIMIT);
+    struct layout_patch patches[MAX_PATCHES] = {{0}};
+    int success = base != (void *)0;
     for (unsigned int i = 0; success && i < state->count; ++i) {
         const struct patch_entry *entry = &state->patches[i];
-        if (!entry->enabled) continue;
+        if (!entry->enabled || entry->native) continue;
         if (!entry->compatible || !valid_id(entry->id)) { success = 0; break; }
         char path[256]; patch_path(path, entry->id);
-        unsigned int size = 0, test_size = 0; unsigned char *test = (void *)0;
-        unsigned char *p = load(path, &size);
-        success = p && patch_layout(base, base_size, p, size, &test, &test_size);
-        free(test);
-        if (success && size - 28 <= 16384 - added) {
-            for (unsigned int j = 0; j < 20; ++j) combined[j] = p[j];
-            for (unsigned int j = 28; j < size; ++j) combined[28 + added + j - 28] = p[j];
-            added += size - 28;
-        } else success = 0;
-        free(p);
+        patches[loaded].data = load_limit(path, &patches[loaded].size, 16412);
+        if (!patches[loaded].data) success = 0;
+        ++loaded;
     }
     unsigned char *result = (void *)0; unsigned int result_size = 0;
-    if (success) {
-        put32(combined + 20, added);
-        put32(combined + 24, (unsigned int)crc32(0, combined + 28, added));
-        success = patch_layout(base, base_size, combined, added + 28, &result, &result_size);
-    }
-    free(base); free(combined);
+    if (success) success = patch_layout_many(base, base_size, patches, loaded, &result, &result_size);
+    for (unsigned int i = 0; i < loaded; ++i) free((void *)patches[i].data);
+    free(base);
     if (success) success = save(DASHBORNE_ROOT "/generated.ftu", DASHBORNE_ROOT "/generated.ftu.next", result, result_size);
     free(result);
     if (success) success = mount(DASHBORNE_ROOT "/generated.ftu", DASHBORNE_TARGET, (const char *)0, 4096, (const void *)0) == 0;
