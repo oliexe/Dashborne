@@ -148,11 +148,11 @@ static void render(void *self) {
     unsigned int n = number(counts, 0, enabled);
     n = append(counts, n, " enabled / ", sizeof(counts));
     n = number(counts, n, settings.count);
-    append(counts, n, settings.count > 3 ? " patches  -  Swipe to scroll" : " patches", sizeof(counts));
+    append(counts, n, settings.count > 5 ? " patches  -  Swipe to scroll" : " patches", sizeof(counts));
     label(self, COUNT_ID, counts);
     visible(self, EMPTY_ID, settings.count == 0);
     visible(self, LIST_ID, settings.count != 0);
-    label(self, NOTICE_ID, launch_error ? launch_error : settings_ok ? "Settings are saved to microSD" : "Could not save settings to microSD");
+    label(self, NOTICE_ID, launch_error ? launch_error : settings_ok ? "" : "Could not save settings to microSD");
 }
 /* Independent C adapters for the runtime's list interfaces. The first two
    virtual slots are destructors; the installed ARM ABI dispatches count at

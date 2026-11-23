@@ -14,7 +14,9 @@ from the installed app in flash.
 Configuration uses a black background with a category sidebar on the left and
 the selected content on the right. **Patches** opens by default; **ADB** contains
 the developer connection controls. Switching sections preserves selections and
-the list position.
+the list position. The compact header shows the development version from
+`VERSION` and the repository URL. Branding sits in the footer, leaving room
+for five patch rows at a time.
 
 Configuration includes:
 
@@ -24,7 +26,7 @@ Configuration includes:
   toggle its patch; each row has a title, description and switch. Incompatible
   patches have a disabled switch. Selections save immediately, and the header
   shows how many patches are enabled.
-- **Launch dashboard:** save selections, apply the patches, open the official UI.
+- **Continue booting:** save selections, apply the patches, open the official UI.
 
 Selections are written to `Dashborne/settings.conf`. Network credentials are
 loaded from `Dashborne/wifi.conf`, with an SSID line followed by a passphrase

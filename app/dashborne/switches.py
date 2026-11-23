@@ -33,3 +33,22 @@ def write_switches(destination):
                         for i in range(3): sums[i] += color[i]
                 pixels.extend([round(s/covered) if covered else 0 for s in sums] + [round(covered*255/16)])
         (destination / ('toggle-' + name + '.png')).write_bytes(png(72, 36, pixels))
+
+
+def write_boot_button(destination):
+    """Antialiased rounded backgrounds for the configuration footer action."""
+    width, height, radius = 300, 52, 16
+    for name, color in [('continue', (78, 105, 211)),
+                        ('continue-pressed', (61, 83, 173))]:
+        pixels = bytearray()
+        for y in range(height):
+            for x in range(width):
+                covered = 0
+                for sy in range(4):
+                    for sx in range(4):
+                        px, py = x+(sx+.5)/4, y+(sy+.5)/4
+                        cx = min(width-radius, max(radius, px))
+                        cy = min(height-radius, max(radius, py))
+                        covered += (px-cx)**2 + (py-cy)**2 <= radius**2
+                pixels.extend((*color, round(covered*255/16)))
+        (destination / (name + '.png')).write_bytes(png(width, height, pixels))
