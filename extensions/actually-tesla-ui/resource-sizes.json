@@ -1,0 +1,1094 @@
+{
+  "dash/hor_bar_thumb_spec.png": [
+    4,
+    4
+  ],
+  "dash/hbar_valid2x1_ext.png": [
+    441,
+    10
+  ],
+  "dash/btn_bg1x1_s.png": [
+    250,
+    224
+  ],
+  "dash/btn_bg2x1_valcomb_n_nobg.png": [
+    510,
+    224
+  ],
+  "dash/btn_bg1x1_p.png": [
+    250,
+    224
+  ],
+  "dash/btn_bg2x1_valcomb_n.png": [
+    510,
+    224
+  ],
+  "dash/btn_bg2x1_p.png": [
+    510,
+    224
+  ],
+  "dash/btn_bg1x2_s.png": [
+    250,
+    458
+  ],
+  "dash/hbar_bg_spec.png": [
+    446,
+    4
+  ],
+  "dash/hbar_thumb1x1_spec.png": [
+    6,
+    6
+  ],
+  "dash/btn_bg2x1_s.png": [
+    510,
+    224
+  ],
+  "dash/hbar_thumb_ext.png": [
+    10,
+    10
+  ],
+  "dash/btn_bg1x2_s_nobg.png": [
+    250,
+    458
+  ],
+  "dash/btn_bg1x2_p.png": [
+    250,
+    458
+  ],
+  "dash/hor_bar_bg.png": [
+    446,
+    10
+  ],
+  "dash/hbar_sub_ext.png": [
+    443,
+    6
+  ],
+  "dash/btn_bg2x1_s_nobg.png": [
+    510,
+    224
+  ],
+  "dash/btn_bg2x1_n.png": [
+    510,
+    224
+  ],
+  "dash/hbar_valid1x1_spec.png": [
+    444,
+    4
+  ],
+  "dash/vbar1x2_valid.png": [
+    90,
+    230
+  ],
+  "dash/btn_bg2x1_valcomb_s_nobg.png": [
+    510,
+    224
+  ],
+  "dash/btn_bg1x2_n.png": [
+    250,
+    458
+  ],
+  "dash/hbar_sub_thumb_ext.png": [
+    6,
+    6
+  ],
+  "dash/hbar_valid2x1.png": [
+    441,
+    10
+  ],
+  "dash/btn_bg1x1_s_nobg.png": [
+    250,
+    224
+  ],
+  "dash/hbar_thumb.png": [
+    10,
+    10
+  ],
+  "dash/vbar1x2_green.png": [
+    90,
+    230
+  ],
+  "dash/btn_bg2x1_valcomb_s.png": [
+    510,
+    224
+  ],
+  "dash/hbar2x1_green_thumb.png": [
+    10,
+    10
+  ],
+  "dash/btn_bg1x1_n.png": [
+    250,
+    224
+  ],
+  "dash/btn_bg2x1_valcomb_p.png": [
+    510,
+    224
+  ],
+  "dash/vbar1x2_bg.png": [
+    90,
+    230
+  ],
+  "dash/btn_bg1x1_invalid_n.png": [
+    250,
+    224
+  ],
+  "dash/hbar2x1_green.png": [
+    441,
+    14
+  ],
+  "dash/trip/trip_s_nobg.png": [
+    512,
+    226
+  ],
+  "dash/trip/trip_n.png": [
+    510,
+    224
+  ],
+  "dash/trip/trip_s.png": [
+    512,
+    226
+  ],
+  "dash/trip/trip_p.png": [
+    510,
+    224
+  ],
+  "dash/trip/trip_n_nobg.png": [
+    510,
+    224
+  ],
+  "dash/gauges/gear/gear_wnd.png": [
+    34,
+    38
+  ],
+  "dash/gauges/gear/gear_ind.png": [
+    180,
+    30
+  ],
+  "dash/gauges/gear/r_line.png": [
+    122,
+    30
+  ],
+  "dash/gauges/gear/p_line.png": [
+    122,
+    30
+  ],
+  "dash/gauges/gear/gears_line.png": [
+    125,
+    38
+  ],
+  "dash/gauges/gear/gear_ind_bg.png": [
+    90,
+    30
+  ],
+  "dash/gauges/gear/d_line.png": [
+    122,
+    30
+  ],
+  "dash/gauges/gear/n_line.png": [
+    122,
+    30
+  ],
+  "dash/gauges/1/g1_p.png": [
+    510,
+    458
+  ],
+  "dash/gauges/1/g1_s.png": [
+    510,
+    458
+  ],
+  "dash/gauges/1/g1_n_nobg.png": [
+    510,
+    458
+  ],
+  "dash/gauges/1/bluering.png": [
+    436,
+    436
+  ],
+  "dash/gauges/1/g1_arc_thumb.png": [
+    6,
+    6
+  ],
+  "dash/gauges/1/g1_pin.png": [
+    8,
+    96
+  ],
+  "dash/gauges/1/g1_n.png": [
+    510,
+    458
+  ],
+  "dash/gauges/1/g1_s_nobg.png": [
+    510,
+    458
+  ],
+  "dash/gauges/1/g1_inds.png": [
+    404,
+    404
+  ],
+  "dash/gauges/4/g4_n_nobg.png": [
+    510,
+    458
+  ],
+  "dash/gauges/4/g4_p.png": [
+    510,
+    458
+  ],
+  "dash/gauges/4/g4_s.png": [
+    512,
+    460
+  ],
+  "dash/gauges/4/g4_n.png": [
+    510,
+    458
+  ],
+  "dash/gauges/4/g4_s_nobg.png": [
+    512,
+    460
+  ],
+  "dash/gauges/3/g3_inds.png": [
+    404,
+    404
+  ],
+  "dash/gauges/3/g3_pin.png": [
+    6,
+    96
+  ],
+  "dash/gauges/2/g2_s_nobg.png": [
+    510,
+    458
+  ],
+  "dash/gauges/2/g2_p.png": [
+    510,
+    458
+  ],
+  "dash/gauges/2/g2_speed_ind.png": [
+    410,
+    410
+  ],
+  "dash/gauges/2/g2_s.png": [
+    510,
+    458
+  ],
+  "dash/gauges/2/bluering.png": [
+    266,
+    266
+  ],
+  "dash/gauges/2/g2_n_nobg.png": [
+    510,
+    458
+  ],
+  "dash/gauges/2/g2_n.png": [
+    510,
+    458
+  ],
+  "dash/gauges/2/g2_arc_ind.png": [
+    296,
+    68
+  ],
+  "dash/tpms/tpms_n.png": [
+    510,
+    458
+  ],
+  "dash/tpms/tpms_n_nobg.png": [
+    510,
+    458
+  ],
+  "dash/tpms/tpms_1x1_n.png": [
+    250,
+    224
+  ],
+  "dash/tpms/tpms_1x1_n_nobg.png": [
+    250,
+    224
+  ],
+  "dash/tpms/tpms_1x1_p.png": [
+    250,
+    224
+  ],
+  "dash/tpms/tpms_1x1_s.png": [
+    252,
+    226
+  ],
+  "dash/tpms/tpms_s.png": [
+    512,
+    460
+  ],
+  "dash/tpms/tpms_s_nobg.png": [
+    512,
+    460
+  ],
+  "dash/tpms/tpms_1x1_s_nobg.png": [
+    252,
+    226
+  ],
+  "dash/tpms/tpms_p.png": [
+    510,
+    458
+  ],
+  "dash/stats/media/btn_rw_n.png": [
+    34,
+    29
+  ],
+  "dash/stats/media/btn_play_n.png": [
+    27,
+    31
+  ],
+  "dash/stats/media/btn_ffw_n.png": [
+    34,
+    29
+  ],
+  "dash/stats/media/btn_pause_p.png": [
+    27,
+    31
+  ],
+  "dash/stats/media/btn_pause_n.png": [
+    27,
+    31
+  ],
+  "dash/stats/media/btn_rw_p.png": [
+    34,
+    29
+  ],
+  "dash/stats/media/btn_play_p.png": [
+    27,
+    31
+  ],
+  "dash/stats/media/btn_ffw_p.png": [
+    34,
+    29
+  ],
+  "dash/clock/a1_2x2_p.png": [
+    515,
+    458
+  ],
+  "dash/clock/a1_2x2_s.png": [
+    515,
+    460
+  ],
+  "dash/clock/a1_2x2_n_nobg.png": [
+    515,
+    458
+  ],
+  "dash/clock/d2_2x1_n_nobg.png": [
+    510,
+    224
+  ],
+  "dash/clock/d2_2x1_n.png": [
+    510,
+    224
+  ],
+  "dash/clock/a1_2x2_s_nobg.png": [
+    515,
+    460
+  ],
+  "dash/clock/d2_2x1_s.png": [
+    512,
+    226
+  ],
+  "dash/clock/d2_2x1_p.png": [
+    510,
+    224
+  ],
+  "dash/clock/hour_pointer.png": [
+    128,
+    24
+  ],
+  "dash/clock/a1_2x2_n.png": [
+    515,
+    458
+  ],
+  "dash/clock/d2_2x1_s_nobg.png": [
+    512,
+    226
+  ],
+  "dash/clock/min_pointer.png": [
+    12,
+    151
+  ],
+  "dash/projection/cpaa2x6_n.png": [
+    1550,
+    458
+  ],
+  "dash/projection/cpaa2x4_as.png": [
+    1030,
+    458
+  ],
+  "dash/projection/cpaa2x4_n.png": [
+    1030,
+    458
+  ],
+  "dash/projection/cpaa2x5_n_nobg.png": [
+    1290,
+    458
+  ],
+  "dash/projection/cpaa2x4_s_nobg.png": [
+    1032,
+    460
+  ],
+  "dash/projection/cpaa2x6_as.png": [
+    1550,
+    458
+  ],
+  "dash/projection/cpaa2x2_n.png": [
+    510,
+    458
+  ],
+  "dash/projection/cpaa2x3_s_nobg.png": [
+    772,
+    460
+  ],
+  "dash/projection/cpaa2x5_n.png": [
+    1290,
+    458
+  ],
+  "dash/projection/cpaa2x2_as.png": [
+    510,
+    458
+  ],
+  "dash/projection/cpaa2x2_n_nobg.png": [
+    510,
+    458
+  ],
+  "dash/projection/cpaa2x3_n.png": [
+    770,
+    458
+  ],
+  "dash/projection/cpaa2x5_f.png": [
+    1290,
+    458
+  ],
+  "dash/projection/cpaa2x5_p.png": [
+    1290,
+    458
+  ],
+  "dash/projection/cpaa2x5_s_nobg.png": [
+    1292,
+    460
+  ],
+  "dash/projection/cpaa2x5_as.png": [
+    1290,
+    458
+  ],
+  "dash/projection/cpaa2x5_s.png": [
+    1292,
+    460
+  ],
+  "dash/projection/cpaa2x3_f.png": [
+    770,
+    458
+  ],
+  "dash/projection/cpaa2x3_p.png": [
+    770,
+    458
+  ],
+  "dash/projection/cpaa2x3_s.png": [
+    772,
+    460
+  ],
+  "dash/projection/cpaa2x4_n_nobg.png": [
+    1030,
+    458
+  ],
+  "dash/projection/cpaa2x3_n_nobg.png": [
+    770,
+    458
+  ],
+  "dash/projection/cpaa2x6_p.png": [
+    1550,
+    458
+  ],
+  "dash/projection/cpaa2x4_s.png": [
+    1032,
+    460
+  ],
+  "dash/projection/cpaa2x6_f.png": [
+    1550,
+    458
+  ],
+  "dash/projection/cpaa2x3_as.png": [
+    770,
+    458
+  ],
+  "dash/projection/cpaa2x6_s.png": [
+    1552,
+    460
+  ],
+  "dash/projection/cpaa2x4_f.png": [
+    1030,
+    458
+  ],
+  "dash/projection/cpaa2x4_p.png": [
+    1030,
+    458
+  ],
+  "dash/projection/cpaa2x2_s_nobg.png": [
+    512,
+    460
+  ],
+  "dash/projection/cpaa2x2_s.png": [
+    512,
+    460
+  ],
+  "dash/projection/cpaa2x2_f.png": [
+    510,
+    458
+  ],
+  "dash/projection/cpaa2x6_n_nobg.png": [
+    1550,
+    458
+  ],
+  "dash/projection/cpaa2x2_p.png": [
+    510,
+    458
+  ],
+  "light/hor_bar_thumb_spec.png": [
+    4,
+    4
+  ],
+  "light/hbar_valid2x1_ext.png": [
+    441,
+    14
+  ],
+  "light/btn_bg1x1_s.png": [
+    250,
+    224
+  ],
+  "light/btn_bg2x1_valcomb_n_nobg.png": [
+    510,
+    224
+  ],
+  "light/btn_bg1x1_p.png": [
+    250,
+    224
+  ],
+  "light/btn_bg2x1_valcomb_n.png": [
+    510,
+    224
+  ],
+  "light/hor_bar_bg_spec.png": [
+    446,
+    4
+  ],
+  "light/btn_bg2x1_p.png": [
+    510,
+    224
+  ],
+  "light/btn_bg1x2_s.png": [
+    250,
+    458
+  ],
+  "light/hbar_thumb1x1_spec.png": [
+    6,
+    6
+  ],
+  "light/btn_bg2x1_s.png": [
+    510,
+    224
+  ],
+  "light/hbar_thumb_ext.png": [
+    10,
+    14
+  ],
+  "light/btn_bg1x2_s_nobg.png": [
+    250,
+    458
+  ],
+  "light/btn_bg1x2_p.png": [
+    250,
+    458
+  ],
+  "light/hor_bar_bg.png": [
+    446,
+    14
+  ],
+  "light/btn_bg2x1_s_nobg.png": [
+    510,
+    224
+  ],
+  "light/btn_bg2x1_n.png": [
+    510,
+    224
+  ],
+  "light/hbar_valid1x1_spec.png": [
+    444,
+    4
+  ],
+  "light/vbar1x2_valid.png": [
+    90,
+    230
+  ],
+  "light/btn_bg2x1_valcomb_s_nobg.png": [
+    510,
+    224
+  ],
+  "light/btn_bg1x2_n.png": [
+    250,
+    458
+  ],
+  "light/hbar_sub_thumb_ext.png": [
+    4,
+    14
+  ],
+  "light/hbar_valid2x1.png": [
+    441,
+    14
+  ],
+  "light/btn_bg1x1_s_nobg.png": [
+    250,
+    224
+  ],
+  "light/hbar_valid1x1_sub_ext.png": [
+    444,
+    14
+  ],
+  "light/hbar_thumb.png": [
+    10,
+    14
+  ],
+  "light/vbar1x2_green.png": [
+    90,
+    230
+  ],
+  "light/btn_bg2x1_valcomb_s.png": [
+    510,
+    224
+  ],
+  "light/hbar2x1_green_thumb.png": [
+    10,
+    10
+  ],
+  "light/btn_bg1x1_n.png": [
+    250,
+    224
+  ],
+  "light/btn_bg2x1_valcomb_p.png": [
+    510,
+    224
+  ],
+  "light/vbar1x2_bg.png": [
+    90,
+    230
+  ],
+  "light/btn_bg1x1_invalid_n.png": [
+    250,
+    224
+  ],
+  "light/hbar2x1_green.png": [
+    441,
+    14
+  ],
+  "light/trip/trip_s_nobg.png": [
+    520,
+    234
+  ],
+  "light/trip/trip_n.png": [
+    510,
+    224
+  ],
+  "light/trip/trip_s.png": [
+    520,
+    234
+  ],
+  "light/trip/trip_p.png": [
+    520,
+    234
+  ],
+  "light/trip/trip_n_nobg.png": [
+    510,
+    224
+  ],
+  "light/gauges/gear/gear_ind_bg_nobg.png": [
+    90,
+    30
+  ],
+  "light/gauges/gear/gear_wnd.png": [
+    34,
+    38
+  ],
+  "light/gauges/gear/gear_ind_nobg.png": [
+    180,
+    30
+  ],
+  "light/gauges/gear/gear_ind.png": [
+    180,
+    30
+  ],
+  "light/gauges/gear/r_line.png": [
+    122,
+    30
+  ],
+  "light/gauges/gear/p_line.png": [
+    122,
+    30
+  ],
+  "light/gauges/gear/gears_line.png": [
+    125,
+    38
+  ],
+  "light/gauges/gear/gear_ind_bg.png": [
+    90,
+    30
+  ],
+  "light/gauges/gear/d_line.png": [
+    122,
+    30
+  ],
+  "light/gauges/gear/n_line.png": [
+    122,
+    30
+  ],
+  "light/gauges/1/g1_p.png": [
+    510,
+    458
+  ],
+  "light/gauges/1/g1_s.png": [
+    510,
+    458
+  ],
+  "light/gauges/1/g1_n_nobg.png": [
+    510,
+    458
+  ],
+  "light/gauges/1/bluering.png": [
+    436,
+    436
+  ],
+  "light/gauges/1/g1_arc_thumb.png": [
+    6,
+    6
+  ],
+  "light/gauges/1/g1_pin.png": [
+    8,
+    95
+  ],
+  "light/gauges/1/g1_n.png": [
+    510,
+    458
+  ],
+  "light/gauges/1/g1_s_nobg.png": [
+    510,
+    458
+  ],
+  "light/gauges/1/g1_inds.png": [
+    404,
+    404
+  ],
+  "light/gauges/4/g4_n_nobg.png": [
+    510,
+    458
+  ],
+  "light/gauges/4/g4_p.png": [
+    510,
+    458
+  ],
+  "light/gauges/4/g4_s.png": [
+    520,
+    468
+  ],
+  "light/gauges/4/g4_n.png": [
+    520,
+    468
+  ],
+  "light/gauges/4/g4_s_nobg.png": [
+    520,
+    468
+  ],
+  "light/gauges/2/g2_s_nobg.png": [
+    510,
+    458
+  ],
+  "light/gauges/2/g2_p.png": [
+    510,
+    458
+  ],
+  "light/gauges/2/g2_speed_ind.png": [
+    408,
+    408
+  ],
+  "light/gauges/2/g2_s.png": [
+    510,
+    458
+  ],
+  "light/gauges/2/bluering.png": [
+    268,
+    268
+  ],
+  "light/gauges/2/g2_n_nobg.png": [
+    510,
+    458
+  ],
+  "light/gauges/2/g2_n.png": [
+    510,
+    458
+  ],
+  "light/gauges/2/g2_arc_ind.png": [
+    416,
+    416
+  ],
+  "light/tpms/tpms_n.png": [
+    510,
+    458
+  ],
+  "light/tpms/tpms_n_nobg.png": [
+    510,
+    458
+  ],
+  "light/tpms/tpms_1x1_n.png": [
+    250,
+    224
+  ],
+  "light/tpms/tpms_1x1_n_nobg.png": [
+    250,
+    224
+  ],
+  "light/tpms/tpms_1x1_p.png": [
+    250,
+    224
+  ],
+  "light/tpms/tpms_1x1_s.png": [
+    250,
+    224
+  ],
+  "light/tpms/tpms_s.png": [
+    510,
+    458
+  ],
+  "light/tpms/tpms_s_nobg.png": [
+    510,
+    458
+  ],
+  "light/tpms/tpms_1x1_s_nobg.png": [
+    250,
+    224
+  ],
+  "light/tpms/tpms_p.png": [
+    510,
+    458
+  ],
+  "light/stats/media/btn_rw_n.png": [
+    34,
+    29
+  ],
+  "light/stats/media/btn_play_n.png": [
+    27,
+    31
+  ],
+  "light/stats/media/btn_ffw_n.png": [
+    34,
+    29
+  ],
+  "light/stats/media/btn_pause_p.png": [
+    27,
+    31
+  ],
+  "light/stats/media/btn_pause_n.png": [
+    27,
+    31
+  ],
+  "light/stats/media/btn_rw_p.png": [
+    34,
+    29
+  ],
+  "light/stats/media/btn_play_p.png": [
+    27,
+    31
+  ],
+  "light/stats/media/btn_ffw_p.png": [
+    34,
+    29
+  ],
+  "light/clock/a1_2x2_p.png": [
+    510,
+    458
+  ],
+  "light/clock/a1_2x2_s.png": [
+    510,
+    458
+  ],
+  "light/clock/a1_2x2_n_nobg.png": [
+    510,
+    458
+  ],
+  "light/clock/d2_2x1_n_nobg.png": [
+    510,
+    224
+  ],
+  "light/clock/min_pointer_o.png": [
+    12,
+    151
+  ],
+  "light/clock/d2_2x1_n.png": [
+    510,
+    224
+  ],
+  "light/clock/a1_2x2_s_nobg.png": [
+    510,
+    458
+  ],
+  "light/clock/d2_2x1_s.png": [
+    520,
+    234
+  ],
+  "light/clock/d2_2x1_p.png": [
+    510,
+    224
+  ],
+  "light/clock/hour_pointer.png": [
+    128,
+    24
+  ],
+  "light/clock/a1_2x2_n.png": [
+    510,
+    458
+  ],
+  "light/clock/d2_2x1_s_nobg.png": [
+    520,
+    234
+  ],
+  "light/clock/min_pointer.png": [
+    12,
+    151
+  ],
+  "light/projection/cpaa2x6_n.png": [
+    1550,
+    458
+  ],
+  "light/projection/cpaa2x4_as.png": [
+    1030,
+    458
+  ],
+  "light/projection/cpaa2x4_n.png": [
+    1030,
+    458
+  ],
+  "light/projection/cpaa2x5_n_nobg.png": [
+    1290,
+    458
+  ],
+  "light/projection/cpaa2x4_s_nobg.png": [
+    1040,
+    468
+  ],
+  "light/projection/cpaa2x6_as.png": [
+    1550,
+    458
+  ],
+  "light/projection/cpaa2x2_n.png": [
+    510,
+    458
+  ],
+  "light/projection/cpaa2x3_s_nobg.png": [
+    780,
+    468
+  ],
+  "light/projection/cpaa2x5_n.png": [
+    1290,
+    458
+  ],
+  "light/projection/cpaa2x6.png": [
+    1550,
+    458
+  ],
+  "light/projection/cpaa2x2_as.png": [
+    510,
+    458
+  ],
+  "light/projection/cpaa2x2_n_nobg.png": [
+    510,
+    458
+  ],
+  "light/projection/cpaa2x3_n.png": [
+    770,
+    458
+  ],
+  "light/projection/cpaa2x6_s_nobg.png": [
+    1560,
+    468
+  ],
+  "light/projection/cpaa2x5_f.png": [
+    1290,
+    458
+  ],
+  "light/projection/cpaa2x5_p.png": [
+    1290,
+    458
+  ],
+  "light/projection/cpaa2x5_s_nobg.png": [
+    1300,
+    468
+  ],
+  "light/projection/cpaa2x5_as.png": [
+    1290,
+    458
+  ],
+  "light/projection/cpaa2x5_s.png": [
+    1292,
+    460
+  ],
+  "light/projection/cpaa2x3_f.png": [
+    770,
+    458
+  ],
+  "light/projection/cpaa2x3_p.png": [
+    770,
+    458
+  ],
+  "light/projection/cpaa2x3_s.png": [
+    772,
+    460
+  ],
+  "light/projection/cpaa2x4_n_nobg.png": [
+    1030,
+    458
+  ],
+  "light/projection/cpaa2x3_n_nobg.png": [
+    770,
+    458
+  ],
+  "light/projection/cpaa2x6_p.png": [
+    1550,
+    458
+  ],
+  "light/projection/cpaa2x4_s.png": [
+    1032,
+    460
+  ],
+  "light/projection/cpaa2x6_f.png": [
+    1550,
+    458
+  ],
+  "light/projection/cpaa2x3_as.png": [
+    770,
+    458
+  ],
+  "light/projection/cpaa2x6_s.png": [
+    1552,
+    460
+  ],
+  "light/projection/cpaa2x4_f.png": [
+    1030,
+    458
+  ],
+  "light/projection/cpaa2x4_p.png": [
+    1030,
+    458
+  ],
+  "light/projection/cpaa2x2_s_nobg.png": [
+    520,
+    468
+  ],
+  "light/projection/cpaa2x2_s.png": [
+    512,
+    460
+  ],
+  "light/projection/cpaa2x2_f.png": [
+    510,
+    458
+  ],
+  "light/projection/cpaa2x6_n_nobg.png": [
+    1550,
+    458
+  ],
+  "light/projection/cpaa2x2_p.png": [
+    510,
+    458
+  ]
+}
