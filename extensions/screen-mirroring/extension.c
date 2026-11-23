@@ -66,11 +66,12 @@ static int activate(const struct dashborne_host *api) {
     if(started()) {log_message("screen-mirroring: projection already running; reboot into configuration first");return -1;}
     uintptr address=(uintptr)image.base+0xd10f8u;
     if(!map_page(address))return -1;
-    patch=(struct instruction_patch){(unsigned int *)address,0xe3a01012u,0xe3001412u,0,protect,flush};
-    /* mov r1,#0x12 -> movw r1,#0x412: retain CarPlay/AA; add AirPlay bit 10.
+    patch=(struct instruction_patch){(unsigned int *)address,0xe3a01012u,0xe3001400u,0,protect,flush};
+    /* mov r1,#0x12 -> movw r1,#0x400: AirPlay owns the projection session.
+       Enabling CarPlay simultaneously lets its auto-reconnect reclaim video.
        The following store writes config.function_mask at offset 0x18. */
     if(instruction_apply(&patch)) {log_message("screen-mirroring: instruction update failed");return -1;}
-    log_message("screen-mirroring: AirPlay flag enabled; awaiting official projection startup");
+    log_message("screen-mirroring: exclusive AirPlay mode selected; awaiting projection startup");
     return 0;
 }
 static int deactivate(void) {

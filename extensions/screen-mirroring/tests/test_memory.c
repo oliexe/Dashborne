@@ -10,7 +10,7 @@ static int flush(void *a,void *b) {assert(writable && (char *)b-(char *)a==4);++
 static unsigned int word;
 static struct instruction_patch setup(void) {
     writable=fail_open=fail_close=fail_flush=flushes=0;word=0xe3a01012;
-    return (struct instruction_patch){&word,0xe3a01012,0xe3001412,0,protect,flush};
+    return (struct instruction_patch){&word,0xe3a01012,0xe3001400,0,protect,flush};
 }
 int main(void) {
     struct instruction_patch p=setup();

@@ -1,8 +1,8 @@
 # Enable Screen Mirroring
 
 Enables the DASH's bundled AirPlay receiver through its official projection
-service. This is an experimental plugin: receiver discovery and live iPhone
-video/audio still need hardware confirmation.
+service and displays mirroring in the existing phone projection widget.
+The plugin toggle selects the projection mode for the next dashboard launch.
 
 ## Use
 
@@ -10,13 +10,16 @@ video/audio still need hardware confirmation.
 2. Enable the official app's phone projection feature and show its projection widget.
 3. Join the DASH's Wi-Fi hotspot from the iPhone. Open Control Center →
    **Screen Mirroring**, then look for the DASH's configured device name.
-4. Stop mirroring on the iPhone before switching back to CarPlay.
+4. To return to CarPlay/Android Auto, stop mirroring, reboot into Dashborne
+   configuration, turn this plugin off and launch the dashboard.
 
 The plugin does not manage Wi-Fi or enable ADB. Hotspot setup, receiver name,
 video decoding and audio routing remain with the official projection service.
-CarPlay and Android Auto remain enabled in its capability mask; simultaneous
-sessions and switching between them are not yet validated. Touch control of the
-iPhone and playback of protected video are not provided by this plugin.
+While selected, AirPlay is the only enabled projection protocol, preventing
+CarPlay auto-reconnection from taking over its video. When unselected, the
+original CarPlay/Android Auto startup mask is used. This switch is in Dashborne
+configuration; there is no live mode switch in the official dashboard yet.
+Touch control of the iPhone and playback of protected video are not provided.
 
 To disable it, reboot into Dashborne configuration, turn the plugin off and launch
 the dashboard. Booting without the card also restores the original startup mask.
@@ -26,7 +29,7 @@ the dashboard. Booting without the card also restores the original startup mask.
 The verified official 6.11.2 app passes a 76-byte configuration to
 `lylinkapi_start`. Its function mask at offset `0x18` is `0x12`.
 The bundled `lylinkapp_ab` dispatcher starts its AirPlay receiver when bit
-`0x400` is present. The plugin changes that startup mask to `0x412` using one
+`0x400` is present. The plugin changes that startup mask to `0x400` using one
 aligned ARM instruction in the process's private executable mapping. It restores
 the mapping's protection and flushes the instruction cache after each change.
 There are no plugin callbacks in the projection worker.
@@ -56,4 +59,8 @@ synchronization and cleanup retries under ASan/UBSan. ARM cross-build passes.
 The projection library, daemon and AirPlay library read from the test DASH match
 the copies inspected in the 6.11.4 update package.
 The plugin binary, manifest and catalog were deployed to microSD and read back
-byte-for-byte. Activation and iPhone discovery/streaming remain unconfirmed.
+byte-for-byte. The initial combined-protocol build (`0x412`) was confirmed to
+appear in iPhone Screen Mirroring, accept a connection and briefly show mirrored
+video in the projection widget, before returning to CarPlay. The current
+AirPlay-only mask addresses that session competition; sustained video, audio
+and switching back to stock mode still need confirmation on hardware.
