@@ -148,6 +148,14 @@ void usb_debug_toggle(void) { toggle_mode(0); }
 void usb_debug_toggle_wifi(void) { toggle_mode(1); }
 int usb_debug_wifi_owned(void) { return owned && tcp_mode; }
 
+int usb_debug_wifi_active(void) {
+    if (!get_property) return 0;
+    char daemon[PROPERTY_BUFFER], port[PROPERTY_BUFFER];
+    get_property("init.svc.adbd", daemon, "");
+    get_property("service.adb.tcp.port", port, "");
+    return equal(daemon, "running") && equal(port, "5555");
+}
+
 const char *usb_debug_status(void) {
     if (!get_property || !set_property) return "ADB: property API unavailable";
     char daemon[PROPERTY_BUFFER];
@@ -170,6 +178,7 @@ const char *usb_debug_status(void) {
         if (result < 0) { error = usb_configfs_error(); return error; }
         return usb_configfs_status();
     }
+    if (!owned && usb_debug_wifi_active()) return "ADB: TCP service running (:5555)";
     int enabled = usb_enabled();
     if (enabled < 0) return usb_configfs_available() ? "ADB: ConfigFS ready to enable" : "ADB: no supported USB interface";
     if (owned == 2) return "ADB: stopping";

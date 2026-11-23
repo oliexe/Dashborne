@@ -124,6 +124,14 @@ The first connection attempts failed from the laptop's existing ADB server even
 though ping and a direct TCP connection succeeded. Restarting that server restored
 connectivity. USB enumeration remains a separate unresolved issue.
 
+Screen capture through the installed `/res/bin/fbgrab` utility produced the live
+Dashborne UI. Restarting the `zkswe` init service changed the UI process while the
+separate ADB service stayed available. A subsequent remote deployment uploaded a
+new Dashborne library, verified its bytes by downloading it again, retained the
+previous library, installed the new file by rename, and restarted the UI. The
+captured screen confirmed the changed ADB status display. This verifies the
+build/upload/restart/capture development cycle without removing the card.
+
 ## Public references
 
 - [FlyThings: launch from microSD](https://developer.flythings.cn/zh-hans/start_from_sdcard.html).

@@ -117,7 +117,8 @@ static void show_wifi(void *self) {
     void *label = find_control(self, WIFI_STATUS_ID);
     if (label) set_text(label, status);
     void *button = find_control(self, WIFI_ID);
-    if (button) set_text(button, usb_debug_wifi_owned() ? "Disable Wi-Fi ADB" : "Enable Wi-Fi ADB");
+    if (button) set_text(button, usb_debug_wifi_owned() ? "Disable Wi-Fi ADB" :
+                         usb_debug_wifi_active() ? "Wi-Fi ADB active" : "Enable Wi-Fi ADB");
 }
 
 static int on_timer(void *self, int id) {
@@ -151,8 +152,11 @@ static void on_click(void *self, void *control) {
         usb_debug_toggle();
         show_debug(self);
     } else if (id == WIFI_ID) {
-        if (usb_debug_owned() || *wifi_debug_ip()) usb_debug_toggle_wifi();
-        else wifi_debug_retry();
+        if (usb_debug_owned()) usb_debug_toggle_wifi();
+        else if (!usb_debug_wifi_active()) {
+            if (*wifi_debug_ip()) usb_debug_toggle_wifi();
+            else wifi_debug_retry();
+        }
         show_wifi(self);
         show_debug(self);
     } else if (id == STOCK_ID && stock_screen && *stock_screen) {

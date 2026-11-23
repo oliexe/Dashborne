@@ -7,7 +7,7 @@ for scenario in normal shutdown-prepared wrong-runtime read-error missing-layout
     ./build/runtime-test "$scenario"
 done
 ${HOST_CC:-cc} -std=c11 -Wall -Wextra -Werror -fno-strict-aliasing -fsanitize=address,undefined -g tests/usb_debug_test.c -o build/usb-debug-test
-for scenario in normal shutdown missing-api missing-usb external-adb unknown-service unset-service busy-usb start-failure stop-failure write-denied diagnostics diagnostic-failure configfs tcp; do
+for scenario in normal shutdown missing-api missing-usb external-adb unknown-service unset-service busy-usb start-failure stop-failure write-denied diagnostics diagnostic-failure configfs tcp existing-tcp; do
     ./build/usb-debug-test "$scenario"
 done
 ${HOST_CC:-cc} -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -g tests/usb_configfs_test.c -o build/usb-configfs-test

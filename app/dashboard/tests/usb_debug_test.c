@@ -90,6 +90,14 @@ int main(int argc, char **argv) {
         assert(!writes && !starts && !stops);
         printf("PASS: %s\n", scenario); return 0;
     }
+    if (is("existing-tcp")) {
+        daemon = "running";
+        assert(usb_debug_wifi_active() && !usb_debug_owned());
+        assert(!strcmp(usb_debug_status(), "ADB: TCP service running (:5555)"));
+        usb_debug_shutdown();
+        assert(!writes && !stops && !starts);
+        puts("PASS: Existing TCP ADB detected and preserved"); return 0;
+    }
     if (is("tcp")) {
         strcpy(tcp_port, "4321");
         usb_debug_toggle_wifi();

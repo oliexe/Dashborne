@@ -34,6 +34,7 @@ const char *wifi_debug_status(void) { return "Wi-Fi: ready"; }
 const char *wifi_debug_ip(void) { return ""; }
 void usb_debug_toggle_wifi(void) {}
 int usb_debug_wifi_owned(void) { return 0; }
+int usb_debug_wifi_active(void) { return 0; }
 void usb_debug_toggle(void) { ++debug_toggles; }
 void usb_debug_shutdown(void) { }
 void usb_debug_collect(void) { }

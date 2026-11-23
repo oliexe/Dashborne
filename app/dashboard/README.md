@@ -173,3 +173,29 @@ adb kill-server
 adb start-server
 adb connect <displayed-ip>:5555
 ```
+
+## Remote development
+
+Screen capture and a complete remote update cycle are verified on the test DASH.
+The installed `fbgrab` utility captures the current UI:
+
+```sh
+adb -s <displayed-ip>:5555 shell '/res/bin/fbgrab -a -d /dev/fb0 /tmp/dashborne-screen.png'
+adb -s <displayed-ip>:5555 pull /tmp/dashborne-screen.png screen.png
+```
+
+After building and testing locally, upload the library under a temporary name,
+pull it back and compare its bytes with the local build. Preserve the current
+library as `libdashborne.previous.so`, then rename the new file to
+`/mnt/extsd/lib/libdashborne.so`. Replacing by rename avoids overwriting the
+library still mapped into the running UI. Keep the layout in sync if it changes.
+Flush the files and restart the UI through the existing init service:
+
+```sh
+adb -s <displayed-ip>:5555 shell 'sync && setprop ctl.restart zkswe'
+```
+
+The tested restart relaunched Dashborne and kept the separate ADB daemon running.
+The new process recognizes that session as **Wi-Fi ADB active**, without taking
+ownership of a daemon it did not start. Capture another screenshot to verify the
+rendered update. A previous library remains on the card for recovery.

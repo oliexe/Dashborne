@@ -22,6 +22,7 @@
 - [x] Add a ConfigFS backend and tests for setup, endpoint waits and unbinding.
 - [x] Connect through the installed Wi-Fi workflow and add network ADB controls.
 - [x] Verify Wi-Fi ADB, root shell access and file transfers from the laptop.
+- [x] Capture the live screen and deploy/restart an updated UI over Wi-Fi.
 - [ ] Verify USB enumeration and a USB ADB shell on the development laptop.
 
 ## Dashboard features
