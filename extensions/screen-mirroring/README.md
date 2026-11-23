@@ -64,3 +64,7 @@ appear in iPhone Screen Mirroring, accept a connection and briefly show mirrored
 video in the projection widget, before returning to CarPlay. The current
 AirPlay-only mask addresses that session competition; sustained video, audio
 and switching back to stock mode still need confirmation on hardware.
+
+The AirPlay-only build has also been installed on the test card with the binary,
+manifest and catalog verified by read-back. The plugin remains selected; the
+sustained mirroring test is pending.
