@@ -51,7 +51,19 @@ Events append to `/mnt/extsd/Dashborne/events.log`. After testing, check for
 
 ## Physical test
 
-1. Prepare the existing test card using the staging command described below.
+To stage onto the existing test card, preserving its other configuration values:
+
+```sh
+python3 app/dashboard/stage.py /Volumes/DASH_TEST
+```
+
+The command saves the previous launcher configuration on the card. To restore it:
+
+```sh
+python3 app/dashboard/stage.py /Volumes/DASH_TEST --restore
+```
+
+1. Prepare the existing test card using the staging command above, then eject it.
 2. With the DASH powered off, insert the card and power it on.
 3. Check the screen orientation, tap the test button several times, and verify
    that the counter follows each tap.
