@@ -55,8 +55,10 @@ run under ASan/UBSan. The ARM build and static analysis pass.
 
 On the physical DASH, a native probe read contrast/luminance at 50/50, changed
 contrast to 51, verified the driver readback and restored 50/50 successfully.
-Settings navigation, slider touch behavior and visible display changes still
-need hardware preview confirmation.
+The user confirmed the hardware preview: the new Contrast settings page opens,
+enabling adjustments and moving the Contrast slider changes the image, and Reset
+returns it to normal. The separate luminance slider and reversal after booting
+without the card have not yet been confirmed for this plugin.
 
 To regenerate the additive panel against a local settings layout:
 
