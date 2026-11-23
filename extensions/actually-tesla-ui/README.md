@@ -91,4 +91,7 @@ Tests cover transformation round trips, preserved control identities/state/input
 flags, new properties, every input truncation, wrong fingerprints, CRC failures,
 bounds errors, asset dimensions and 10,000 mutations under ASan/UBSan. The optional
 local-reference check verifies the actual delta against the inspected layout.
-The ARM build and static analysis pass. Device preview validation is in progress.
+The ARM build and static analysis pass. On the physical DASH, the user confirmed
+that the plugin opens the official dashboard with the new styling. Individual
+widget interactions, light/dark transitions and restoration after disabling the
+plugin remain to be checked.
