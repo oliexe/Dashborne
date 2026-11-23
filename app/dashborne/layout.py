@@ -60,12 +60,20 @@ def screen():
     adb['textview__heading'] = dict(label(50015, 'ADB', 24, 16, 500, 36, 28, 0xf0f2ff), bold=True)
     adb['textview__header_line'] = dict(id=50024, position=position(24, 64, 1012, 1),
         backgroundColor=0x202228, touchable=False)
-    adb['button__enable'] = button(20002, 'Enable ADB', 0, 72, 1060, 72)
+    adb['button__enable'] = button(20002, 'Enable ADB', 0, 72, 1060, 64)
     adb['button__enable'].update(backgroundColor=0x07080a, bgColorTab={'color1': 0x1b1e26})
-    adb['button__enable']['textPosition'] = position(24, 0, 900, 72)
-    adb['textview__toggle'] = switch(50016, 964, 90)
-    adb['textview__status'] = label(50002, 'Disabled', 24, 170, 950, 32, 20, 0x9ba6bd)
-    adb['textview__address'] = label(50003, '', 24, 210, 950, 44, 30, 0x8eb5ff)
+    adb['button__enable']['textPosition'] = position(24, 0, 900, 64)
+    adb['textview__toggle'] = switch(50016, 964, 86)
+    for key, title, value_id, label_id, y, size, color in [
+        ('status', 'Status', 50002, 50028, 136, 20, 0x9ba6bd),
+        ('address', 'IP address', 50003, 50029, 200, 22, 0x8eb5ff),
+        ('network', 'Wi-Fi network', 50027, 50030, 264, 22, 0xdce2ee),
+    ]:
+        adb['textview__label_'+key] = label(label_id, title, 24, y, 220, 64, 22, 0xe6e9f1)
+        adb['textview__'+key] = label(value_id, '-', 256, y, 780, 64, size, color, 38)
+    for index, y in enumerate((135, 199, 263, 327)):
+        adb['textview__row_line_'+str(index)] = dict(id=50031+index,
+            position=position(24, y, 1012, 1), backgroundColor=0x202228, touchable=False)
     patches = dict(id=110004, position=position(680, 24, 1060, 376), visible=True,
                    backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
     patches['textview__heading'] = dict(label(50005, 'Patches', 24, 16, 340, 36, 28, 0xf0f2ff), bold=True)

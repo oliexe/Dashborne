@@ -6,4 +6,6 @@ void debug_poll(void);
 void debug_release(void);
 const char *debug_status(void);
 const char *debug_ip(void);
+/* Configured developer network while ADB is enabled, not a connection claim. */
+const char *debug_wifi_name(void);
 #endif

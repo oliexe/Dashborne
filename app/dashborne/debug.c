@@ -561,3 +561,5 @@ void debug_poll(void) {
 }
 const char *debug_status(void) { return status; }
 const char *debug_ip(void) { return address; }
+
+const char *debug_wifi_name(void) { return wanted && config_ok ? ssid : ""; }

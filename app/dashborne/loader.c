@@ -42,6 +42,7 @@ extern int fsync(int);
 #define STATUS_ID 50002
 #define ADDRESS_ID 50003
 #define NOTICE_ID 50004
+#define NETWORK_NAME_ID 50027
 
 static void *stock, *runtime;
 static void (*stock_init)(void *), (*stock_deinit)(void *);
@@ -141,7 +142,9 @@ static void render(void *self) {
         unsigned int n = append(address, 0, ip, sizeof(address));
         append(address, n, ":5555", sizeof(address));
     }
-    label(self, ADDRESS_ID, address);
+    label(self, ADDRESS_ID, *address ? address : "-");
+    const char *network = debug_wifi_name();
+    label(self, NETWORK_NAME_ID, settings.wifi_adb && *network ? network : "-");
     unsigned int enabled = 0;
     for (unsigned int i = 0; i < settings.count; ++i) enabled += !!settings.patches[i].enabled;
     char counts[64] = "";

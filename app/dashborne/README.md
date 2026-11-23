@@ -20,7 +20,9 @@ URL beneath the Dashborne branding, leaving room for five patch rows at a time.
 Configuration includes:
 
 - **ADB / Enable ADB:** developer opt-in, off by default; enable/disable TCP
-  ADB and display connection status/address in configuration.
+  ADB. The page uses aligned rows for the switch, live status, IP address with
+  port, and configured developer Wi-Fi name. Address and network fields clear
+  when ADB is disabled.
 - **Patches:** swipe the native list to browse up to 64 entries. Tap a row to
   toggle its patch; each row has a title, description and switch. Incompatible
   patches have a disabled switch. Selections save immediately, and the header

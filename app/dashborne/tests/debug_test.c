@@ -233,7 +233,7 @@ static void cancelled(void) {
     debug_release();
     int before = events;
     advance(500);
-    assert(events == before && !*debug_ip());
+    assert(events == before && !*debug_ip() && !*debug_wifi_name());
     for (unsigned int i = 0; i < sizeof(password); ++i)
         assert(!password[i]);
     for (unsigned int i = 0; i < sizeof(ssid); ++i)
@@ -246,11 +246,12 @@ static void test_default_and_normal(void) {
     assert(!events && !strcmp(debug_status(), "Disabled"));
     ready();
     assert(modes == 1 && connects == 1 && starts == 1);
+    assert(!strcmp(debug_wifi_name(), "TestNetwork"));
     ipv4[3] = 36;
     tick();
     assert(!strcmp(debug_ip(), "10.0.1.36"));
     debug_set_enabled(0);
-    assert(!*debug_ip() && strcmp(debug_status(), "Disabled"));
+    assert(!*debug_ip() && !*debug_wifi_name() && strcmp(debug_status(), "Disabled"));
     advance(10);
     assert(!strcmp(debug_status(), "Disabled") && !strcmp(port, "-1"));
     int before = events;

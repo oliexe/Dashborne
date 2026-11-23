@@ -74,6 +74,7 @@ void debug_set_enabled(int enabled) { if (enabled) ++retried; else ++stopped; }
 void debug_release(void) { ++released; }
 const char *debug_status(void) { return "ADB listening"; }
 const char *debug_ip(void) { return ip; }
+const char *debug_wifi_name(void) { return "TestNetwork"; }
 static void timer(void *p, int id, int interval) {
     assert(p && ((id == NETWORK_TIMER && interval == 1000) || (id == BOOT_TIMER && interval == 3000))); ++timer_calls;
 }
@@ -231,6 +232,7 @@ int main(int argc, char **argv) {
                     click(p, find(p, WIFI_ID)); assert(settings.wifi_adb && retried == 1);
                     ip = "192.0.2.42"; tick(p, NETWORK_TIMER);
                     assert(!strcmp(address, "192.0.2.42:5555") && adb_polls == 1);
+                    assert(!strcmp(((struct mock_control *)find(p, NETWORK_NAME_ID))->text, "TestNetwork"));
                     force_save_failure = 1;
                     click(p, find(p, WIFI_ID)); assert(!settings.wifi_adb && stopped == 4 && !settings_ok);
                     force_save_failure = 0;
