@@ -65,15 +65,15 @@ int main(void) {
     apply_fail=1;assert(session_open(&s)==-1 && !airplay && !held && !s.changed);
     apply_fail=0;enabled=0;assert(session_open(&s)==-1 && !airplay && !held);
     assert(hidden>0);
-    const int widths[]={1888,682,512,216,176};
+    const int widths[]={1920,854,640,270,222};
     for(int i=0;i<MIRROR_ASPECT_COUNT;++i) {
         struct mirror_rect r=aspect_rect(i),p=aspect_physical_rect(i);
-        assert(r.width==widths[i] && r.height==384 && r.top==80);
+        assert(r.width==widths[i] && r.height==480 && r.top==0);
         assert(r.left*2+r.width==1920 && !(r.width%2));
-        assert(p.left==16 && p.top==r.left && p.width==384 && p.height==r.width);
+        assert(p.left==0 && p.top==r.left && p.width==480 && p.height==r.width);
         assert(p.left+p.width<=480 && p.top+p.height<=1920);
         assert(aspect_label(i));
     }
-    assert(aspect_rect(-1).width==1888 && aspect_rect(99).width==1888);
+    assert(aspect_rect(-1).width==1920 && aspect_rect(99).width==1920);
     return 0;
 }

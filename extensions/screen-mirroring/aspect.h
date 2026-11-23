@@ -8,15 +8,15 @@ static inline int aspect_index(int value) {
     return value>=0 && value<MIRROR_ASPECT_COUNT?value:0;
 }
 static inline const char *aspect_label(int value) {
-    static const char *const labels[]={"Aspect: Full width","Aspect: 16:9","Aspect: 4:3",
-                                      "Aspect: 9:16","Aspect: 9:19.5"};
+    static const char *const labels[]={"Full width","16:9","4:3",
+                                      "9:16","9:19.5"};
     return labels[aspect_index(value)];
 }
 static inline struct mirror_rect aspect_rect(int value) {
-    /* Even widths suit the video plane; every preset fits beneath the header. */
-    static const int widths[]={1888,682,512,216,176};
+    /* Even widths suit the video plane; every preset uses the full display height. */
+    static const int widths[]={1920,854,640,270,222};
     int width=widths[aspect_index(value)];
-    return (struct mirror_rect){(1920-width)/2,80,width,384};
+    return (struct mirror_rect){(1920-width)/2,0,width,480};
 }
 static inline struct mirror_rect aspect_physical_rect(int value) {
     struct mirror_rect r=aspect_rect(value);

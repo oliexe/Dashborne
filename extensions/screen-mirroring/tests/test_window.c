@@ -1,8 +1,8 @@
 #include <assert.h>
 #include "../window.c"
 static int opens,closes,started,stopped,clock_ticks;
-static int ids[]={VIDEO,WAITING,RETRY,STATUS,ASPECT};
-static int visibility[5],position_calls;
+static int ids[]={VIDEO,WAITING,RETRY_PANEL,STATUS,ASPECT,HINT,RATIO};
+static int visibility[7],position_calls;
 static struct mirror_rect last_position;
 static const char *last_label;
 int session_open(struct mirror_session *s) {++started;s->state=MIRROR_WAITING;return 0;}
@@ -13,9 +13,9 @@ static void *get_context(void) {return (void *)123;}
 static void open_fake(void *c,const char *name,void *intent) {assert(c==(void *)123 && name && !intent);++opens;}
 static void close_fake(void *c,const char *name) {assert(c==(void *)123 && name);++closes;}
 static int id_fake(void *p) {return *(int *)p;}
-static void *find_fake(void *s,int id) {(void)s;for(int i=0;i<5;++i)if(ids[i]==id)return &ids[i];return 0;}
+static void *find_fake(void *s,int id) {(void)s;for(int i=0;i<7;++i)if(ids[i]==id)return &ids[i];return 0;}
 static void visible_fake(void *p,int n) {visibility[(int *)p-ids]=n;}
-static void text_fake(void *p,const char *t) {assert(t);if(*(int *)p==ASPECT)last_label=t;}
+static void text_fake(void *p,const char *t) {assert(t);if(*(int *)p==RATIO)last_label=t;}
 static void position_fake(void *p,const struct mirror_rect *r) {
     assert(*(int *)p==VIDEO);last_position=*r;++position_calls;
 }
@@ -33,10 +33,12 @@ int main(void) {
     assert(started==1 && !visibility[0] && visibility[1]);
     state.state=MIRROR_PLAYING;timer_secondary((char *)s+4,TIMER);
     assert(visibility[0] && !visibility[1] && !visibility[2] && clock_ticks==1);
-    assert(last_position.width==1888 && position_calls==1 && last_label);
+    assert(last_position.width==1920 && last_position.height==480 && position_calls==1 && !visibility[5]);
     int aspect_button=ASPECT;click(s,&aspect_button);
-    assert(last_position.width==682 && position_calls==2 && started==1 && !closes);
-    assert(last_label==aspect_label(1) && visibility[0]);
+    assert(last_position.width==854 && position_calls==2 && started==1 && !closes);
+    assert(last_label==aspect_label(1) && visibility[0] && visibility[5]);
+    for(int i=0;i<20;++i)timer(s,TIMER);
+    assert(!visibility[5]); /* Ratio hint never becomes a permanent video bar. */
     timer(s,TIMER);assert(position_calls==2); /* Do not repaint unchanged geometry every tick. */
     int button=BACK;click(s,&button);click(s,&button);assert(closes==1 && closing);
     int ticks=clock_ticks;timer(s,TIMER);click(s,&aspect_button);

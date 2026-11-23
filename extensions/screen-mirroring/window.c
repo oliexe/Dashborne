@@ -5,6 +5,9 @@ extern void free(void *);
 #define BACK 299180
 #define RETRY 299181
 #define ASPECT 299182
+#define RETRY_PANEL 119183
+#define HINT 119184
+#define RATIO 599185
 #define VIDEO 699180
 #define WAITING 119180
 #define STATUS 599180
@@ -13,6 +16,7 @@ static const struct dashborne_host *api;
 static struct mirror_session *session;
 static void *table[17],*live;
 static int pending,closing,failed,last_state=-1,last_aspect=-1;
+static int hint_ticks;
 static void (*ctor)(void *),(*dtor)(void *),(*base_created)(void *);
 static void *(*find)(void *,int),*(*context)(void);
 static void (*text)(void *,const char *),(*visible)(void *,int);
@@ -26,22 +30,21 @@ static void render(void *s) {
     int state=failed?MIRROR_ERROR:session->state;
     int aspect=state==MIRROR_PLAYING?session->displayed_aspect:session->aspect;
     if(aspect!=last_aspect) {
-        void *v=find(s,VIDEO),*button=find(s,ASPECT);
+        void *v=find(s,VIDEO);
         struct mirror_rect r=aspect_rect(aspect);
         if(v)position(v,&r);
-        if(button)text(button,aspect_label(aspect));
         last_aspect=aspect;
     }
     if(state==last_state)return;
     last_state=state;
     if(state==MIRROR_PLAYING)api->log(api,"screen-mirroring: viewer displaying AirPlay video");
     show(s,VIDEO,state==MIRROR_PLAYING);show(s,WAITING,state!=MIRROR_PLAYING);
-    show(s,RETRY,state!=MIRROR_PLAYING);
+    show(s,RETRY_PANEL,state!=MIRROR_PLAYING);
     void *p=find(s,STATUS);
     if(p)text(p,state==MIRROR_PLAYING?"Connected":
-        state==MIRROR_ERROR?"Could not switch projection. Try again or go Back.":
-        state==MIRROR_CLOSED?"Mirroring stopped. Tap Retry to start again.":
-        "Join DASH Wi-Fi, then connect in iPhone Screen Mirroring.");
+        state==MIRROR_ERROR?"Could not switch projection. Tap the retry arrow or return to Settings.":
+        state==MIRROR_CLOSED?"Mirroring stopped. Tap the retry arrow to connect again.":
+        "Join the DASH Wi-Fi hotspot to connect.");
 }
 static int leave(void) {
     if(session_close(session)) {
@@ -61,10 +64,16 @@ static void click(void *s,void *c) {
     int id=id_of(c);
     if(id==BACK)back(s);
     else if(id==RETRY) {failed=session_open(session)!=0;last_state=-1;render(s);}
-    else if(id==ASPECT) {session_next_aspect(session);session_tick(session);render(s);}
+    else if(id==ASPECT) {
+        session_next_aspect(session);session_tick(session);render(s);
+        int aspect=session->state==MIRROR_PLAYING?session->displayed_aspect:session->aspect;
+        void *p=find(s,RATIO);if(p)text(p,aspect_label(aspect));
+        hint_ticks=20;show(s,HINT,1);
+    }
 }
 static void created(void *s) {
     base_created(s);pending=0;closing=0;failed=0;last_state=-1;last_aspect=-1;
+    hint_ticks=0;show(s,HINT,0);
     show(s,VIDEO,0);render(s);
     register_timer(s,TIMER,100);
 }
@@ -77,7 +86,10 @@ static void paused(void *s) {
     if(!leave())api->log(api,"screen-mirroring: viewer paused; stock mode restored and restart queued");
 }
 static int timer(void *s,int id) {
-    if(id==TIMER && !closing) {session_tick(session);render(s);}
+    if(id==TIMER && !closing) {
+        session_tick(session);render(s);
+        if(hint_ticks && !--hint_ticks)show(s,HINT,0);
+    }
     return 1;
 }
 static int timer_secondary(void *s,int id) {return timer((char *)s-4,id);}
