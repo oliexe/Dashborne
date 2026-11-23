@@ -9,3 +9,11 @@ assert s['button__back']['position']['top']+s['button__back']['position']['heigh
 assert not s['videoview__mirror']['visible']
 assert s['videoview__mirror']['position']==dict(left=16,top=80,width=1888,height=384)
 assert decode(encode(s))==s
+controls=[s[key] for key in ('button__back','textview__title','textview__status','button__aspect','button__retry')]
+for i,c in enumerate(controls):
+    p=c['position']
+    assert p['top']+p['height']<=80
+    if i:
+        before=controls[i-1]['position']
+        assert before['left']+before['width']<=p['left']
+assert s['button__aspect']['touchable']

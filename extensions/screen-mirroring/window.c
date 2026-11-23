@@ -4,6 +4,7 @@ extern void free(void *);
 #define ACTIVITY "dashborneExtension_screen_mirroring"
 #define BACK 299180
 #define RETRY 299181
+#define ASPECT 299182
 #define VIDEO 699180
 #define WAITING 119180
 #define STATUS 599180
@@ -11,10 +12,11 @@ extern void free(void *);
 static const struct dashborne_host *api;
 static struct mirror_session *session;
 static void *table[17],*live;
-static int pending,closing,failed,last_state=-1;
+static int pending,closing,failed,last_state=-1,last_aspect=-1;
 static void (*ctor)(void *),(*dtor)(void *),(*base_created)(void *);
 static void *(*find)(void *,int),*(*context)(void);
 static void (*text)(void *,const char *),(*visible)(void *,int);
+static void (*position)(void *,const struct mirror_rect *);
 static int (*id_of)(void *);
 static void (*register_timer)(void *,int,int),(*unregister_timer)(void *,int);
 static void (*open_activity)(void *,const char *,void *),(*close_activity)(void *,const char *);
@@ -22,6 +24,14 @@ static const char *layout(void *s) {(void)s;return "../../../mnt/extsd/Dashborne
 static void show(void *s,int id,int value) {void *p=find(s,id);if(p)visible(p,value);}
 static void render(void *s) {
     int state=failed?MIRROR_ERROR:session->state;
+    int aspect=state==MIRROR_PLAYING?session->displayed_aspect:session->aspect;
+    if(aspect!=last_aspect) {
+        void *v=find(s,VIDEO),*button=find(s,ASPECT);
+        struct mirror_rect r=aspect_rect(aspect);
+        if(v)position(v,&r);
+        if(button)text(button,aspect_label(aspect));
+        last_aspect=aspect;
+    }
     if(state==last_state)return;
     last_state=state;
     if(state==MIRROR_PLAYING)api->log(api,"screen-mirroring: viewer displaying AirPlay video");
@@ -31,7 +41,7 @@ static void render(void *s) {
     if(p)text(p,state==MIRROR_PLAYING?"Connected":
         state==MIRROR_ERROR?"Could not switch projection. Try again or go Back.":
         state==MIRROR_CLOSED?"Mirroring stopped. Tap Retry to start again.":
-        "Join the DASH Wi-Fi hotspot, then choose it in iPhone Screen Mirroring.");
+        "Join DASH Wi-Fi, then connect in iPhone Screen Mirroring.");
 }
 static int leave(void) {
     if(session_close(session)) {
@@ -51,9 +61,10 @@ static void click(void *s,void *c) {
     int id=id_of(c);
     if(id==BACK)back(s);
     else if(id==RETRY) {failed=session_open(session)!=0;last_state=-1;render(s);}
+    else if(id==ASPECT) {session_next_aspect(session);session_tick(session);render(s);}
 }
 static void created(void *s) {
-    base_created(s);pending=0;closing=0;failed=0;last_state=-1;
+    base_created(s);pending=0;closing=0;failed=0;last_state=-1;last_aspect=-1;
     show(s,VIDEO,0);render(s);
     register_timer(s,TIMER,100);
 }
@@ -93,6 +104,7 @@ int window_bind(const struct dashborne_host *host,struct mirror_session *state) 
     BIND(ctor,"_ZN8ActivityC1Ev");BIND(dtor,"_ZN8ActivityD1Ev");
     BIND(base_created,"_ZN7BaseApp8onCreateEv");BIND(find,"_ZN7BaseApp15findControlByIDEi");
     BIND(text,"_ZN10ZKTextView7setTextEPKc");BIND(visible,"_ZN6ZKBase10setVisibleEb");
+    BIND(position,"_ZN11ZKVideoView11setPositionERK14LayoutPosition");
     BIND(id_of,"_ZNK6ZKBase5getIDEv");
     BIND(register_timer,"_ZN7BaseApp13registerTimerEii");BIND(unregister_timer,"_ZN7BaseApp15unregisterTimerEi");
     BIND(context,"_ZN13EasyUIContext11getInstanceEv");

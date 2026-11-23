@@ -31,7 +31,10 @@ static int off(void) {return manual_off(controller);}
 static void hold(int value) {inhibit(controller,0x80,value);}
 static void mirror_restart(void) {request_restart(1888,384,1);}
 static void stock_restart(void) {restart();}
-static int show(unsigned int generation) {return video_show(generation,16,16,384,1888);}
+static int show(unsigned int generation,int aspect) {
+    struct mirror_rect r=aspect_physical_rect(aspect);
+    return video_show(generation,r.left,r.top,r.width,r.height);
+}
 static const struct session_ops operations={mode,0,off,0,mirror_restart,stock_restart,0,hold,show,0,0};
 static void log_message(const char *s) { if (host) host->log(host,s); }
 static int fingerprint(const char *path, unsigned int size, unsigned int expected) {

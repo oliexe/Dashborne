@@ -106,3 +106,5 @@ menu with temporary display contrast and luminance controls.
 The experimental [Enable Screen Mirroring plugin](extensions/screen-mirroring)
 adds a dedicated Screen Mirroring window to official Settings. Opening it
 switches to AirPlay; Back returns to Settings and restores CarPlay/Android Auto.
+An Aspect button cycles between full width, landscape and portrait proportions
+without restarting the mirroring connection.

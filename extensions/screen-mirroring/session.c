@@ -1,4 +1,7 @@
 #include "session.h"
+void session_next_aspect(struct mirror_session *s) {
+    s->aspect=(aspect_index(s->aspect)+1)%MIRROR_ASPECT_COUNT;
+}
 static void hold(struct mirror_session *s,int value) {
     if(s->held!=value) {s->ops->hold(value);s->held=value;}
 }
@@ -40,6 +43,9 @@ void session_tick(struct mirror_session *s) {
         if(s->displayed)s->ops->hide();
         s->displayed=0;s->state=MIRROR_WAITING;return;
     }
-    if(s->displayed!=v.generation && !s->ops->show(v.generation))return;
+    if(s->displayed!=v.generation || s->displayed_aspect!=s->aspect) {
+        if(!s->ops->show(v.generation,s->aspect))return;
+        s->displayed_aspect=s->aspect;
+    }
     s->displayed=v.generation;s->state=MIRROR_PLAYING;
 }

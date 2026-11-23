@@ -20,9 +20,10 @@ def screen():
     wait['textview__return']=label(599183,'Back restores CarPlay / Android Auto.',250,230,1388,40,22)
     root['window__waiting']=wait
     root['textview__title']=label(599184,'Screen Mirroring',240,16,340,48,28)
-    root['textview__status']=label(599180,'Starting receiver...',610,16,1040,48,20)
+    root['textview__status']=label(599180,'Starting receiver...',610,16,770,48,20)
     root['button__back']=dict(label(299180,'< Back',24,16,180,48),touchable=True,backgroundColor=0x222222)
     root['button__retry']=dict(label(299181,'Retry',1700,16,196,48),touchable=True,backgroundColor=0x222222)
+    root['button__aspect']=dict(label(299182,'Aspect: Full width',1400,16,280,48),touchable=True,backgroundColor=0x222222)
     return root
 if __name__=='__main__':
     data=screen();blob=encode(data);assert decode(blob)==data
