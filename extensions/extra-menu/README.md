@@ -3,7 +3,11 @@
 Dashborne's core menu adds **Extra** at the bottom right of the official
 dashboard. It opens a separate Settings-style screen with a scrollable list
 on the left and the selected extension's description and **Open** button on
-the right. **Back** returns to the dashboard. Extension windows return to Extra
+the right. It follows stock Settings geometry: five 75-pixel category rows,
+15-pixel gaps, a 480-pixel left column, and a 1000-pixel content panel. Category
+states, the side Settings label, the content background, blue action button and
+Back arrow use the installed app's graphics. Typography and Back placement match
+the stock screen. Categories remain scrollable by dragging, as in stock Settings. **Back** returns to the dashboard. Extension windows return to Extra
 when closed.
 
 The core loads automatically before selected plugins. It has no Patches toggle.
@@ -55,8 +59,9 @@ DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld sh app/dashborne/build.sh
 Host tests cover empty and 64-entry menus, selection and return, duplicate opens,
 cleanup while a window is live, stale tokens, rollback, owner namespaces and
 composition with selected patches. The dashboard patch also applies to the
-private installed reference with all original controls preserved. Device
-navigation and the Screen Mirroring round trip still need hardware confirmation.
+private installed reference with all original controls preserved. Opening Extra,
+launching Screen Mirroring and returning to Extra were confirmed on hardware.
+The subsequent stock-style visual update still needs hardware confirmation.
 The loader, core, updated plugins and catalog were installed with byte-for-byte
 read-back verification. Existing settings were preserved, and configuration and
 ADB returned after restarting the loader.

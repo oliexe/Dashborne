@@ -22,7 +22,7 @@ static void show(int id,int value) {void *p=find(live,id);if(p)visible(p,value);
 static void render(void) {
     if(!live)return;
     int valid=selected>=0 && (unsigned int)selected<count;
-    label(599202,valid?entries[selected].title:"Extensions");
+    label(599202,valid?entries[selected].title:"Extra");
     label(599203,valid?entries[selected].description:"");
     show(599204,!count);show(OPEN,valid);show(LIST,count!=0);
 }

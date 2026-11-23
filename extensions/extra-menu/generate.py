@@ -13,21 +13,31 @@ def label(id,text,x,y,w,h,size=24,color=0xffffff):
     return dict(id=id,text=text,fontSize=size,alignment=36,colorTab={'color0':color},position=pos(x,y,w,h),touchable=False)
 def screen():
     root=dict(id=0,caption='Extra',backgroundColor=0,position=pos(0,0,1920,480),
-              resolution=dict(width=1920,height=480),visible=True,topmost=False,beepEnable=False,hideTimeout=-1)
-    root['textview__title']=label(599200,'Extra',140,24,450,60,34)
-    root['textview__divider']=dict(id=599201,position=pos(620,108,1,270),backgroundColor=0x292d34,touchable=False)
-    item=label(249200,'',0,0,440,72,24)
-    item.update(touchable=True,textPosition=pos(18,0,404,72),
-                bgColorTab={'color0':0x000000,'color1':0x23272e,'color2':0x23272e})
-    root['listview__entries']=dict(id=809200,position=pos(140,108,440,288),
-        rows=4,cols=1,rowSpacing=0,colSpacing=0,item=item,hasScrollbar=True,
-        scrollbarColor=0x596173,autoRollback=True,dragMaxDis=12,beepEnable=False,backgroundColor=0)
-    root['textview__entry']=label(599202,'Extensions',700,120,1000,56,30)
-    root['textview__description']=label(599203,'',700,190,1000,92,23,0xa0a7b4)
-    root['textview__empty']=label(599204,'Enable extensions in Dashborne to see them here.',700,190,1000,92,23,0xa0a7b4)
-    root['button__open']=dict(label(299201,'Open',700,310,240,64),touchable=True,
-        alignment=37,bgColorTab={'color0':0x23272e,'color1':0x383e48})
-    root['button__back']=dict(label(299202,'< Back',1740,385,164,80),touchable=True,alignment=37)
+              resolution=dict(width=1920,height=480),visible=True,topmost=False,beepEnable=True,hideTimeout=-1)
+    # Use the installed Settings visual vocabulary and column geometry.
+    item=label(249200,'',0,0,480,75,28)
+    item.update(touchable=True,textPosition=pos(24,0,456,75),subItem=[],
+                picTab={'pic0':'dash/settings/listitem_bg_n.png',
+                        'pic2':'dash/settings/listitem_bg_s.png',
+                        'pic4':'dash/settings/listitem_bg_i.png'})
+    root['listview__entries']=dict(id=809200,position=pos(185,20,480,450),
+        rows=5,cols=1,rowSpacing=15,colSpacing=0,item=item,hasScrollbar=False,
+        autoRollback=True,dragMaxDis=12,beepEnable=True,backgroundColor=0)
+    root['textview__menu']=dict(id=599200,position=pos(122,270,38,186),
+        backgroundPic='dash/settings/btn_settings_n.png',touchable=False)
+    panel=dict(id=119201,position=pos(700,20,1000,436),
+               backgroundPic='dash/settings/unpair_bg.png')
+    panel['textview__entry']=dict(label(599202,'Extra',30,22,940,64,32),bold=True)
+    panel['textview__description']=label(599203,'',30,108,940,100,24,0x838383)
+    panel['textview__empty']=label(599204,'Enable extensions in Dashborne to see them here.',30,108,940,100,24,0x838383)
+    panel['button__open']=dict(label(299201,'Open',30,256,300,75,28),touchable=True,
+        alignment=37,beepEnable=True,
+        picTab={'pic0':'dash/settings/btn_con_n.png','pic1':'dash/settings/btn_con_p.png'})
+    root['window__content']=panel
+    root['button__back']=dict(label(299202,'Back',1740,375,160,84,32),touchable=True,
+        alignment=37,beepEnable=True,iconPosition=pos(0,21,119,42),
+        colorTab={'color0':0xffffff,'color1':0x838383,'color4':0x4c4e4d},
+        picTab={'pic0':'dash/elements/btn_back_bg_n.png','pic1':'dash/elements/btn_back_bg_p.png'})
     return root
 if __name__=='__main__':
     (ROOT/'assets').mkdir(exist_ok=True)

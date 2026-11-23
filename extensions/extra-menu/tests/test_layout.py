@@ -11,5 +11,5 @@ button=spec['control'];p=button['position']
 assert p['left']>=1700 and p['top']>=400 and p['left']+p['width']<=1920 and p['top']+p['height']<=480
 assert button['button__extra']['touchable']
 assert spec['key'].startswith('window__zz')
-assert layout['listview__entries']['hasScrollbar']
+assert not layout['listview__entries']['hasScrollbar']
 assert len({v['id'] for v in layout.values() if isinstance(v,dict) and 'id' in v})==len([v for v in layout.values() if isinstance(v,dict) and 'id' in v])
