@@ -45,15 +45,26 @@ symbol addresses. Original callback results and the timer's `this` adjustment
 are preserved. Manual display-off retains priority; no Wi-Fi watchdog or new
 background worker is introduced.
 
+The same UI callbacks bridge AirPlay into the official `ProjectionManager`
+resource-grant state. The stock CP/AA session notifications normally supply this
+state; AirPlay can deliver decoded frames without it, leaving the opaque standby
+cover over the video layer. While decoded AirPlay is visible and a projection
+widget exists, the plugin grants presentation and calls the original cover
+refresh method. It preserves the other UI gates. Disconnect, pause, explicit
+screen-off and cleanup release the temporary grant. The manager mapping,
+exported method anchor and private refresh entry are checked before use.
+
 Full-file size/CRC checks cover the installed app, projection UI library, AB
 daemon and AirPlay library before any modification. Symbol addresses, mapping
 permissions and the original instruction are checked too. A different build is
 rejected. Activation requires projection to be stopped; normally it has not yet
 started while Dashborne configuration is open.
 
-Cleanup releases the owned sleep inhibitor and restores the dashboard callbacks
+Cleanup releases the temporary presentation grant and owned sleep inhibitor,
+then restores the dashboard callbacks
 and their mapping permissions before restoring the original instruction.
-If projection is running, it requests a restart through the official app's existing queue. A failed memory/cache/
+If projection is running, it requests a restart through the official app's
+existing queue. A failed memory/cache/
 protection restore remains a cleanup failure so the engine will not silently
 unload it. A process restart discards the private mapping regardless.
 
@@ -71,7 +82,9 @@ synchronization and cleanup retries under ASan/UBSan. Callback tests cover
 AirPlay visibility, other protocols, disconnect, explicit display-off,
 pause/resume, secondary-base dispatch, callback return values, preserving
 other inhibitors, conflicting hooks and failed permission restoration/retries.
-ARM cross-build passes.
+Presentation tests cover missing/removed widgets, stock UI gates, avoiding
+repeated refreshes, disconnect, preserving existing grants and later revocation,
+and repeated cleanup. ARM cross-build passes.
 The projection library, daemon and AirPlay library read from the test DASH match
 the copies inspected in the 6.11.4 update package.
 The plugin binary, manifest and catalog were deployed to microSD and read back
@@ -89,7 +102,14 @@ inspection traced this request to the display-off branch of
 sleep inhibitor. The iPhone's “no internet” message alone does not identify the
 cause of a disconnect.
 
-The sleep-inhibition build passes host checks and cross-compilation. Its binary,
-manifest and catalog are installed on the test card and verified by read-back.
-Sustained video, audio, manual screen-off and switching back to stock mode need
+With sleep inhibition installed, the user reported a sustained connection but
+no visible picture. Captures confirmed decoded 496×720 frames and a video layer
+under the framebuffer, while the UI kept its opaque standby cover. This led to
+the presentation-grant bridge. Another capture also showed an official
+projection restart during a session; that reconnect behavior remains under
+investigation.
+
+The presentation build passes host checks and ARM cross-compilation. Its binary,
+manifest and catalog are installed on microSD and verified by read-back. Visible
+mirroring, audio, manual screen-off and switching back to stock mode still need
 confirmation on hardware.

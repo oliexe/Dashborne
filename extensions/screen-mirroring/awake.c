@@ -1,4 +1,5 @@
 #include "awake.h"
+#include "presentation.h"
 typedef __UINTPTR_TYPE__ uintptr;
 extern int mprotect(void *, __SIZE_TYPE__, int);
 extern void *fopen(const char *, const char *);
@@ -24,7 +25,9 @@ static void hold(int enable) {
                         "screen-mirroring: idle sleep inhibition released");
 }
 static void update(void) {
-    hold(resumed && !user_off(controller) && link_type()==10 && video_shown());
+    int active=resumed && !user_off(controller) && link_type()==10 && video_shown();
+    hold(active);
+    presentation_update(active);
 }
 static int timer(void *self,int id) {
     /* The official timer can evaluate idle sleep: inhibit before delegating. */
@@ -44,6 +47,7 @@ static void resume(void *self) {
 }
 static void pause(void *self) {
     resumed=0;
+    presentation_release();
     hold(0);
     original_pause(self);
 }
@@ -97,7 +101,7 @@ int awake_install(const struct dashborne_host *host,void *image_base) {
     *(void **)(&original_timer)=hooks[0].saved;
     *(void **)(&original_resume)=hooks[1].saved;
     *(void **)(&original_pause)=hooks[2].saved;
-    if(map_table())return -1;
+    if(map_table() || presentation_bind(host,image_base))return -1;
     if(mprotect(page,4096,protection|2))return -1;
     /* Activation, these callbacks and cleanup all run on the UI thread. */
     for(unsigned int i=0;i<HOOK_COUNT;++i)table[hooks[i].slot]=hooks[i].replacement;
@@ -106,6 +110,7 @@ int awake_install(const struct dashborne_host *host,void *image_base) {
     return 0;
 }
 int awake_restore(void) {
+    presentation_reset();
     if(held)hold(0);
     resumed=0;
     if(installed) {
