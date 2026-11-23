@@ -42,10 +42,10 @@ def screen():
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
     splash['textview__3'] = label(50011, 'Tap screen to enter configuration', 560, 282, 800, 36, 22, 0xa4aabd, 37)
     config = dict(id=110002, position=position(0, 0, 1920, 480), visible=False, backgroundColor=0x000000)
-    config['textview__4'] = dict(id=50012, position=position(170, 414, 72, 48), touchable=False,
+    config['textview__4'] = dict(id=50012, position=position(170, 402, 60, 40), touchable=False,
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
-    config['textview__5'] = label(50013, 'DASHBORNE', 260, 421, 340, 38, 25, 0xf0f2ff)
-    config['textview__6'] = label(50014, f'v{VERSION}  /  https://github.com/oliexe/Dashborne', 180, 14, 1560, 26, 17, 0x79849a)
+    config['textview__5'] = label(50013, 'DASHBORNE', 246, 404, 340, 32, 25, 0xf0f2ff)
+    config['textview__6'] = label(50014, f'v{VERSION}  /  https://github.com/oliexe/Dashborne', 180, 448, 440, 22, 15, 0x79849a)
     for id, key, text, y in [(20006, 'patches', 'Patches', 68), (20007, 'adb', 'ADB', 152)]:
         config['button__nav_'+key] = button(id, text, 180, y, 400, 70)
         config['button__nav_'+key].update(backgroundColor=0x000000,

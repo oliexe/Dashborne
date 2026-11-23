@@ -14,9 +14,8 @@ from the installed app in flash.
 Configuration uses a black background with a category sidebar on the left and
 the selected content on the right. **Patches** opens by default; **ADB** contains
 the developer connection controls. Switching sections preserves selections and
-the list position. The compact header shows the development version from
-`VERSION` and the repository URL. Branding sits in the footer, leaving room
-for five patch rows at a time.
+the list position. The footer places the development version from `VERSION` and the repository
+URL beneath the Dashborne branding, leaving room for five patch rows at a time.
 
 Configuration includes:
 
