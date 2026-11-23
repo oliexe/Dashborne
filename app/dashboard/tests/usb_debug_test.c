@@ -48,7 +48,9 @@ static int set(const char *name, const char *value) {
     if (!strcmp(name, "service.adb.tcp.port")) snprintf(tcp_port, sizeof(tcp_port), "%s", value);
     else if (!strcmp(name, "sys.usb.config")) snprintf(usb_config, sizeof(usb_config), "%s", value);
     else if (!strcmp(name, "ctl.start")) {
-        assert(!strcmp(value, "adbd") && !strcmp(tcp_port, "0") && !strcmp(usb_config, is("configfs") ? "none" : "adb"));
+        assert(!strcmp(value, "adbd"));
+        if (is("tcp")) assert(!strcmp(tcp_port, "5555") && !strcmp(usb_config, "none"));
+        else assert(!strcmp(tcp_port, "0") && !strcmp(usb_config, is("configfs") ? "none" : "adb"));
         ++starts; /* Simulate init processing the request asynchronously. */
     } else if (!strcmp(name, "ctl.stop")) { assert(!strcmp(value, "adbd")); ++stops; }
     else { assert(!strcmp(name, "sys.usb.state") && !strcmp(value, "none")); }
@@ -87,6 +89,22 @@ int main(int argc, char **argv) {
         assert(strstr(last_log, is("diagnostic-failure") ? "failed" : "saved"));
         assert(!writes && !starts && !stops);
         printf("PASS: %s\n", scenario); return 0;
+    }
+    if (is("tcp")) {
+        strcpy(tcp_port, "4321");
+        usb_debug_toggle_wifi();
+        assert(starts == 1 && usb_debug_wifi_owned() && !gadget);
+        assert(!strcmp(usb_debug_status(), "ADB: starting TCP service"));
+        daemon = "running";
+        assert(!strcmp(usb_debug_status(), "ADB: TCP service running (:5555)"));
+        usb_debug_toggle_wifi();
+        assert(!strcmp(usb_debug_status(), "ADB: stopping"));
+        assert(!strcmp(tcp_port, "5555"));
+        daemon = "stopped";
+        (void)usb_debug_status();
+        assert(!usb_debug_owned() && !strcmp(tcp_port, "4321") && !gadget);
+        assert(!strcmp(usb_config, "none"));
+        puts("PASS: TCP ADB start/stop/restore"); return 0;
     }
     if (is("external-adb")) daemon = "running";
     if (is("unknown-service")) daemon = "unknown";

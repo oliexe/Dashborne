@@ -21,6 +21,7 @@ static int (*set_property)(const char *, const char *);
 static void (*log_event)(const char *);
 static int owned;
 static int configfs;
+static int tcp_mode;
 static char previous_tcp_port[PROPERTY_BUFFER];
 static const char *error;
 static int diagnostic_pid;
@@ -85,10 +86,10 @@ static int stop_owned(void) {
     if (!owned) return 0;
     /* Cancel the ADB selection before disabling the gadget. Status polling
        finishes cleanup after init reports the daemon stopped. */
-    int failed = set_property("sys.usb.config", "none") != 0;
+    int failed = !tcp_mode && set_property("sys.usb.config", "none") != 0;
     failed |= set_property("ctl.stop", "adbd") != 0;
-    failed |= disable_usb() != 0;
-    failed |= set_property("sys.usb.state", "none") != 0;
+    failed |= !tcp_mode && disable_usb() != 0;
+    failed |= !tcp_mode && set_property("sys.usb.state", "none") != 0;
     if (failed) { error = "ADB: stop failed; tap to retry"; return -1; }
     owned = 2;
     log_event("adb-stop-requested\n");
@@ -105,7 +106,7 @@ void usb_debug_bind(void *runtime, void (*logger)(const char *)) {
 
 int usb_debug_owned(void) { return owned; }
 
-void usb_debug_toggle(void) {
+static void toggle_mode(int tcp) {
     error = (const char *)0;
     if (!get_property || !set_property) { error = "ADB: property API unavailable"; return; }
     if (owned) { (void)stop_owned(); return; }
@@ -117,8 +118,9 @@ void usb_debug_toggle(void) {
         log_event("adb-start-skipped: service-not-stopped\n");
         return;
     }
-    int enabled = usb_enabled();
-    configfs = enabled < 0 && usb_configfs_available();
+    tcp_mode = tcp;
+    int enabled = tcp ? 0 : usb_enabled();
+    configfs = !tcp && enabled < 0 && usb_configfs_available();
     if (configfs) {
         if (usb_configfs_prepare(log_event)) { error = usb_configfs_error(); return; }
     } else if (enabled != 0) {
@@ -128,31 +130,39 @@ void usb_debug_toggle(void) {
     }
     get_property("service.adb.tcp.port", previous_tcp_port, "");
     owned = 1;
-    /* Use the existing init service and USB trigger. No persistent properties
-       are set. A nonempty zero explicitly selects USB rather than TCP. */
-    if (set_property("service.adb.tcp.port", "0") ||
-        set_property("sys.usb.config", "none") ||
-        (!configfs && set_property("sys.usb.config", "adb")) ||
+    /* The existing init service reads the temporary TCP port at startup.
+       Zero selects USB; 5555 selects network ADB. */
+    if (set_property("service.adb.tcp.port", tcp ? "5555" : "0") ||
+        (!tcp && set_property("sys.usb.config", "none")) ||
+        (!tcp && !configfs && set_property("sys.usb.config", "adb")) ||
         set_property("ctl.start", "adbd")) {
         error = "ADB: start request failed";
         log_event("adb-start-request-failed\n");
         (void)stop_owned();
         return;
     }
-    log_event("adb-start-requested\n");
+    log_event(tcp ? "adb-tcp-start-requested\n" : "adb-start-requested\n");
 }
+
+void usb_debug_toggle(void) { toggle_mode(0); }
+void usb_debug_toggle_wifi(void) { toggle_mode(1); }
+int usb_debug_wifi_owned(void) { return owned && tcp_mode; }
 
 const char *usb_debug_status(void) {
     if (!get_property || !set_property) return "ADB: property API unavailable";
     char daemon[PROPERTY_BUFFER];
     get_property("init.svc.adbd", daemon, "unknown");
     if (owned == 2 && equal(daemon, "stopped")) {
-        if (disable_usb() || set_property("sys.usb.state", "none") ||
+        if ((!tcp_mode && (disable_usb() || set_property("sys.usb.state", "none"))) ||
             set_property("service.adb.tcp.port", previous_tcp_port))
             error = "ADB: stop failed; tap to retry";
         else { owned = 0; log_event("adb-stopped\n"); }
     }
     if (error) return error;
+    if (tcp_mode && owned) {
+        if (owned == 2) return "ADB: stopping";
+        return equal(daemon, "running") ? "ADB: TCP service running (:5555)" : "ADB: starting TCP service";
+    }
     if (configfs && owned == 2) return "ADB: stopping";
     if (configfs && owned == 1) {
         if (!equal(daemon, "running")) return "ADB: starting ConfigFS service";

@@ -1,5 +1,6 @@
 /* Original C adapter for the inspected ARM FlyThings Activity ABI. */
 #include "usb_debug.h"
+#include "wifi_debug.h"
 typedef __SIZE_TYPE__ usize;
 typedef unsigned int u32;
 extern void *dlopen(const char *, int);
@@ -25,6 +26,8 @@ extern int fsync(int);
 #define STOCK_ID 20002
 #define DEBUG_ID 20003
 #define DEBUG_STATUS_ID 50004
+#define WIFI_ID 20004
+#define WIFI_STATUS_ID 50005
 #define DEBUG_TIMER 91001
 
 static void *stock, *runtime, *context;
@@ -85,21 +88,40 @@ static void show_count(void *self) {
 
 static void show_debug(void *self) {
     usb_debug_poll();
-    static const char *previous_status;
+    static char previous_status[128];
     const char *status = usb_debug_status();
     void *label = find_control(self, DEBUG_STATUS_ID);
     if (label) set_text(label, status);
     void *button = find_control(self, DEBUG_ID);
-    if (button) set_text(button, usb_debug_owned() ? "Disable USB ADB" : "Enable USB ADB");
-    if (status != previous_status) {
+    if (button) set_text(button, usb_debug_owned() && !usb_debug_wifi_owned() ? "Disable USB ADB" : "Enable USB ADB");
+    unsigned int i = 0;
+    while (i < sizeof(previous_status) - 1 && status[i] && status[i] == previous_status[i]) ++i;
+    if (status[i] != previous_status[i]) {
         log_line(status);
         log_line("\n");
-        previous_status = status;
+        for (i = 0; status[i] && i < sizeof(previous_status) - 1; ++i) previous_status[i] = status[i];
+        previous_status[i] = 0;
     }
 }
 
+static void show_wifi(void *self) {
+    static char previous[80];
+    const char *status = wifi_debug_status();
+    unsigned int i = 0;
+    while (i < sizeof(previous) - 1 && status[i] && status[i] == previous[i]) ++i;
+    if (status[i] != previous[i]) {
+        log_line(status); log_line("\n");
+        for (i = 0; i < sizeof(previous) - 1 && status[i]; ++i) previous[i] = status[i];
+        previous[i] = 0;
+    }
+    void *label = find_control(self, WIFI_STATUS_ID);
+    if (label) set_text(label, status);
+    void *button = find_control(self, WIFI_ID);
+    if (button) set_text(button, usb_debug_wifi_owned() ? "Disable Wi-Fi ADB" : "Enable Wi-Fi ADB");
+}
+
 static int on_timer(void *self, int id) {
-    if (id == DEBUG_TIMER) show_debug(self);
+    if (id == DEBUG_TIMER) { wifi_debug_poll(); show_wifi(self); show_debug(self); }
     return 1;
 }
 
@@ -112,6 +134,8 @@ static void on_create(void *self) {
     usb_debug_collect();
     taps = 0;
     show_count(self);
+    wifi_debug_retry();
+    show_wifi(self);
     show_debug(self);
     register_timer(self, DEBUG_TIMER, 1000);
     log_line("screen-created\n");
@@ -125,6 +149,11 @@ static void on_click(void *self, void *control) {
         log_line("touch\n");
     } else if (id == DEBUG_ID) {
         usb_debug_toggle();
+        show_debug(self);
+    } else if (id == WIFI_ID) {
+        if (usb_debug_owned() || *wifi_debug_ip()) usb_debug_toggle_wifi();
+        else wifi_debug_retry();
+        show_wifi(self);
         show_debug(self);
     } else if (id == STOCK_ID && stock_screen && *stock_screen) {
         log_line("open-original\n");
@@ -175,6 +204,7 @@ static int bind_runtime(void) {
     table[15] = (void *)destroy_secondary;
     table[16] = (void *)on_timer_secondary;
     usb_debug_bind(runtime, log_line);
+    wifi_debug_bind(stock, log_line);
     return 1;
 }
 

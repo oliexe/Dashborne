@@ -52,14 +52,14 @@
   "textview__3": {
     "id": 50003,
     "text": "Touches: 0",
-    "fontSize": 30,
+    "fontSize": 26,
     "alignment": 36,
     "colorTab": {
       "color0": 10332601
     },
     "position": {
       "left": 84,
-      "top": 190,
+      "top": 170,
       "width": 780,
       "height": 52
     },
@@ -100,14 +100,14 @@
   "textview__4": {
     "id": 50004,
     "text": "ADB: off",
-    "fontSize": 28,
+    "fontSize": 26,
     "alignment": 36,
     "colorTab": {
       "color0": 10332601
     },
     "position": {
       "left": 80,
-      "top": 254,
+      "top": 270,
       "width": 800,
       "height": 52
     },
@@ -116,7 +116,7 @@
   "button__3": {
     "id": 20003,
     "text": "Enable USB ADB",
-    "fontSize": 32,
+    "fontSize": 28,
     "alignment": 36,
     "backgroundColor": 2042948,
     "colorTab": {
@@ -125,7 +125,39 @@
     "position": {
       "left": 80,
       "top": 334,
+      "width": 390,
+      "height": 100
+    }
+  },
+  "textview__5": {
+    "id": 50005,
+    "text": "Wi-Fi: connecting...",
+    "fontSize": 26,
+    "alignment": 36,
+    "colorTab": {
+      "color0": 10332601
+    },
+    "position": {
+      "left": 80,
+      "top": 220,
       "width": 800,
+      "height": 52
+    },
+    "touchable": false
+  },
+  "button__4": {
+    "id": 20004,
+    "text": "Enable Wi-Fi ADB",
+    "fontSize": 28,
+    "alignment": 36,
+    "backgroundColor": 2042948,
+    "colorTab": {
+      "color0": 15923193
+    },
+    "position": {
+      "left": 490,
+      "top": 334,
+      "width": 390,
       "height": 100
     }
   }

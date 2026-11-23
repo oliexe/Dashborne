@@ -1,7 +1,7 @@
 # First Dashborne screen
 
 A 1920 × 480 screen with a touch counter and an **Open original dashboard**
-button, plus a USB ADB debug switch. It runs inside the installed FlyThings process
+button, plus USB and Wi-Fi ADB debug switches. It runs inside the installed FlyThings process
 and forwards the original initialization and shutdown callbacks. Display and touch
 have been verified on the DASH. Vehicle data is not connected yet.
 
@@ -98,7 +98,8 @@ controller. **USB configured** means the host configured the USB device;
 **waiting for USB host** means the gadget is bound but no attachment is reported.
 Neither message confirms an authorized ADB shell. Binding and endpoint waits are
 limited to 15 status polls. Reboot if a previous app process left the debug gadget
-directory behind. ConfigFS USB enumeration is pending its first hardware test.
+directory behind. The test DASH binds the gadget and creates endpoints, but the Mac has not
+enumerated it, including with a direct data cable.
 
 The switch leaves an already-running daemon or an already-enabled USB gadget
 alone and reports that state. Failed requests stay visible, with a retry available
@@ -125,3 +126,39 @@ connected to the laptop, then power off and return the card. The report is
 The report covers USB device controllers, roles, ConfigFS, loaded modules,
 process identity and available helpers. It neither loads drivers nor changes
 USB configuration. The ADB button performs configuration separately.
+
+## Wi-Fi ADB
+
+Stage a local JSON configuration with `ssid` and `password` strings:
+
+```sh
+python3 app/dashboard/stage.py /Volumes/DASH_TEST --wifi-config /path/to/wifi.json
+```
+
+The staging command validates the configuration and writes `Dashborne/wifi.conf`
+on the card. Booting this build requests station mode through the installed
+application's networking workflow, then requests the configured connection.
+The screen displays the IPv4 address reported for `wlan0` once the stock Wi-Fi
+manager reports a connection. A failed connection can be retried with the Wi-Fi
+button. The connection requests use the installed GNU C++11 string ABI through
+a small const-reference adapter.
+
+Tap **Enable Wi-Fi ADB**, then connect from a computer on the same network:
+
+```sh
+adb connect <displayed-ip>:5555
+adb devices -l
+adb -s <displayed-ip>:5555 shell
+```
+
+The button starts the existing daemon with temporary `service.adb.tcp.port=5555`.
+The status reports the daemon state; successful `adb connect` and shell access
+still need verification on the DASH. Disable the current ADB mode before enabling
+the other one. Stopping Wi-Fi ADB restores the previous temporary port setting
+once init reports the daemon stopped. Wi-Fi remains available to the original
+application. No persistent debug property or authentication setting is changed.
+
+The installed networking API is consistent with the documented
+[FlyThings Wi-Fi manager](https://docs.flythings.cn/zh-hans/wifi.html).
+Local tests cover config validation, partial reads, API failures, delayed mode
+changes, connection timeout/retry, IPv4 discovery and ADB start/stop/port restoration.

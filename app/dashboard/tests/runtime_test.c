@@ -27,6 +27,13 @@ static char label[32];
 static int counter_control;
 static int debug_control, debug_button, debug_toggles, timer_calls;
 void usb_debug_bind(void *p, void (*logger)(const char *)) { assert(p == (void *)2 && logger); }
+void wifi_debug_bind(void *p, void (*logger)(const char *)) { assert(p == (void *)1 && logger); }
+void wifi_debug_poll(void) {}
+void wifi_debug_retry(void) {}
+const char *wifi_debug_status(void) { return "Wi-Fi: ready"; }
+const char *wifi_debug_ip(void) { return ""; }
+void usb_debug_toggle_wifi(void) {}
+int usb_debug_wifi_owned(void) { return 0; }
 void usb_debug_toggle(void) { ++debug_toggles; }
 void usb_debug_shutdown(void) { }
 void usb_debug_collect(void) { }
@@ -59,6 +66,7 @@ static void *find(void *p, int id) {
     assert(p);
     if (id == COUNT_ID) return &counter_control;
     if (id == DEBUG_STATUS_ID) return &debug_control;
+    if (id == WIFI_ID || id == WIFI_STATUS_ID) return NULL;
     assert(id == DEBUG_ID); return &debug_button;
 }
 static int get_id(void *p) { return *(int *)p; }

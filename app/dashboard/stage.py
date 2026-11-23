@@ -21,7 +21,18 @@ def atomic_write(path, content):
     temporary.replace(path)
 
 
-def stage(card, restore=False, build=None):
+def wifi_config_bytes(path):
+    config = json.loads(Path(path).read_bytes())
+    ssid, password = config.get("ssid"), config.get("password")
+    if not isinstance(ssid, str) or not isinstance(password, str):
+        raise ValueError("Wi-Fi config needs ssid and password strings")
+    if (not 1 <= len(ssid.encode()) <= 32 or not 8 <= len(password.encode()) <= 63 or
+            any(c in ssid + password for c in "\r\n\0")):
+        raise ValueError("Invalid Wi-Fi SSID or WPA passphrase length/characters")
+    return (ssid + "\n" + password + "\n").encode()
+
+
+def stage(card, restore=False, build=None, wifi_config=None):
     card = Path(card).resolve()
     if not card.is_dir() or (card / "DASH_SD_PROBE_V1").read_bytes() != b"DASH_SD_TEST\n":
         raise ValueError("Select the existing DASH test card")
@@ -36,6 +47,7 @@ def stage(card, restore=False, build=None):
         json.loads(backup)
         atomic_write(config_path, backup)
         return
+    wifi = wifi_config_bytes(wifi_config) if wifi_config else None
     if config.get("resPath") != "/res/ui/":
         raise ValueError("This build expects the installed resource root /res/ui/")
     build = Path(build) if build else ROOT / "card"
@@ -54,6 +66,8 @@ def stage(card, restore=False, build=None):
     atomic_write(card / "lib/libdashborne.so", library)
     atomic_write(card / "ui/dashborne.ftu", layout)
     atomic_write(card / "Dashborne/usb-diagnostics.sh", diagnostic_script)
+    if wifi is not None:
+        atomic_write(card / "Dashborne/wifi.conf", wifi)
     config["startupLibPath"] = STARTUP
     atomic_write(config_path, (json.dumps(config, indent=2) + "\n").encode())
 
@@ -62,9 +76,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("card", type=Path)
     parser.add_argument("--restore", action="store_true")
+    parser.add_argument("--wifi-config", type=Path, help="Local JSON with ssid and password")
     args = parser.parse_args()
     try:
-        stage(args.card, args.restore)
+        stage(args.card, args.restore, wifi_config=args.wifi_config)
     except (OSError, ValueError) as error:
         parser.exit(1, f"{error}\n")
     print("Previous launcher restored." if args.restore else "Dashborne staged. Eject the card before disconnecting it.")

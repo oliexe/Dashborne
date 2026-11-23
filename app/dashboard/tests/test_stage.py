@@ -30,6 +30,27 @@ class StageTest(unittest.TestCase):
         stage(self.card, restore=True)
         self.assertEqual((self.card / "EasyUI.cfg").read_bytes(), self.original)
 
+    def test_wifi_config_and_preservation(self):
+        local = self.card / "local.json"
+        local.write_text(json.dumps({"ssid": "Example WiFi", "password": "example-passphrase"}))
+        stage(self.card, wifi_config=local)
+        expected = b"Example WiFi\nexample-passphrase\n"
+        self.assertEqual((self.card / "Dashborne/wifi.conf").read_bytes(), expected)
+        stage(self.card)
+        self.assertEqual((self.card / "Dashborne/wifi.conf").read_bytes(), expected)
+
+    def test_invalid_wifi_does_not_change_launcher(self):
+        local = self.card / "local.json"
+        for values in [{"ssid": "x", "password": "short"},
+                       {"ssid": "bad\nnetwork", "password": "example-passphrase"},
+                       {"ssid": "x" * 33, "password": "example-passphrase"},
+                       {"ssid": 42, "password": "example-passphrase"}]:
+            local.write_text(json.dumps(values))
+            with self.assertRaises(ValueError):
+                stage(self.card, wifi_config=local)
+            self.assertEqual((self.card / "EasyUI.cfg").read_bytes(), self.original)
+            self.assertFalse((self.card / "lib/libdashborne.so").exists())
+
     def test_missing_build_does_not_change_config(self):
         with self.assertRaises(OSError):
             stage(self.card, build=self.card / "missing")
