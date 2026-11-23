@@ -23,7 +23,7 @@ class Entry(ctypes.Structure):
     _fields_ = [('id', ctypes.c_char*32), ('title', ctypes.c_char*64), ('description', ctypes.c_char*128),
                 ('enabled', ctypes.c_int), ('compatible', ctypes.c_int)]
 class Settings(ctypes.Structure):
-    _fields_ = [('wifi_adb', ctypes.c_int), ('count', ctypes.c_uint), ('patches', Entry*16)]
+    _fields_ = [('wifi_adb', ctypes.c_int), ('count', ctypes.c_uint), ('patches', Entry*64)]
 
 
 class StateTests(unittest.TestCase):
@@ -95,3 +95,15 @@ class StateTests(unittest.TestCase):
         (self.card/'settings.conf').write_text('\np\np.\npatch.\npatch.one=1\nwifi_adb=1\nwifi_adb=0\n')
         s=self.load();self.assertEqual(s.count,1);self.assertFalse(s.wifi_adb);self.assertTrue(s.patches[0].enabled)
         self.assertEqual(s.patches[0].id,b'one')
+
+    def test_full_catalog_settings_roundtrip(self):
+        ids = ['patch-'+str(i).zfill(25) for i in range(64)]
+        packet = (self.card/'patches/one.dbp').read_bytes()
+        for id in ids: (self.card/'patches'/f'{id}.dbp').write_bytes(packet)
+        (self.card/'patches/catalog.tsv').write_text(''.join(
+            id+'\t'+'Title'*12+'\t'+'Description '*10+'\n' for id in ids))
+        s = self.load(); self.assertEqual(s.count, 64)
+        for i in range(64): s.patches[i].enabled = i % 2
+        self.assertEqual(self.lib.state_save(ctypes.byref(s)), 1)
+        restored = self.load()
+        self.assertEqual([restored.patches[i].enabled for i in range(64)], [i % 2 for i in range(64)])

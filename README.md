@@ -37,9 +37,10 @@ Dashborne shows a small centered icon and **Tap screen to enter configuration**.
 Tap within three seconds to open configuration. Otherwise, it applies the
 selected patches and opens the installed official dashboard.
 
-Configuration provides developer-only Wi-Fi ADB (off by default) with a live
-status/address, a selectable list
-of patches installed on the card, and **Launch dashboard**. Settings are saved
+Configuration has **Patches** and **ADB** categories in a left sidebar. The
+patches panel has a scrollable list with individual toggles; the ADB panel has
+developer-only access (off by default) with a live status/address. **Launch
+dashboard** remains available below the panels. Settings are saved
 on the card and remain selected on the next boot.
 
 ```text

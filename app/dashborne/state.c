@@ -92,7 +92,7 @@ void state_load(struct settings *state) {
     unsigned int n = 0, base_size = 0;
     unsigned char *base = load(DASHBORNE_TARGET, &base_size);
     unsigned char *catalog = load(DASHBORNE_ROOT "/patches/catalog.tsv", &n);
-    if (catalog && n < 8192) {
+    if (catalog && n < 16384) {
         char *cursor = (char *)catalog, *entry;
         while ((entry = line(&cursor)) && state->count < MAX_PATCHES) {
             char *title = entry;
@@ -134,7 +134,7 @@ void state_load(struct settings *state) {
 }
 int state_save(const struct settings *state) {
     if (state->count > MAX_PATCHES) return 0;
-    char data[1024];
+    char data[4096];
     unsigned int n = copy(data, state->wifi_adb ? "wifi_adb=1\n" : "wifi_adb=0\n", sizeof(data));
     for (unsigned int i = 0; i < state->count; ++i) {
         if (!valid_id(state->patches[i].id)) return 0;

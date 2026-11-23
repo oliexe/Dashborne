@@ -29,14 +29,19 @@ extern int fsync(int);
 #define TAP_ID 20001
 #define WIFI_ID 20002
 #define LAUNCH_ID 20003
-#define PREVIOUS_ID 20004
-#define NEXT_ID 20005
-#define ROW_ID 20100
-#define DETAIL_ID 50100
+#define PATCHES_TAB_ID 20006
+#define ADB_TAB_ID 20007
+#define ADB_PANEL_ID 110003
+#define PATCHES_PANEL_ID 110004
+#define LIST_ID 80001
+#define DETAIL_ID 24001
+#define TOGGLE_ID 24002
+#define WIFI_TOGGLE_ID 50016
+#define COUNT_ID 50018
+#define EMPTY_ID 50019
 #define STATUS_ID 50002
 #define ADDRESS_ID 50003
 #define NOTICE_ID 50004
-#define PAGE_ID 50005
 
 static void *stock, *runtime;
 static void (*stock_init)(void *), (*stock_deinit)(void *);
@@ -53,9 +58,13 @@ static void (*register_timer)(void *, int, int);
 static void *table[17], *prepared;
 static unsigned int reconnect_ticks;
 static struct settings settings;
-static int phase, page, settings_ok = 1;
+static int phase, section, settings_ok = 1;
+static void *list_owner;
+static void (*set_adapter)(void *, void *), (*set_list_listener)(void *, void *);
+static void (*refresh_list)(void *);
+static void *(*find_subitem)(void *, int);
 static int (*control_id)(void *);
-static void (*set_visible)(void *, int), (*set_color)(void *, int);
+static void (*set_visible)(void *, int), (*set_color)(void *, int), (*set_selected)(void *, int);
 static void (*unregister_timer)(void *, int);
 static void *(*ui_instance)(void);
 static void (*open_activity)(void *, const char *, void *);
@@ -105,11 +114,25 @@ static unsigned int append(char *to, unsigned int at, const char *s, unsigned in
     while (*s && at + 1 < cap) to[at++] = *s++;
     to[at] = 0; return at;
 }
+static unsigned int number(char *to, unsigned int at, unsigned int value) {
+    if (value >= 10) to[at++] = (char)('0' + value / 10);
+    to[at++] = (char)('0' + value % 10); to[at] = 0;
+    return at;
+}
 static void render(void *self) {
     visible(self, SPLASH_ID, phase == 0);
     visible(self, CONFIG_ID, phase == 1 || phase == 2);
     if (phase != 1 && phase != 2) return;
-    label(self, WIFI_ID, settings.wifi_adb ? "[x]  Wi-Fi ADB" : "[ ]  Wi-Fi ADB");
+    visible(self, PATCHES_PANEL_ID, section == 0);
+    visible(self, ADB_PANEL_ID, section == 1);
+    visible(self, 50020, section == 0); visible(self, 50021, section == 1);
+    void *patch_tab = find_control(self, PATCHES_TAB_ID), *adb_tab = find_control(self, ADB_TAB_ID);
+    if (patch_tab) set_selected(patch_tab, section == 0);
+    if (adb_tab) set_selected(adb_tab, section == 1);
+    color(self, PATCHES_TAB_ID, section == 0 ? 0xf0f2ff : 0x79849a);
+    color(self, ADB_TAB_ID, section == 1 ? 0xf0f2ff : 0x79849a);
+    label(self, WIFI_ID, "Enable ADB");
+    label(self, WIFI_TOGGLE_ID, settings.wifi_adb ? "1" : "0");
     color(self, WIFI_ID, settings.wifi_adb ? 0x8eb5ff : 0xd8deeb);
     const char *ip = wifi_debug_ip();
     label(self, STATUS_ID, settings.wifi_adb ? (*ip ? tcp_adb_status() : wifi_debug_status()) : "Disabled");
@@ -119,25 +142,49 @@ static void render(void *self) {
         append(address, n, ":5555", sizeof(address));
     }
     label(self, ADDRESS_ID, address);
-    for (int row = 0; row < 4; ++row) {
-        unsigned int index = (unsigned int)(page * 4 + row);
-        int show = index < settings.count;
-        visible(self, ROW_ID + row, show); visible(self, DETAIL_ID + row, show);
-        if (show) {
-            struct patch_entry *p = &settings.patches[index];
-            char title[100];
-            unsigned int n = append(title, 0, p->enabled ? "[x]  " : "[ ]  ", sizeof(title));
-            append(title, n, p->title, sizeof(title));
-            label(self, ROW_ID + row, title);
-            label(self, DETAIL_ID + row, p->compatible ? p->description : "Not compatible with this installed app");
-            color(self, ROW_ID + row, !p->compatible ? 0x657080 : p->enabled ? 0x8eb5ff : 0xd8deeb);
-        }
-    }
-    visible(self, PREVIOUS_ID, page > 0);
-    visible(self, NEXT_ID, (unsigned int)((page + 1) * 4) < settings.count);
-    label(self, PAGE_ID, settings.count ? "Patches on microSD" : "No patches found on microSD");
+    unsigned int enabled = 0;
+    for (unsigned int i = 0; i < settings.count; ++i) enabled += !!settings.patches[i].enabled;
+    char counts[64] = "";
+    unsigned int n = number(counts, 0, enabled);
+    n = append(counts, n, " enabled / ", sizeof(counts));
+    n = number(counts, n, settings.count);
+    append(counts, n, settings.count > 3 ? " patches  -  Swipe to scroll" : " patches", sizeof(counts));
+    label(self, COUNT_ID, counts);
+    visible(self, EMPTY_ID, settings.count == 0);
+    visible(self, LIST_ID, settings.count != 0);
     label(self, NOTICE_ID, settings_ok ? "Settings are saved to microSD" : "Could not save settings to microSD");
 }
+/* Independent C adapters for the runtime's list interfaces. The first two
+   virtual slots are destructors; the installed ARM ABI dispatches count at
+   slot 2, row data at slot 3, and clicks at listener slot 2. */
+static void list_noop(void *self) { (void)self; }
+static int list_count(void *self, void *list) {
+    (void)self; (void)list; return (int)settings.count;
+}
+static void list_data(void *self, void *list, void *item, int index) {
+    (void)self; (void)list;
+    if (index < 0 || (unsigned int)index >= settings.count) return;
+    struct patch_entry *p = &settings.patches[index];
+    set_text(item, p->title);
+    set_color(item, p->compatible ? 0xe6e9f1 : 0x657080);
+    void *detail = find_subitem(item, DETAIL_ID), *toggle = find_subitem(item, TOGGLE_ID);
+    if (detail) set_text(detail, p->compatible ? p->description : "Not compatible with this installed app");
+    if (toggle) set_text(toggle, !p->compatible ? "2" : p->enabled ? "1" : "0");
+}
+static void list_click(void *self, void *list, int index, int subitem) {
+    (void)self; (void)subitem;
+    if (phase != 1 || section != 0 || !list_owner || index < 0 || (unsigned int)index >= settings.count) return;
+    struct patch_entry *p = &settings.patches[index];
+    if (!p->compatible) return;
+    p->enabled = !p->enabled;
+    settings_ok = state_save(&settings);
+    refresh_list(list);
+    render(list_owner);
+}
+static void *adapter_table[] = {0, 0, (void *)list_noop, (void *)list_noop, (void *)list_count, (void *)list_data};
+static void *listener_table[] = {0, 0, (void *)list_noop, (void *)list_noop, (void *)list_click};
+static void **adapter = adapter_table + 2, **list_listener = listener_table + 2;
+
 static void launch(void *self) {
     if (phase == 2 || phase == 3) return;
     if (!state_save(&settings)) { settings_ok = 0; phase = 1; render(self); return; }
@@ -172,7 +219,13 @@ static int on_timer_secondary(void *self, int id) {
 static void on_create(void *self) {
     base_on_create(self);
     state_load(&settings);
-    phase = 0; page = 0;
+    phase = 0; section = 0;
+    list_owner = self;
+    void *list = find_control(self, LIST_ID);
+    if (list) {
+        set_adapter(list, &adapter); set_list_listener(list, &list_listener);
+        refresh_list(list);
+    }
     /* A one-shot deployment marker opens configuration for remote verification. */
     if (access("/mnt/extsd/Dashborne/config.once", 0) == 0) {
         extern int unlink(const char *);
@@ -192,23 +245,21 @@ static void on_click(void *self, void *control) {
         if (settings.wifi_adb) { reconnect_ticks = 0; wifi_debug_retry(); }
     } else if (phase != 1) return;
     else if (id == LAUNCH_ID) { launch(self); return; }
-    else if (id == WIFI_ID) {
+    else if (id == PATCHES_TAB_ID) section = 0;
+    else if (id == ADB_TAB_ID) section = 1;
+    else if (id == WIFI_ID && section == 1) {
         settings.wifi_adb = !settings.wifi_adb;
         settings_ok = state_save(&settings);
         if (settings.wifi_adb) { reconnect_ticks = 0; wifi_debug_retry(); }
         else tcp_adb_stop();
-    } else if (id >= ROW_ID && id < ROW_ID + 4) {
-        unsigned int index = (unsigned int)(page * 4 + id - ROW_ID);
-        if (index < settings.count && settings.patches[index].compatible) {
-            settings.patches[index].enabled = !settings.patches[index].enabled;
-            settings_ok = state_save(&settings);
-        }
-    } else if (id == PREVIOUS_ID && page > 0) --page;
-    else if (id == NEXT_ID && (unsigned int)((page + 1) * 4) < settings.count) ++page;
+    }
     render(self);
 }
 
-static void destroy(void *self) { activity_dtor(self); free(self); }
+static void destroy(void *self) {
+    if (list_owner == self) list_owner = (void *)0;
+    activity_dtor(self); free(self);
+}
 static void destroy_secondary(void *self) { destroy((void **)self - 1); }
 
 static void *new_activity(void) {
@@ -239,6 +290,11 @@ static int bind_runtime(void) {
     BIND(control_id, "_ZNK6ZKBase5getIDEv");
     BIND(set_visible, "_ZN6ZKBase10setVisibleEb");
     BIND(set_color, "_ZN10ZKTextView12setTextColorEi");
+    BIND(set_selected, "_ZN6ZKBase11setSelectedEb");
+    BIND(set_adapter, "_ZN10ZKListView14setListAdapterEPNS_14AbsListAdapterE");
+    BIND(set_list_listener, "_ZN10ZKListView20setItemClickListenerEPNS_18IItemClickListenerE");
+    BIND(refresh_list, "_ZN10ZKListView15refreshListViewEv");
+    BIND(find_subitem, "_ZNK10ZKListView10ZKListItem15findSubItemByIDEi");
     BIND(ui_instance, "_ZN13EasyUIContext11getInstanceEv");
     BIND(open_activity, "_ZN13EasyUIContext12openActivityEPKcP6Intent");
 #undef BIND

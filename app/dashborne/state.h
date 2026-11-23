@@ -1,6 +1,6 @@
 #ifndef DASHBORNE_STATE_H
 #define DASHBORNE_STATE_H
-#define MAX_PATCHES 16
+#define MAX_PATCHES 64
 struct patch_entry {
     char id[32], title[64], description[128];
     int enabled, compatible;

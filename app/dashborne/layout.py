@@ -22,6 +22,14 @@ def button(id, text, x, y, w, h, primary=False):
     return p
 
 
+def switch(id, x, y):
+    return dict(id=id, text='0', alignment=37, touchable=False,
+                position=position(x, y, 72, 36),
+                charsetTab=[dict(char=48+i, pic='../../../mnt/extsd/Dashborne/ui/toggle-'+name+'.png',
+                                 size=dict(width=72, height=36))
+                            for i, name in enumerate(('off', 'on', 'disabled'))])
+
+
 def screen():
     root = dict(id=0, caption='Dashborne', backgroundColor=0x000000,
                 position=position(0, 0, 1920, 480), resolution=dict(width=1920, height=480),
@@ -31,24 +39,45 @@ def screen():
     splash['textview__2'] = dict(id=50010, position=position(840, 112, 240, 160), touchable=False,
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
     splash['textview__3'] = label(50011, 'Tap screen to enter configuration', 560, 282, 800, 36, 22, 0xa4aabd, 37)
-    config = dict(id=110002, position=position(0, 0, 1920, 480), visible=False, backgroundColor=0x090c14)
+    config = dict(id=110002, position=position(0, 0, 1920, 480), visible=False, backgroundColor=0x000000)
     config['textview__4'] = dict(id=50012, position=position(150, 22, 108, 72), touchable=False,
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
     config['textview__5'] = label(50013, 'DASHBORNE', 280, 26, 700, 40, 30, 0xf0f2ff)
     config['textview__6'] = label(50014, 'Configure your dashboard', 280, 66, 900, 28, 19, 0x79849a)
-    config['textview__7'] = label(50015, 'DEVELOPER ACCESS', 180, 132, 500, 30, 18, 0x79849a)
-    config['button__8'] = button(20002, '[ ]  Wi-Fi ADB', 180, 181, 470, 64)
-    config['textview__9'] = label(50002, 'Disabled', 180, 260, 500, 35, 22, 0x9ba6bd)
-    config['textview__10'] = label(50003, '', 180, 302, 520, 44, 30, 0x8eb5ff)
-    config['textview__11'] = label(50005, 'Patches on microSD', 770, 126, 800, 34, 22, 0x9ba6bd)
-    for row in range(4):
-        y = 170 + row * 52
-        config[f'button__{20+row}'] = button(20100+row, '', 770, y, 970, 48)
-        config[f'button__{20+row}']['textPosition']['height'] = 32
-        config[f'textview__{30+row}'] = label(50100+row, '', 790, y+31, 930, 20, 15, 0x79849a)
+    for id, key, text, y in [(20006, 'patches', 'Patches', 154), (20007, 'adb', 'ADB', 238)]:
+        config['button__nav_'+key] = button(id, text, 180, y, 400, 70)
+        config['button__nav_'+key].update(backgroundColor=0x000000,
+            bgColorTab={'color0': 0x000000, 'color1': 0x15171d, 'color2': 0x15171d})
+        config['textview__active_'+key] = dict(id=50020+(id-20006),
+            position=position(180, y+17, 3, 36), backgroundColor=0x8eb5ff, touchable=False)
+    config['textview__divider'] = dict(id=50017, position=position(624, 128, 1, 248),
+                                     backgroundColor=0x262830, touchable=False)
+    adb = dict(id=110003, position=position(680, 120, 1060, 270), visible=False)
+    adb['textview__heading'] = label(50015, 'ADB', 0, 0, 500, 34, 24, 0xdce2ee)
+    adb['button__enable'] = button(20002, 'Enable ADB', 0, 54, 1044, 72)
+    adb['button__enable'].update(backgroundColor=0x000000, bgColorTab={'color1': 0x14161c})
+    adb['button__enable']['textPosition'] = position(18, 0, 880, 72)
+    adb['textview__toggle'] = switch(50016, 952, 72)
+    adb['textview__status'] = label(50002, 'Disabled', 18, 150, 950, 35, 22, 0x9ba6bd)
+    adb['textview__address'] = label(50003, '', 18, 194, 950, 44, 30, 0x8eb5ff)
+    patches = dict(id=110004, position=position(680, 120, 1060, 270), visible=True)
+    patches['textview__heading'] = label(50005, 'Patches', 0, 0, 340, 34, 24, 0xdce2ee)
+    patches['textview__count'] = label(50018, '', 350, 2, 710, 30, 18, 0x79849a, 38)
+    item = label(24000, '', 0, 0, 1044, 74, 22, 0xe6e9f1)
+    item.update(touchable=True, textPosition=position(18, 8, 890, 30),
+                bgColorTab={'color0': 0x000000, 'color1': 0x15171d},
+                subItem=[label(24001, '', 18, 39, 890, 24, 16, 0x79849a),
+                         switch(24002, 952, 19),
+                         dict(id=24003, position=position(18, 73, 1006, 1),
+                              backgroundColor=0x202228, touchable=False)])
+    patches['listview__patches'] = dict(id=80001, position=position(0, 44, 1060, 222),
+        rows=3, cols=1, rowSpacing=0, colSpacing=0, item=item,
+        hasScrollbar=True, scrollbarColor=0x596173, autoRollback=True,
+        dragMaxDis=12, beepEnable=False, backgroundColor=0x000000)
+    patches['textview__empty'] = label(50019, 'No patches found on microSD', 18, 70, 1000, 36, 22, 0x79849a)
+    config['window__adb'] = adb
+    config['window__patches'] = patches
     config['textview__40'] = label(50004, 'Settings are saved to microSD', 180, 411, 1000, 32, 19, 0x79849a)
-    config['button__41'] = button(20004, 'Previous', 1120, 398, 140, 54)
-    config['button__42'] = button(20005, 'Next', 1280, 398, 120, 54)
     config['button__43'] = button(20003, 'Launch dashboard', 1440, 398, 300, 54, primary=True)
     root['window__1'] = splash
     root['window__2'] = config
@@ -61,3 +90,5 @@ if __name__ == '__main__':
     source = screen(); blob = encode(source)
     assert decode(blob) == source
     out.write_bytes(blob)
+    from switches import write_switches
+    write_switches(out.parent)

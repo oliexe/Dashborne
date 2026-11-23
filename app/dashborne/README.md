@@ -11,12 +11,19 @@ configuration; there is no further timeout while configuring. Otherwise,
 Dashborne applies the selected patches and opens the official startup activity
 from the installed app in flash.
 
+Configuration uses a black background with a category sidebar on the left and
+the selected content on the right. **Patches** opens by default; **ADB** contains
+the developer connection controls. Switching sections preserves selections and
+the list position.
+
 Configuration includes:
 
-- **Wi-Fi ADB:** developer opt-in, off by default; enable/disable TCP ADB
-  and display connection status/address in configuration.
-- **Patches on microSD:** check individual compatible patches. Four are shown
-  per page, with navigation for a catalog of up to 16.
+- **ADB / Enable ADB:** developer opt-in, off by default; enable/disable TCP
+  ADB and display connection status/address in configuration.
+- **Patches:** swipe the native list to browse up to 64 entries. Tap a row to
+  toggle its patch; each row has a title, description and switch. Incompatible
+  patches have a disabled switch. Selections save immediately, and the header
+  shows how many patches are enabled.
 - **Launch dashboard:** save selections, apply the patches, open the official UI.
 
 Selections are written to `Dashborne/settings.conf`. Network credentials are
@@ -93,11 +100,13 @@ selection does not reset those preferences.
 
 ## Development checks
 
-The native callback tests cover automatic launch, tap-to-cancel, checkbox actions,
+The native callback tests cover automatic launch, tap-to-cancel, switch actions,
+category navigation, list adapter callbacks and selecting entries beyond the
+first visible rows,
 save/apply failures, runtime compatibility and cleanup. Settings tests cover
 round-trips, malformed catalogs, missing patches, and composing independent patches
-while preserving every original layout field. Installer tests cover Wi-Fi
-migration, preserving choices, and restoring the exact previous configuration.
+while preserving every original layout field, plus a full 64-entry settings
+round-trip. Installer tests cover Wi-Fi migration, preserving choices, and restoring the exact previous configuration.
 
 The configuration screen renders on hardware, including the supplied icon and
 live Wi-Fi ADB status. The splash automatically opens the official dashboard with
@@ -113,3 +122,8 @@ the network timer; Dashborne makes no Wi-Fi reconnect or ADB restart requests
 while the official UI runs. Its CarPlay/Android Auto hotspot remains under the
 official app's control. An existing ADB connection may drop when that app changes
 network mode; debugging through the hotspot is not yet implemented.
+
+The patch browser uses the runtime's [native list control](https://developer.flythings.cn/zh-hans/listview.html).
+Only visible rows are populated through the adapter; scrolling and drag-versus-tap
+handling remain with the framework. Switch images are original geometric assets
+rendered by `switches.py` during the build.

@@ -25,8 +25,9 @@ static void *(*registered)(void);
 static void *original_table[17];
 static char status_label[128], address[32];
 static int timer_calls, wifi_polls, adb_polls;
-static int opened, applied, saved, stopped, retried, cancelled;
-struct mock_control { int id; char text[256]; int shown; };
+static int opened, applied, saved, stopped, retried, cancelled, list_refreshes;
+static void *bound_adapter, *bound_listener;
+struct mock_control { int id; char text[256]; int shown, selected; };
 static struct mock_control controls[40];
 static int control_count;
 void state_load(struct settings *s) {
@@ -35,10 +36,15 @@ void state_load(struct settings *s) {
     strcpy(s->patches[0].id, "badge"); strcpy(s->patches[0].title, "Badge");
     s->patches[0].compatible = 1; s->patches[0].enabled = 1;
     strcpy(s->patches[1].id, "incompatible");
+    if (!strcmp(scenario, "list")) {
+        s->count = 64;
+        strcpy(s->patches[63].title, "Last patch");
+        s->patches[63].compatible = 1;
+    }
 }
-int state_save(const struct settings *s) { assert(s->count == 2); ++saved; return strcmp(scenario, "save-failure") != 0; }
+int state_save(const struct settings *s) { assert(s->count == 2 || s->count == 64); ++saved; return strcmp(scenario, "save-failure") != 0; }
 int state_apply(const struct settings *s, void (*log)(const char *)) {
-    assert(s->count == 2 && log); ++applied; return !strcmp(scenario, "patch-failure") ? -1 : 1;
+    assert((s->count == 2 || s->count == 64) && log); ++applied; return !strcmp(scenario, "patch-failure") ? -1 : 1;
 }
 void tcp_adb_stop(void) { ++stopped; }
 static const char *ip = "";
@@ -78,12 +84,26 @@ static void *find(void *p, int id) {
     assert(control_count < 40); controls[control_count].id = id;
     return &controls[control_count++];
 }
+static void attach_adapter(void *p, void *a) { assert(p && a); bound_adapter = a; }
+static void attach_listener(void *p, void *a) { assert(p && a); bound_listener = a; }
+static void refresh(void *p) { assert(p); ++list_refreshes; }
+static void *subitem(void *p, int id) { return find(p, id); }
+static void item_click(void *p, int index) {
+    void **v = *(void ***)bound_listener;
+    ((void (*)(void *, void *, int, int))v[2])(bound_listener, find(p, LIST_ID), index, TOGGLE_ID);
+}
+static void obtain(void *p, int index) {
+    void **v = *(void ***)bound_adapter;
+    assert(((int (*)(void *, void *))v[2])(bound_adapter, find(p, LIST_ID)) == (int)settings.count);
+    ((void (*)(void *, void *, void *, int))v[3])(bound_adapter, find(p, LIST_ID), find(p, 24000), index);
+}
 static void text(void *p, const char *s) {
     struct mock_control *c = p; snprintf(c->text, sizeof(c->text), "%s", s);
     if (c->id == STATUS_ID) snprintf(status_label, sizeof(status_label), "%s", s);
     if (c->id == ADDRESS_ID) snprintf(address, sizeof(address), "%s", s);
 }
 static void visibility(void *p, int shown) { ((struct mock_control *)p)->shown = shown; }
+static void selection(void *p, int selected) { ((struct mock_control *)p)->selected = selected; }
 static void text_color(void *p, int rgb) { assert(p && rgb); }
 static int id_of(void *p) { return ((struct mock_control *)p)->id; }
 static void cancel_timer(void *p, int id) { assert(p && (id == BOOT_TIMER || id == NETWORK_TIMER)); ++cancelled; }
@@ -105,6 +125,7 @@ void *fake_dlsym(void *handle, const char *name) {
     }
     assert(handle == (void *)2);
     if (is("missing-symbol") && !strcmp(name, "_ZN8ActivityC1Ev")) return NULL;
+    if (is("missing-list-api") && !strcmp(name, "_ZN10ZKListView14setListAdapterEPNS_14AbsListAdapterE")) return NULL;
     struct { const char *name; void *address; } symbols[] = {
         {"_ZN15ActivityFactory11getInstanceEv", (void *)factory},
         {"_ZN15ActivityFactory16registerActivityEPKcPFP8ActivityvE", (void *)reg_activity},
@@ -115,8 +136,13 @@ void *fake_dlsym(void *handle, const char *name) {
         {"_ZN7BaseApp13registerTimerEii", (void *)timer},
         {"_ZN7BaseApp15unregisterTimerEi", (void *)cancel_timer},
         {"_ZNK6ZKBase5getIDEv", (void *)id_of},
+        {"_ZN6ZKBase11setSelectedEb", (void *)selection},
         {"_ZN6ZKBase10setVisibleEb", (void *)visibility},
         {"_ZN10ZKTextView12setTextColorEi", (void *)text_color},
+        {"_ZN10ZKListView14setListAdapterEPNS_14AbsListAdapterE", (void *)attach_adapter},
+        {"_ZN10ZKListView20setItemClickListenerEPNS_18IItemClickListenerE", (void *)attach_listener},
+        {"_ZN10ZKListView15refreshListViewEv", (void *)refresh},
+        {"_ZNK10ZKListView10ZKListItem15findSubItemByIDEi", (void *)subitem},
         {"_ZN13EasyUIContext11getInstanceEv", (void *)ui},
         {"_ZN13EasyUIContext12openActivityEPKcP6Intent", (void *)navigate},
         {"_ZTV8Activity", original_table}, {"_ZNK7BaseApp10getAppNameEv", (void *)base_name}
@@ -154,7 +180,7 @@ int main(int argc, char **argv) {
     onEasyUIInit((void *)123);
     const char *selected = onStartupApp((void *)123);
     assert(init_calls == 1 && start_calls == 1);
-    if (is("developer-auto") || is("developer-tap") || is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
+    if (is("list") || is("developer-auto") || is("developer-tap") || is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
         assert(!strcmp(selected, ACTIVITY) && registered && create_calls == 1);
         assert(phase == 0 && timer_calls == 2 && !opened && !retried);
         if (!is("shutdown-prepared")) {
@@ -165,7 +191,7 @@ int main(int argc, char **argv) {
             int (*tick)(void *, int) = (int (*)(void *, int))v[5];
             for (int i = 0; i < 120; ++i) tick(p, NETWORK_TIMER);
             assert(!retried && !wifi_polls && !adb_polls);
-            if (is("developer-tap") || is("tapped") || is("toggles")) {
+            if (is("list") || is("developer-tap") || is("tapped") || is("toggles")) {
                 click(p, find(p, TAP_ID));
                 assert(phase == 1 && cancelled == 1);
                 if (is("developer-tap")) {
@@ -175,12 +201,34 @@ int main(int argc, char **argv) {
                 }
                 tick(p, BOOT_TIMER); assert(!opened && !applied);
                 if (is("toggles")) {
+                    click(p, find(p, ADB_TAB_ID)); assert(section == 1);
                     click(p, find(p, WIFI_ID)); assert(settings.wifi_adb && retried == 1);
                     ip = "192.0.2.42"; tick(p, NETWORK_TIMER);
                     assert(!strcmp(address, "192.0.2.42:5555") && adb_polls == 1);
                     click(p, find(p, WIFI_ID)); assert(!settings.wifi_adb && stopped == 2);
-                    click(p, find(p, ROW_ID)); assert(!settings.patches[0].enabled);
-                    click(p, find(p, ROW_ID + 1)); assert(!settings.patches[1].enabled);
+                    click(p, find(p, PATCHES_TAB_ID)); assert(section == 0);
+                    item_click(p, 0); assert(!settings.patches[0].enabled);
+                    item_click(p, 1); assert(!settings.patches[1].enabled);
+                }
+                if (is("list")) {
+                    assert(section == 0 && ((struct mock_control *)find(p, PATCHES_PANEL_ID))->shown);
+                    int before_nav = saved;
+                    click(p, find(p, ADB_TAB_ID));
+                    assert(section == 1 && !((struct mock_control *)find(p, PATCHES_PANEL_ID))->shown);
+                    assert(((struct mock_control *)find(p, ADB_PANEL_ID))->shown);
+                    item_click(p, 0); assert(saved == before_nav);
+                    click(p, find(p, PATCHES_TAB_ID)); assert(section == 0 && saved == before_nav);
+                    obtain(p, 63);
+                    assert(!strcmp(((struct mock_control *)find(p, 24000))->text, "Last patch"));
+                    assert(!strcmp(((struct mock_control *)find(p, TOGGLE_ID))->text, "0"));
+                    item_click(p, 63); assert(settings.patches[63].enabled && saved == 1);
+                    obtain(p, 63); assert(!strcmp(((struct mock_control *)find(p, TOGGLE_ID))->text, "1"));
+                    obtain(p, 1); assert(!strcmp(((struct mock_control *)find(p, TOGGLE_ID))->text, "2"));
+                    item_click(p, 1); item_click(p, -1); item_click(p, 64); assert(saved == 1);
+                    obtain(p, 0); assert(!strcmp(((struct mock_control *)find(p, 24000))->text, "Badge"));
+                    int before_refresh = list_refreshes;
+                    tick(p, NETWORK_TIMER); assert(list_refreshes == before_refresh);
+                    item_click(p, 63); assert(!settings.patches[63].enabled && saved == 2);
                 }
                 click(p, find(p, LAUNCH_ID));
             } else tick(p, BOOT_TIMER);

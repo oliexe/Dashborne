@@ -27,8 +27,8 @@ def package(source, destination):
             raise ValueError('Invalid patch label')
         (destination / (id + '.dbp')).write_bytes(module.compile_patch(patch))
         catalog.append('\t'.join((id, title, description)))
-    if len(catalog) > 16:
-        raise ValueError('This loader supports up to 16 patches')
+    if len(catalog) > 64:
+        raise ValueError('This loader supports up to 64 patches')
     (destination / 'catalog.tsv').write_text('\n'.join(catalog) + '\n')
 
 
