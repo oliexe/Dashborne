@@ -30,9 +30,9 @@ The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
 MicroSD code execution is confirmed on a physical DASH. Our ARM library loaded
 alongside the installed application and produced diagnostic results. The first
 custom screen renders and handles touch on a physical DASH. It includes a touch
-counter, a button to open the original dashboard, and a USB ADB debug switch.
-ADB connection testing is next, followed by integration with the communication
-service.
+counter, a button to open the original dashboard, and USB/Wi-Fi ADB controls.
+Wi-Fi ADB is verified on hardware, including a root shell and file transfers.
+Integration with the existing communication service is next.
 
 - [Research](docs/research.md)
 - [Roadmap](docs/roadmap.md)

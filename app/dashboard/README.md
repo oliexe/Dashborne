@@ -152,8 +152,9 @@ adb -s <displayed-ip>:5555 shell
 ```
 
 The button starts the existing daemon with temporary `service.adb.tcp.port=5555`.
-The status reports the daemon state; successful `adb connect` and shell access
-still need verification on the DASH. Disable the current ADB mode before enabling
+Wi-Fi ADB was verified on the physical DASH: `adb devices` reports `device`,
+the shell has UID/GID 0, and a push/pull round trip preserved the file bytes.
+The status line itself reports only the daemon state. Disable the current ADB mode before enabling
 the other one. Stopping Wi-Fi ADB restores the previous temporary port setting
 once init reports the daemon stopped. Wi-Fi remains available to the original
 application. No persistent debug property or authentication setting is changed.
@@ -162,3 +163,13 @@ The installed networking API is consistent with the documented
 [FlyThings Wi-Fi manager](https://docs.flythings.cn/zh-hans/wifi.html).
 Local tests cover config validation, partial reads, API failures, delayed mode
 changes, connection timeout/retry, IPv4 discovery and ADB start/stop/port restoration.
+
+If `adb connect` reports “No route to host” while a direct TCP check reaches
+port 5555, restarting the laptop's ADB server resolved that condition during the
+hardware test. This disconnects any other transports using the same server:
+
+```sh
+adb kill-server
+adb start-server
+adb connect <displayed-ip>:5555
+```

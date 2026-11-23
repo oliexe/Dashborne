@@ -20,7 +20,9 @@
 - [x] Add read-only USB diagnostics after the legacy control path proved unavailable.
 - [x] Identify the exposed USB device controller and installed ConfigFS helper.
 - [x] Add a ConfigFS backend and tests for setup, endpoint waits and unbinding.
-- [ ] Verify USB enumeration and an ADB shell on the development laptop.
+- [x] Connect through the installed Wi-Fi workflow and add network ADB controls.
+- [x] Verify Wi-Fi ADB, root shell access and file transfers from the laptop.
+- [ ] Verify USB enumeration and a USB ADB shell on the development laptop.
 
 ## Dashboard features
 

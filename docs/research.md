@@ -111,6 +111,19 @@ the expected `18d1:d002` USB device nor an ADB transport. The original status la
 grouped several kernel states as “enumerating”; it did not prove host enumeration.
 The revised code distinguishes those states and logs the raw kernel value.
 
+## Wi-Fi debugging
+
+Physical testing confirmed the configured station connection and network ADB on
+port 5555. The laptop listed the DASH as an active ADB device, and a shell reported
+UID/GID 0 on Linux 5.4.61. Reading the SD event log confirmed that Dashborne requested
+the connection and started the TCP daemon. A small file pushed to `/tmp` and pulled
+back matched byte-for-byte; the temporary file was then removed. This establishes
+working shell and file-transfer access without moving the microSD card.
+
+The first connection attempts failed from the laptop's existing ADB server even
+though ping and a direct TCP connection succeeded. Restarting that server restored
+connectivity. USB enumeration remains a separate unresolved issue.
+
 ## Public references
 
 - [FlyThings: launch from microSD](https://developer.flythings.cn/zh-hans/start_from_sdcard.html).
