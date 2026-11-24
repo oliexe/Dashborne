@@ -1,10 +1,6 @@
 > [!IMPORTANT]
-> **Disclaimer:** Dashborne is an independent, entirely community-driven hobby project.
-> It is not affiliated with, endorsed by, or supported by Enhance Ltd. or Tesla, Inc.
-> All product names and trademarks belong to their respective owners.
-> The software is provided **as is**, without warranty or guarantees of compatibility,
-> reliability, or continued support. Use it at your own risk; you are responsible for
-> any modifications to your device and any resulting damage or data loss.
+> Dashborne is a community-driven hobby project, not affiliated with Enhance Ltd. or Tesla, Inc.
+> Provided **as is**, without warranty—use at your own risk.
 
 <img src="dashborne/assets/icon.png" alt="Dashborne logo" width="160">
 
