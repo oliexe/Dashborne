@@ -52,7 +52,11 @@ int source_bind(const struct dashborne_host *h) {
     return 0;
 }
 unsigned int source_seconds(void) {
-    struct timestamp t={0};if(clock_gettime(1,&t))return 0;return (unsigned int)t.sec;
+    return (unsigned int)(source_microseconds()/1000000);
+}
+unsigned long long source_microseconds(void) {
+    struct timestamp t={0};if(clock_gettime(1,&t))return 0;
+    return (unsigned long long)t.sec*1000000+(unsigned long)t.nsec/1000;
 }
 void source_read(struct readings *r) {
     *r=(struct readings){0};

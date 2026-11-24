@@ -48,6 +48,33 @@ vehicle commands or change Wi-Fi, projection or saved official settings. Pause
 stops its timer; returning starts a new history. Pending opens and live
 Activities prevent extension unloading until their callbacks are released.
 
+## Rendering performance
+
+The view requests a 16 ms animation timer for a 60 Hz display. Telemetry is
+sampled every 100 ms and the history changes once per second. The power meter
+interpolates between readings over 100 ms; speed numerals use the reported
+integer directly. Disconnects, invalid power and mode changes cancel the
+interpolation. Delayed callbacks skip missed samples instead of replaying them.
+
+Control pointers and displayed properties are cached. Unchanged values produce
+no native setters, and a speed change replaces only the affected digits. Car
+images change only when the view or panel state changes. The graph combines
+adjacent identical columns without changing its pixels: a flat nonzero trace
+needs two visible controls, compared with 828 separate columns. Steep, varying
+traces can still use the full pool; unused controls stay hidden.
+
+On Back or pause, the extension log records callback average/max duration,
+callbacks exceeding 16,667 microseconds, scheduling gaps over 25 ms, source-read
+time and setter/image-change counts. `startup_us` covers control-cache preparation
+and the first update, after native layout creation. Logging happens outside the
+animation loop. These measurements include synchronous native setters, but not
+deferred painting or display scanout.
+
+Sustained 60 fps on the DASH remains unverified. Device testing needs to cover
+dense history, speed changes, cold car-image loads, open/back cycles and stock
+projection running in the background. Callback timing can expose stalls; actual
+presented-frame timing still needs a device-side capture.
+
 ## Development
 
 The normal Dashborne build includes the generated layout and assets. To regenerate:
@@ -56,6 +83,7 @@ The normal Dashborne build includes the generated layout and assets. To regenera
 uv run --with pillow --with resvg-py==0.5.0 extensions/tesla-ui/generate.py --assets
 sh extensions/tesla-ui/test.sh
 uv run --with pillow extensions/tesla-ui/preview.py
+sh extensions/tesla-ui/benchmark.sh
 ```
 
 The car images are rendered from a 3D mesh in Blender; they are not regenerated
@@ -80,7 +108,11 @@ on the DASH, supporting labels use the stock font. Large speed numerals use the 
 
 Tests cover units, signed power, invalid values, connection loss, history gaps,
 state transitions, unknown panel states, graph interpolation and gaps, bounds,
-timer cleanup and repeated open/back actions. The ARM package is built;
+pixel-equivalent graph merging, animation deadlines, stalled callbacks and
+timer cleanup. A steady 10-second fixture checks 625 timer callbacks, 100 data
+reads and zero native setters or lookups. The benchmark measures the host C
+update path with fake telemetry and native setters; it excludes image decoding
+and native painting, so its numbers are not device frame times. The ARM package is built;
 installation and visual checks on the DASH are pending.
 
 ## References

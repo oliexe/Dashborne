@@ -29,3 +29,21 @@ struct graph_column graph_column(const int history[HISTORY],int x) {
     c.fill_height=y<GRAPH_ZERO?GRAPH_ZERO-y:y-GRAPH_ZERO;
     return c;
 }
+static void append(struct graph_run *runs,int *count,int x,int top,int height,int negative) {
+    if(*count) {
+        struct graph_run *last=&runs[*count-1];
+        if(last->x+last->width==x && last->top==top && last->height==height && last->negative==negative) {
+            ++last->width;return;
+        }
+    }
+    runs[(*count)++]=(struct graph_run){x,1,top,height,negative};
+}
+void graph_runs(const int history[HISTORY],struct graph_runs *out) {
+    out->fills=out->traces=0;
+    for(int x=0;x<GRAPH_WIDTH;++x) {
+        struct graph_column c=graph_column(history,x);
+        if(!c.valid)continue;
+        if(c.fill_height)append(out->fill,&out->fills,x,c.fill_top,c.fill_height,c.negative);
+        append(out->trace,&out->traces,x,c.top,c.bottom-c.top+1,c.negative);
+    }
+}

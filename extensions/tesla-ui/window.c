@@ -3,10 +3,14 @@
 #include "graph.h"
 extern void *calloc(__SIZE_TYPE__,__SIZE_TYPE__);
 extern void free(void *);
+extern int strcmp(const char *,const char *);
 extern int snprintf(char *,__SIZE_TYPE__,const char *,...);
 #define ACTIVITY "dashborneExtension_tesla_ui"
 #define TIMER 97300
 #define BACK 299300
+#define FRAME_MS 16
+#define SAMPLE_US 100000ull
+#define FRAME_BUDGET_US 16667ull
 #define ASSETS "../../../mnt/extsd/Dashborne/extensions/tesla-ui/assets/"
 struct rectangle {int left,top,width,height;};
 static const struct dashborne_host *api;
@@ -15,7 +19,25 @@ static int pending,closing,paused_state;
 static int rendered_speed=-2,rendered_body=-2,history_drawn,history_count;
 static unsigned int history_second;
 static struct cluster state;
-static struct {void *fill,*trace;int negative;} graph_controls[GRAPH_WIDTH];
+/* Cache properties as well as pointers: even assigning the same value can
+   invalidate a native widget. No allocation or control lookup in steady state. */
+struct control_cache {
+    void *pointer;
+    struct rectangle rect;
+    unsigned int rgb,known;
+    int shown,image_kind;
+};
+static struct control_cache primary[26],fills[GRAPH_WIDTH],traces[GRAPH_WIDTH],means[35];
+static char labels[26][100],images[26][160];
+static struct graph_runs runs;
+static int active_fills,active_traces;
+static unsigned long long next_sample;
+static struct {float from,target;unsigned long long start;int active;} power_motion;
+static struct {
+    unsigned long long work_us,last_tick,gap_us,max_gap_us,startup_us;
+    unsigned int ticks,samples,writes,pictures,lookups,max_work_us,max_source_us,over_budget,late;
+    unsigned int intervals;
+} perf;
 static void (*ctor)(void *),(*dtor)(void *),(*base_created)(void *);
 static void *(*find)(void *,int),*(*context)(void);
 static void (*text)(void *,const char *),(*picture)(void *,const char *),(*visible)(void *,int);
@@ -24,12 +46,78 @@ static void (*register_timer)(void *,int,int),(*unregister_timer)(void *,int);
 static int (*id_of)(void *);
 static void (*open_activity)(void *,const char *,void *),(*close_activity)(void *,const char *);
 static const char *layout(void *s) {(void)s;return ASSETS "cluster.ftu";}
-static void label(int id,const char *value) {void *p=find(live,id);if(p)text(p,value);}
-static void show(int id,int value) {void *p=find(live,id);if(p)visible(p,value);}
+static struct control_cache *control(int id) {
+    struct control_cache *c=0;
+    if(id>=599300 && id<599326)c=&primary[id-599300];
+    else if(id>=GRAPH_FILL_ID && id<GRAPH_FILL_ID+GRAPH_WIDTH)c=&fills[id-GRAPH_FILL_ID];
+    else if(id>=GRAPH_TRACE_ID && id<GRAPH_TRACE_ID+GRAPH_WIDTH)c=&traces[id-GRAPH_TRACE_ID];
+    else if(id>=602000 && id<602035)c=&means[id-602000];
+    if(c && !(c->known&1)) {c->pointer=find(live,id);c->known|=1;++perf.lookups;}
+    return c && c->pointer?c:0;
+}
+static void label(int id,const char *value) {
+    struct control_cache *c=control(id);if(!c)return;
+    char *old=labels[id-599300];
+    if(!(c->known&16) || strcmp(old,value)) {
+        text(c->pointer,value);snprintf(old,sizeof(labels[0]),"%s",value);c->known|=16;++perf.writes;
+    }
+}
+static void show(int id,int value) {
+    struct control_cache *c=control(id);if(!c)return;value=!!value;
+    if(!(c->known&2) || c->shown!=value) {visible(c->pointer,value);c->shown=value;c->known|=2;++perf.writes;}
+}
+static void place(int id,struct rectangle r) {
+    struct control_cache *c=control(id);if(!c)return;
+    if(!(c->known&4) || c->rect.left!=r.left || c->rect.top!=r.top ||
+        c->rect.width!=r.width || c->rect.height!=r.height) {
+        position(c->pointer,&r);c->rect=r;c->known|=4;++perf.writes;
+    }
+}
+static void tint(int id,unsigned int rgb) {
+    struct control_cache *c=control(id);if(!c)return;
+    if(!(c->known&8) || c->rgb!=rgb) {color(c->pointer,rgb);c->rgb=rgb;c->known|=8;++perf.writes;}
+}
+static void asset(int id,const char *path) {
+    struct control_cache *c=control(id);if(!c)return;
+    char *old=images[id-599300];
+    if(!(c->known&32) || strcmp(old,path)) {
+        picture(c->pointer,path);snprintf(old,sizeof(images[0]),"%s",path);c->known|=32;++perf.pictures;++perf.writes;
+    }
+}
 static void bar(int id,int x,int y,int w,int h,unsigned int rgb,int on) {
-    void *p=find(live,id);if(!p)return;
-    if(on) {struct rectangle r={x,y,w,h};position(p,&r);color(p,rgb);}
-    visible(p,on);
+    if(on) {place(id,(struct rectangle){x,y,w,h});tint(id,rgb);}
+    show(id,on);
+}
+static float power_at(unsigned long long now) {
+    if(!power_motion.active || now<power_motion.start || now-power_motion.start>=SAMPLE_US)
+        return power_motion.target;
+    return power_motion.from+(power_motion.target-power_motion.from)*(float)(unsigned int)(now-power_motion.start)/(float)SAMPLE_US;
+}
+static void paint_power(unsigned long long now) {
+    float value=power_at(now);int negative=value<0;
+    int width=(int)(negative?-value:value);
+    bar(599323,negative?1090-width:1090,431,width,3,negative?0x66ba6b:0xd9dce0,width>0);
+    if(value==power_motion.target)power_motion.active=0;
+}
+static void graph_paint(void) {
+    graph_runs(state.history,&runs);
+    for(int i=0;i<runs.fills;++i) {
+        struct graph_run r=runs.fill[i];int id=GRAPH_FILL_ID+i;
+        place(id,(struct rectangle){GRAPH_LEFT+r.x,r.top,r.width,r.height});
+        struct control_cache *c=control(id);
+        if(c && (!(c->known&32) || c->image_kind!=r.negative)) {
+            picture(c->pointer,r.negative?ASSETS "regen-fill.png":ASSETS "energy-fill.png");
+            c->image_kind=r.negative;c->known|=32;++perf.pictures;++perf.writes;
+        }
+        show(id,1);
+    }
+    for(int i=runs.fills;i<active_fills;++i)show(GRAPH_FILL_ID+i,0);
+    for(int i=0;i<runs.traces;++i) {
+        struct graph_run r=runs.trace[i];
+        bar(GRAPH_TRACE_ID+i,GRAPH_LEFT+r.x,r.top,r.width,r.height,r.negative?0x66ba80:0xeaa34b,1);
+    }
+    for(int i=runs.traces;i<active_traces;++i)show(GRAPH_TRACE_ID+i,0);
+    active_fills=runs.fills;active_traces=runs.traces;
 }
 static void speed_digits(int speed_value) {
     if(rendered_speed==speed_value)return;
@@ -37,13 +125,13 @@ static void speed_digits(int speed_value) {
     int n=speed_value>=100?3:speed_value>=10?2:1;
     char digits[8];snprintf(digits,sizeof(digits),"%d",speed_value);
     for(int i=0;i<3;++i) {
-        void *p=find(live,599310+i);if(!p)continue;
+        int id=599310+i;
         int on=speed_value>=0 && i<n;
         if(on) {
             char path[128];snprintf(path,sizeof(path),ASSETS "digit-%c.png",digits[i]);
-            struct rectangle r={1505-n*38+i*76,140,76,148};position(p,&r);picture(p,path);
+            struct rectangle r={1505-n*38+i*76,140,76,148};place(id,r);asset(id,path);
         }
-        visible(p,on);
+        show(id,on);
     }
 }
 static void vehicle_body(const struct readings *d,int driving,int waiting) {
@@ -51,15 +139,13 @@ static void vehicle_body(const struct readings *d,int driving,int waiting) {
     int mask=d->body_known==BODY_ALL?(int)d->body_open:-1;
     int view_key=(mask+1)*2+driving;
     if(view_key!=rendered_body) {
-        void *p=find(live,599306+driving);
-        if(p) {
-            char path[160];const char *view=driving?"drive":"park";
-            if(mask>=0)snprintf(path,sizeof(path),ASSETS "body/%s-%02x.png",view,mask);
-            else snprintf(path,sizeof(path),ASSETS "%s.png",view);
-            struct rectangle r=driving?(mask>=0?(struct rectangle){780,80,400,300}:
-                (struct rectangle){865,125,230,260}):(struct rectangle){720,103,500,300};
-            position(p,&r);picture(p,path);
-        }
+        int id=599306+driving;
+        char path[160];const char *view=driving?"drive":"park";
+        if(mask>=0)snprintf(path,sizeof(path),ASSETS "body/%s-%02x.png",view,mask);
+        else snprintf(path,sizeof(path),ASSETS "%s.png",view);
+        struct rectangle r=driving?(mask>=0?(struct rectangle){780,80,400,300}:
+            (struct rectangle){865,125,230,260}):(struct rectangle){720,103,500,300};
+        place(id,r);asset(id,path);
         rendered_body=view_key;
     }
     show(599306,!driving);show(599307,driving);
@@ -78,8 +164,13 @@ static void vehicle_body(const struct readings *d,int driving,int waiting) {
         label(599308,count==1?names[last]:message);
     } else label(599308,d->charging?"Charging":"");
 }
-static void render(void) {
-    struct readings raw;source_read(&raw);cluster_update(&state,&raw,source_seconds());
+static void render(unsigned long long now,int immediate) {
+    struct readings raw;unsigned long long started=source_microseconds();source_read(&raw);
+    unsigned long long ended=source_microseconds();
+    unsigned int elapsed=ended>=started?(unsigned int)(ended-started):0;
+    ++perf.samples;if(elapsed>perf.max_source_us)perf.max_source_us=elapsed;
+    enum cluster_mode previous_mode=state.mode;
+    cluster_update(&state,&raw,(unsigned int)(now/1000000));
     const struct readings *d=&state.data;char line[100];
     int driving=state.mode==DRIVING,waiting=state.mode==WAITING;
     speed_digits(driving?d->speed:-1);
@@ -103,41 +194,21 @@ static void render(void) {
         d->battery<=20?0xd5a242:0x66ba6b,d->battery>0);
     show(599324,d->left);show(599325,d->right);
     label(599300,state.mode==CHARGING?"Charging power":"Power");
-    int regen=d->power_kw<0;
-    int width=d->power_valid?(int)(regen?-d->power_kw*355/100:d->power_kw*355/400):0;
-    if(width>355)width=355;
-    bar(599323,regen?1090-width:1090,431,width,3,regen?0x66ba6b:0xd9dce0,width>0 && driving);
+    float target=d->power_valid && driving?(d->power_kw<0?d->power_kw*355/100:d->power_kw*355/400):0;
+    if(target>355)target=355;
+    if(target<-355)target=-355;
+    if(immediate || !d->power_valid || !driving || previous_mode!=state.mode || !now) {
+        power_motion.from=power_motion.target=target;power_motion.active=0;
+    } else if(target!=power_motion.target) {
+        power_motion.from=power_at(now);power_motion.target=target;power_motion.start=now;power_motion.active=1;
+    }
+    paint_power(now);
     if(!history_drawn || history_second!=state.last_second || history_count!=state.count) {
         int average=graph_average(state.history);
         if(average!=UNKNOWN)snprintf(line,sizeof(line),"Avg. %d kW",(average+(average<0?-5:5))/10);
         else snprintf(line,sizeof(line),"— kW");
         label(599301,line);
-        for(int x=0;x<GRAPH_WIDTH;++x) {
-            struct graph_column c=graph_column(state.history,x);
-            if(!graph_controls[x].fill) {
-                graph_controls[x].fill=find(live,GRAPH_FILL_ID+x);
-                graph_controls[x].trace=find(live,GRAPH_TRACE_ID+x);
-                graph_controls[x].negative=-1;
-            }
-            void *fill=graph_controls[x].fill,*trace=graph_controls[x].trace;
-            if(fill) {
-                if(c.valid && c.fill_height) {
-                    struct rectangle r={GRAPH_LEFT+x,c.fill_top,1,c.fill_height};position(fill,&r);
-                    if(graph_controls[x].negative!=c.negative) {
-                        picture(fill,c.negative?ASSETS "regen-fill.png":ASSETS "energy-fill.png");
-                        graph_controls[x].negative=c.negative;
-                    }
-                }
-                visible(fill,c.valid && c.fill_height);
-            }
-            if(trace) {
-                if(c.valid) {
-                    struct rectangle r={GRAPH_LEFT+x,c.top,1,c.bottom-c.top+1};position(trace,&r);
-                    color(trace,c.negative?0x66ba80:0xeaa34b);
-                }
-                visible(trace,c.valid);
-            }
-        }
+        graph_paint();
         for(int i=0;i<35;++i)
             bar(602000+i,GRAPH_LEFT+i*12,average!=UNKNOWN?graph_y(average):GRAPH_ZERO,6,1,
                 0x85817a,average!=UNKNOWN);
@@ -151,27 +222,78 @@ static void render(void) {
         label(599304,navigation);
     } else label(599304,"");
 }
+/* Timing covers our callbacks and native setters, not asynchronous painting or
+   scanout. Emit once when leaving the view; never write logs in the frame loop. */
+static void report(void) {
+    if(!api || !api->log || !perf.ticks)return;
+    char message[512];
+    snprintf(message,sizeof(message),
+        "tesla-ui: callbacks=%u work_avg_us=%llu work_max_us=%u over_16667us=%u "
+        "gap_avg_us=%llu gap_max_us=%llu gaps_over_25ms=%u samples=%u source_max_us=%u startup_us=%llu "
+        "setters=%u image_changes=%u lookups=%u (callback timing, not display FPS)",
+        perf.ticks,perf.work_us/perf.ticks,perf.max_work_us,perf.over_budget,
+        perf.intervals?perf.gap_us/perf.intervals:0,perf.max_gap_us,perf.late,perf.samples,perf.max_source_us,perf.startup_us,
+        perf.writes,perf.pictures,perf.lookups);
+    api->log(api,message);perf=(__typeof__(perf)){0};
+}
 static void back(void *s) {
     (void)s;if(closing)return;
-    closing=1;unregister_timer(live,TIMER);close_activity(context(),ACTIVITY);
+    closing=1;unregister_timer(live,TIMER);report();close_activity(context(),ACTIVITY);
 }
 static int hardware_back(void *s) {back(s);return 1;}
 static void click(void *s,void *c) {if(c && id_of(c)==BACK)back(s);}
 static void created(void *s) {
     base_created(s);pending=0;closing=0;paused_state=0;
-    for(int x=0;x<GRAPH_WIDTH;++x) {graph_controls[x].fill=0;graph_controls[x].trace=0;}
-    cluster_reset(&state);rendered_speed=-2;rendered_body=-2;history_drawn=0;render();register_timer(s,TIMER,100);
+    for(int i=0;i<26;++i)primary[i]=(struct control_cache){0};
+    for(int i=0;i<GRAPH_WIDTH;++i)fills[i]=traces[i]=(struct control_cache){0};
+    for(int i=0;i<35;++i)means[i]=(struct control_cache){0};
+    active_fills=active_traces=0;
+    perf=(__typeof__(perf)){0};power_motion=(__typeof__(power_motion)){0};
+    cluster_reset(&state);rendered_speed=-2;rendered_body=-2;history_drawn=0;
+    unsigned long long now=source_microseconds();
+    /* Resolve the graph pool before starting the timer, not when the first
+       steep trace suddenly needs hundreds of additional rectangles. */
+    for(int i=0;i<GRAPH_WIDTH;++i) {control(GRAPH_FILL_ID+i);control(GRAPH_TRACE_ID+i);}
+    render(now,1);next_sample=now+SAMPLE_US;
+    unsigned long long end=source_microseconds();perf.startup_us=end>=now?end-now:0;
+    register_timer(s,TIMER,FRAME_MS);
 }
 static void resumed(void *s) {
     if(closing)return;
-    if(paused_state) {cluster_reset(&state);history_drawn=0;}
-    paused_state=0;render();unregister_timer(s,TIMER);register_timer(s,TIMER,100);
+    if(paused_state) {
+        cluster_reset(&state);history_drawn=0;
+        unsigned long long now=source_microseconds();render(now,1);next_sample=now+SAMPLE_US;
+    }
+    paused_state=0;perf.last_tick=0;
+    unregister_timer(s,TIMER);register_timer(s,TIMER,FRAME_MS);
 }
-static void paused(void *s) {paused_state=1;unregister_timer(s,TIMER);}
-static int timer(void *s,int id) {(void)s;if(id==TIMER && !closing && !paused_state && live)render();return 1;}
+static void paused(void *s) {paused_state=1;unregister_timer(s,TIMER);report();}
+static int timer(void *s,int id) {
+    (void)s;
+    if(id!=TIMER || closing || paused_state || !live)return 1;
+    unsigned long long now=source_microseconds();
+    if(perf.last_tick && now>=perf.last_tick) {
+        unsigned long long gap=now-perf.last_tick;
+        perf.gap_us+=gap;++perf.intervals;
+        if(gap>perf.max_gap_us)perf.max_gap_us=gap;
+        if(gap>25000)++perf.late;
+    }
+    perf.last_tick=now;
+    if(!now || now>=next_sample || next_sample-now>SAMPLE_US) {
+        render(now,0);
+        /* Keep the 100 ms sample phase, but skip missed work after a stall. */
+        next_sample=now && now>=next_sample && now-next_sample<SAMPLE_US?next_sample+SAMPLE_US:now+SAMPLE_US;
+    } else if(power_motion.active)paint_power(now);
+    unsigned long long end=source_microseconds();
+    unsigned int work=end>=now?(unsigned int)(end-now):0;
+    ++perf.ticks;perf.work_us+=work;
+    if(work>perf.max_work_us)perf.max_work_us=work;
+    if(work>FRAME_BUDGET_US)++perf.over_budget;
+    return 1;
+}
 static int timer_secondary(void *s,int id) {return timer((char *)s-sizeof(void *),id);}
 static void destroy_only(void *s) {
-    unregister_timer(s,TIMER);if(live==s)live=0;pending=0;dtor(s);
+    unregister_timer(s,TIMER);report();if(live==s)live=0;pending=0;dtor(s);
 }
 static void destroy(void *s) {destroy_only(s);free(s);}
 static void destroy_only_secondary(void *s) {destroy_only((char *)s-sizeof(void *));}
