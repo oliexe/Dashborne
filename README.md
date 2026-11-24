@@ -38,6 +38,8 @@ See [configuration and operation](dashborne/README.md).
 - [Extra menu](extensions/extra-menu): the core star button opens a stock-style
   **Tweaks** menu where extensions can register pages.
 - [Contrast](extensions/contrast): display contrast and luminance controls in stock Settings.
+- [Tesla UI](extensions/tesla-ui): a fixed Model S style instrument view in Extra,
+  with live readings, energy history and navigation trip details.
 - [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
   viewer with aspect controls; Back restores CarPlay/Android Auto.
 - [Dashborne badge](dashborne/patches/definitions/badge.json): an optional dashboard label.
