@@ -213,17 +213,23 @@ int main(int argc,char **argv) {
     assert(((struct control *)lookup(s,PREVIEW_LABEL))->shown);
     unsigned int panels=0,blind=0;int modes=0,regen=0,reverse=0,turns=0;
     for(int scene=0;scene<SAMPLE_SCENES;++scene) {
-        seconds=500+scene*6;timer(s,TIMER);
+        seconds=500+scene*6;subsecond=0;timer(s,TIMER);
         panels|=state.data.body_open;blind|=state.data.blind_active;
         modes|=1<<state.mode;regen|=state.data.power_valid && state.data.power_kw<0;
         reverse|=state.data.gear==2;turns|=state.data.left?1:0;turns|=state.data.right?2:0;
         assert(reads==sample_reads && !fixture.connected);
         assert(strstr(((struct control *)lookup(s,PREVIEW_LABEL))->value,"PREVIEW"));
         if(previews && scene==5)dump("sample-preview");
+        /* Exercise each animation tick and the history/sign transitions, not
+           only the first frame of each scene. The device timer runs at 10 ms. */
+        for(int frame=1;frame<600;++frame) {
+            subsecond=(unsigned long long)frame*10000;timer(s,TIMER);
+            assert(reads==sample_reads);
+        }
     }
     assert(panels==BODY_ALL && blind==SIDES_ALL && turns==3 && regen && reverse);
     assert(modes==((1<<WAITING)|(1<<PARKED)|(1<<DRIVING)|(1<<CHARGING)));
-    seconds=500+SAMPLE_SCENES*6;timer(s,TIMER);assert(state.mode==DRIVING);
+    seconds=500+SAMPLE_SCENES*6;subsecond=0;timer(s,TIMER);assert(state.mode==DRIVING);
     click(s,preview_button);
     assert(!preview_active && reads==sample_reads+1 && state.mode==WAITING && !state.count);
     assert(!strcmp(preview_button->value,"Preview"));
