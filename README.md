@@ -1,3 +1,5 @@
+<img src="dashborne/assets/icon.png" alt="Dashborne logo" width="160">
+
 # Dashborne
 
 A microSD boot menu and temporary extension loader for the S3XY DASH's official UI.
