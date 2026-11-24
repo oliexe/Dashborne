@@ -2,7 +2,9 @@
 
 # Dashborne
 
-A microSD boot menu and temporary extension loader for the S3XY DASH's official UI.
+Dashborne is an ADB enabler, patch loader, and app loader for the S3XY DASH's
+official Linux-based OS. It loads patches from a microSD card and applies them
+temporarily, without writing them to the DASH's internal flash memory.
 
 ## Install
 
