@@ -1,6 +1,6 @@
-/* Configuration-only developer connection controller. All work is bounded and
-   advances on the UI timer; no worker can change networking after handoff. */
+/* Bounded developer connection controller, advanced by the UI timer. */
 #include "debug.h"
+#include "debug_force.h"
 #include "config.h"
 #include "lan.h"
 typedef __SIZE_TYPE__ usize;
@@ -20,6 +20,8 @@ static int active, wanted, owned_network, config_ok, start_pending;
 static unsigned int ticks, stop_attempts, network_attempts, adb_attempts, stable, lost;
 enum { STOP, PREPARE, OFF_WAIT, MODE_WAIT, SETTLE, CONNECT_WAIT, SERVE, FAILED };
 static int step;
+static int forced;
+static void *network_init,*runtime_maintenance;
 struct string_view_abi {
     const char *data;
     usize size;
@@ -73,6 +75,7 @@ static void report(const char *message) {
 static void fail(const char *message) {
     lan_reset();
     step = FAILED;
+    ticks=0;
     address[0] = 0;
     report(message);
 }
@@ -350,6 +353,8 @@ static void poll_stop(void) {
 void debug_bind(void *stock, void *runtime, void (*log)(const char *)) {
     logger = log;
 #define BIND(handle, var, name) *(void **)(&var) = dlsym(handle, name)
+    BIND(stock, runtime_maintenance, "_ZN13WdgDataSource20maintainRuntimeStateEv");
+    BIND(stock, network_init, "_ZN3net4initEv");
     BIND(stock, change_mode, "_ZN3net11change_modeE10net_mode_e");
     BIND(stock, get_mode, "_ZN3net8get_modeEv");
     BIND(stock, is_connected, "_ZN3net4wifi12is_connectedEv");
@@ -361,6 +366,7 @@ void debug_bind(void *stock, void *runtime, void (*log)(const char *)) {
 #undef BIND
 }
 void debug_set_enabled(int enabled) {
+    if(!enabled)(void)debug_set_forced(0);
     lan_reset();
     active = 1;
     wanted = !!enabled;
@@ -380,15 +386,35 @@ void debug_set_enabled(int enabled) {
     poll_stop();
 }
 void debug_release(void) {
+    (void)debug_set_forced(0);
     lan_reset();
     active = wanted = owned_network = start_pending = 0;
     address[0] = 0;
     wipe(password, sizeof(password));
     wipe(ssid, sizeof(ssid));
 }
+int debug_set_forced(int enabled) {
+    if(enabled) {
+        if(!wanted || !config_ok || !debug_force_install(&change_mode,network_init,runtime_maintenance)) {
+            report("Force ADB unavailable on this software");return 0;
+        }
+        forced=1;
+        if(logger)logger("debug: Force ADB enabled\n");
+    } else {
+        if(!debug_force_remove(&change_mode)) {
+            report("Force ADB cleanup failed - restart required");return 0;
+        }
+        forced=0;
+    }
+    return 1;
+}
+int debug_is_forced(void) {return forced;}
 void debug_poll(void) {
-    if (!active || step == FAILED)
+    if (!active)return;
+    if(step==FAILED) {
+        if(forced && wanted && ++ticks>=60)debug_set_enabled(1);
         return;
+    }
     if (step == STOP) {
         poll_stop();
         return;

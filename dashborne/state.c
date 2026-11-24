@@ -126,6 +126,8 @@ void state_load(struct settings *state) {
     if(state->config_ok) {
         char value[1024];
         if(config_get("adb.enabled",value,sizeof(value)))state->wifi_adb=equal(value,"1");
+        if(config_get("adb.force",value,sizeof(value)))state->adb_force=equal(value,"1");
+        if(config_get("adb.auto_restart",value,sizeof(value)))state->adb_auto_restart=equal(value,"1");
         if(config_get("loader.autolaunch",value,sizeof(value)))state->loader_autolaunch=equal(value,"1");
         config_get("loader.app",state->loader_app,sizeof(state->loader_app));
         for(unsigned int i=0;i<state->count;++i) {
@@ -139,6 +141,8 @@ void state_load(struct settings *state) {
 int state_save(const struct settings *state) {
     if(state->count>MAX_PATCHES || !config_load())return 0;
     int ok=config_set("adb.enabled",state->wifi_adb ? "1" : "0") &&
+        config_set("adb.force",state->adb_force ? "1" : "0") &&
+        config_set("adb.auto_restart",state->adb_auto_restart ? "1" : "0") &&
         config_set("loader.autolaunch",state->loader_autolaunch ? "1" : "0") && config_set("loader.app",state->loader_app);
     for(unsigned int i=0;ok && i<state->count;++i) {
         if(!valid_id(state->patches[i].id)){ok=0;break;}

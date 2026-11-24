@@ -152,6 +152,7 @@ int config_load(void) {
     if(result<0){config_clear();return 0;}
     valid=1;
     int ok=config_set("format","1") && config_set("adb.enabled","0") &&
+        config_set("adb.force","0") && config_set("adb.auto_restart","0") &&
         config_set("wifi.ssid","") && config_set("wifi.password","") &&
         config_set("loader.autolaunch","0") && config_set("loader.app","") &&
         legacy_settings() && legacy_wifi() && config_commit();

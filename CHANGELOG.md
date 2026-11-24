@@ -5,6 +5,10 @@ tracked separately in their source history.
 
 ## Unreleased
 
+- Optional Force ADB keeps developer Wi-Fi connected while the stock dashboard
+  runs. Auto recovery captures diagnostics and reboots into the boot menu after
+  a crash or a stopped UI event loop.
+
 - Custom widgets show size-specific picker previews, with optional artwork from
   extensions and a default preview for older widgets.
 

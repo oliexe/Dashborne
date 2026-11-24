@@ -11,6 +11,7 @@ struct settings {
     struct patch_entry patches[MAX_PATCHES];
     int config_ok, loader_autolaunch;
     char loader_app[1024];
+    int adb_force, adb_auto_restart;
 };
 void state_restore(void);
 void state_load(struct settings *);

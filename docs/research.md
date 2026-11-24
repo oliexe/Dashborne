@@ -56,10 +56,16 @@ UI updates by restarting `zkswe`. Disabling and re-enabling ADB in configuration
 restored the connection. The tested Wi-Fi driver lacks some additional wireless
 ioctls, so the status can report limited Wi-Fi verification.
 
-Dashborne manages developer Wi-Fi only while configuration is open. The official
-app uses hotspot mode for CarPlay/Android Auto; starting it can disconnect the
-station-mode ADB session. Dashborne stops reconnect attempts at handoff and leaves
-network ownership to the official app.
+By default, Dashborne manages developer Wi-Fi only while configuration is open.
+The official app uses hotspot mode for CarPlay/Android Auto; starting it can
+disconnect the station-mode ADB session. Dashborne stops reconnect attempts at
+handoff and leaves network ownership to the official app.
+
+The optional Force ADB mode also needs to suspend
+`WdgDataSource::maintainRuntimeState()`: on the inspected software, that method
+periodically requests `ctl.stop=adbd`. Radio-mode interception alone cannot keep
+ADB connected. Force ADB preserves the station connection through native startup
+and suspends this daemon-stop routine with reversible memory edits.
 
 USB tests found `/sys/class/udc/4100000.udc-controller`, `/res/bin/setusbconfig`
 and `/bin/adbd`. A ConfigFS/FunctionFS gadget reached the bound state, but the

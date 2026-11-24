@@ -41,6 +41,8 @@ The boot menu and installer save persistent settings in
 ```ini
 format=1
 adb.enabled=0
+adb.force=0
+adb.auto_restart=0
 wifi.ssid=Your Wi-Fi name
 wifi.password=Your Wi-Fi password
 tweak.widget-example.enabled=0
@@ -114,7 +116,7 @@ selection; the saved autolaunch preference still applies to the next boot.
 
 ## ADB connection handling
 
-Enable ADB manages a developer connection only inside configuration. The
+Enable ADB normally manages a developer connection inside configuration. The
 controller confirms the previous TCP daemon has stopped, validates Wi-Fi
 settings in `dashborne.conf`, turns Wi-Fi off, waits for teardown, then connects
 in station mode. Each enable starts a fresh connection, including when the
@@ -133,15 +135,41 @@ client isolation can still block a computer even when the router itself replies.
 
 The controller clears stale displayed addresses, retries failed Wi-Fi
 connections and missing ADB listeners up to three times, then reports a failure.
-Toggle off/on to retry after correcting the cause. Disabling cancels connection
+Toggle off/on to retry after correcting the cause. Force ADB retries after a
+60-second pause so a temporary network outage does not require a manual toggle.
+Disabling cancels connection
 retries, stops TCP ADB, and reports **Disabled** only after the service confirms
 it stopped. Stop failures remain visible. For an ADB daemon using another
 transport, the controller reports that transport and leaves the daemon running.
 
 If saving an enabled selection fails, ADB stays off. A disable request takes
 effect even if saving fails, with the card-write error shown. Dashborne cancels
-pending work at dashboard handoff or loader shutdown, then leaves networking to
-the official app. It stops issuing reconnect and daemon restart requests.
+pending work at dashboard handoff unless Force ADB is selected, then leaves
+networking to the official app.
+
+**Force ADB** (`adb.force=1`) keeps the connection controller running after the
+official dashboard opens. A reversible, in-memory hook blocks the stock radio
+startup resets and mode changes that would replace developer Wi-Fi with the projection hotspot.
+It also suspends the stock routine that periodically stops the ADB daemon.
+The developer controller can still reset and reconnect the radio. This option
+requires Enable ADB; disabling either restores the stock radio and ADB maintenance code.
+Unsupported software reports an error and stays in configuration.
+
+**Auto recovery** (`adb.auto_restart=1`) requires Force ADB. A separate supervisor
+watches a heartbeat from the UI event loop. If the process exits or the heartbeat
+stops for 20 seconds, it saves logs under `Dashborne/diagnostics/watchdog-N/`,
+flushes the card and reboots Linux into configuration. A full reboot releases
+display and driver resources that can remain allocated after killing the UI.
+The next boot stays in configuration until you choose to continue.
+
+Captures include recent app logs, the kernel log, memory status and available
+process details, with file size limits. If Linux refuses the reboot, the
+supervisor falls back to restarting the UI, limited to three attempts per boot.
+It cannot recover a halted kernel.
+
+Both options default to off and are saved in the card-root `dashborne.conf`.
+The watchdog heartbeat and restart count live in RAM. Normal shutdown or
+disabling developer access cancels monitoring.
 
 ## Build and install
 

@@ -23,7 +23,7 @@ class Entry(ctypes.Structure):
     _fields_ = [('id', ctypes.c_char*32), ('title', ctypes.c_char*64), ('description', ctypes.c_char*128),
                 ('enabled', ctypes.c_int), ('compatible', ctypes.c_int), ('native', ctypes.c_int)]
 class Settings(ctypes.Structure):
-    _fields_ = [('wifi_adb', ctypes.c_int), ('count', ctypes.c_uint), ('patches', Entry*64), ('config_ok',ctypes.c_int), ('loader_autolaunch',ctypes.c_int), ('loader_app',ctypes.c_char*1024)]
+    _fields_ = [('wifi_adb', ctypes.c_int), ('count', ctypes.c_uint), ('patches', Entry*64), ('config_ok',ctypes.c_int), ('loader_autolaunch',ctypes.c_int), ('loader_app',ctypes.c_char*1024), ('adb_force',ctypes.c_int), ('adb_auto_restart',ctypes.c_int)]
 
 
 class StateTests(unittest.TestCase):
@@ -76,9 +76,9 @@ class StateTests(unittest.TestCase):
         s=self.load(); self.assertEqual(s.count,2)
         self.assertTrue(all(s.patches[i].compatible for i in range(2)))
         self.assertFalse(s.wifi_adb or s.patches[0].enabled)
-        s.wifi_adb=1;s.patches[0].enabled=1;s.patches[1].enabled=1
+        s.wifi_adb=1;s.adb_force=s.adb_auto_restart=1;s.patches[0].enabled=1;s.patches[1].enabled=1
         self.assertEqual(self.lib.state_save(ctypes.byref(s)),1)
-        s=self.load();self.assertEqual(s.wifi_adb,1);self.assertEqual(s.patches[1].enabled,1)
+        s=self.load();self.assertEqual((s.adb_force,s.adb_auto_restart),(1,1));self.assertEqual(s.wifi_adb,1);self.assertEqual(s.patches[1].enabled,1)
         self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),3)
         result=codec.decode((self.card/'generated.ftu').read_bytes())
         self.assertEqual(result.pop('textview__900001')['text'],'ADDED')

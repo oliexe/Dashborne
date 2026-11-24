@@ -2,6 +2,8 @@
 #define DASHBORNE_DEBUG_H
 void debug_bind(void *stock, void *runtime, void (*logger)(const char *));
 void debug_set_enabled(int enabled);
+int debug_set_forced(int enabled);
+int debug_is_forced(void);
 void debug_poll(void);
 void debug_release(void);
 const char *debug_status(void);

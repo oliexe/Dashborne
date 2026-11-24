@@ -135,6 +135,12 @@ debug applications, and reverse-engineer the device's software.
 
 Refer to the [boot menu](#boot-menu) section to enable the ADB bridge.
 
+For autonomous testing, **Force ADB** keeps the development Wi-Fi connection
+while the stock dashboard runs, blocking its switch to a CarPlay/Android Auto
+hotspot. **Auto recovery** saves crash diagnostics to the microSD and returns
+to the boot menu with a Linux reboot if the UI exits or stops responding. Both options are off by
+default. See [connection and recovery details](dashborne/README.md#adb-connection-handling).
+
 ## Development
 
 ```text

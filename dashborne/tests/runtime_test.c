@@ -35,8 +35,9 @@ static int control_count;
 void state_restore(void) { ++restored; }
 void state_load(struct settings *s) {
     *s = (struct settings){0}; s->count = 2;s->config_ok=strcmp(scenario,"config-invalid")!=0;
+    if(!strncmp(scenario,"force-",6)){s->wifi_adb=s->adb_force=1;s->adb_auto_restart=strstr(scenario,"watchdog")!=NULL;}
     if(!strncmp(scenario,"autolaunch",10)){s->loader_autolaunch=1;strcpy(s->loader_app,"/mnt/extsd/test.so");}
-    s->wifi_adb = !strcmp(scenario, "developer-auto") || !strcmp(scenario, "developer-tap") || !strcmp(scenario, "config-on");
+    s->wifi_adb = !strncmp(scenario,"force-",6) || !strcmp(scenario, "developer-auto") || !strcmp(scenario, "developer-tap") || !strcmp(scenario, "config-on");
     strcpy(s->patches[0].id, "test-label"); strcpy(s->patches[0].title, "Test label");
     s->patches[0].compatible = 1; s->patches[0].enabled = 1;
     strcpy(s->patches[1].id, "incompatible");
@@ -97,11 +98,19 @@ static int restart_prop(const char *key,const char *value) {
     assert(!strcmp(key,"ctl.restart") && !strcmp(value,"zkswe"));++restarts;
     return (!strcmp(scenario,"browser-restart-failure") || !strcmp(scenario,"autolaunch-restart-failure")) ? -1 : 0;
 }
+static int forced_debug, watch_started, watch_beats;
+int debug_set_forced(int value) {forced_debug=value;return 1;}
+int debug_is_forced(void) {return forced_debug;}
+int watchdog_start(void) {++watch_started;return 1;}
+int watchdog_ready(void) {return strcmp(scenario,"force-watchdog-fail") && watch_started!=0;}
+void watchdog_beat(void) {++watch_beats;}
+void watchdog_stop(void) {watch_started=0;}
+int watchdog_recovery(void) {return 0;}
 static const char *ip = "";
 void debug_bind(void *s, void *r, void (*logger)(const char *)) { assert(s == (void *)1 && r == (void *)2 && logger); }
 void debug_poll(void) { ++adb_polls; }
-void debug_set_enabled(int enabled) { if (enabled) ++retried; else ++stopped; }
-void debug_release(void) { ++released; }
+void debug_set_enabled(int enabled) { if (enabled) ++retried; else {++stopped;forced_debug=0;} }
+void debug_release(void) { forced_debug=0;++released; }
 const char *debug_status(void) { return "ADB listening"; }
 const char *debug_ip(void) { return ip; }
 const char *debug_wifi_name(void) { return "TestNetwork"; }
@@ -238,6 +247,26 @@ int main(int argc, char **argv) {
         assert(external_app && !ready && !registered && !applied);
         assert(is("external-empty") ? !selected && restarts==1 : selected && !strcmp(selected,"installedActivity"));
         onEasyUIDeinit((void *)123);assert(deinit_calls==1);
+        printf("PASS: %s\n",scenario);return 0;
+    }
+    if(!strncmp(scenario,"force-",6)) {
+        void *p=registered();assert(debug_is_forced() && retried==1);
+        if(is("force-cleanup-fail"))settings.adb_force=0;
+        on_timer(p,BOOT_TIMER);
+        if(is("force-cleanup-fail")) {
+            assert(phase==1 && launch_error && !opened);
+        } else if(is("force-watchdog-fail")) {
+            assert(phase==1 && watchdog_pending && !opened);
+            for(int i=0;i<6;++i)on_timer(p,NETWORK_TIMER);
+            assert(!watchdog_pending && !opened && launch_error && !watch_started);
+        } else {
+            assert(phase==3 && opened && !released);
+            for(int i=0;i<120;++i)on_timer(p,NETWORK_TIMER);
+            assert(adb_polls==120 && watch_beats>=120);
+            if(is("force-watchdog"))assert(watch_started);
+        }
+        destroy(p);onEasyUIDeinit((void *)123);
+        assert(!debug_is_forced() && !watch_started && allocations==frees);
         printf("PASS: %s\n",scenario);return 0;
     }
     if(!strncmp(scenario,"autolaunch",10) || is("config-invalid")) {

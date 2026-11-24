@@ -69,7 +69,7 @@ def migrate(card):
         raw = target.read_bytes()
         parse(raw)
         return raw
-    changes = {'adb.enabled': '0', 'wifi.ssid': '', 'wifi.password': '',
+    changes = {'adb.enabled': '0', 'adb.force': '0', 'adb.auto_restart': '0', 'wifi.ssid': '', 'wifi.password': '',
                'loader.autolaunch': '0', 'loader.app': ''}
     settings = card/LEGACY[0]
     if settings.exists():

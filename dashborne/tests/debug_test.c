@@ -13,6 +13,9 @@
 #define __errno_location mock_errno
 #include "../debug.c"
 
+static int force_installs, force_removes, force_failed;
+int debug_force_install(void (**mode_fn)(int),void *network_init,void *maintenance) {(void)mode_fn;(void)network_init;(void)maintenance;++force_installs;return !force_failed;}
+int debug_force_remove(void (**mode_fn)(int)) {(void)mode_fn;++force_removes;return !force_failed;}
 static int config_valid;
 static int lan_result=1,lan_resets;
 int lan_poll(const char *ip) {assert(*ip);return lan_result;}
@@ -86,6 +89,8 @@ void *mock_dlsym(void *handle, const char *name) {
     (void)handle;
     if (missing_api == 1)
         return NULL;
+    if (strstr(name,"maintainRuntimeState")) return (void *)mode_change;
+    if (!strcmp(name,"_ZN3net4initEv")) return (void *)mode_change;
     if (strstr(name, "change_mode"))
         return (void *)mode_change;
     if (strstr(name, "get_mode"))
@@ -534,6 +539,15 @@ static void test_cancellation_and_stress(void) {
     cancelled();
 }
 int main(void) {
+    reset();assert(!debug_set_forced(1) && !debug_is_forced());
+    ready();force_failed=1;assert(!debug_set_forced(1) && !debug_is_forced());
+    force_failed=0;assert(debug_set_forced(1) && debug_is_forced());
+    fail("Injected network failure");int before=modes;
+    advance(59);assert(modes==before && step==FAILED);
+    advance(41);assert(*debug_ip() && debug_is_forced());
+    debug_set_enabled(0);advance(10);assert(!debug_is_forced());
+    assert(force_installs>=2 && force_removes>0);
+    puts("PASS: forced mode opt-in, unavailable hook, delayed retry and master disable");
     test_default_and_normal();
     puts("PASS: ADB default, normal transitions, address changes and full Wi-Fi reset");
     test_config();

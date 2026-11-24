@@ -1,5 +1,6 @@
 /* Original C adapter for the inspected ARM FlyThings Activity ABI. */
 #include "debug.h"
+#include "watchdog.h"
 #include "browser.h"
 #include "device.h"
 #include "extensions/engine.h"
@@ -35,6 +36,8 @@ EXPORT const char *onStartupApp(void *);
 #define CONFIG_ID 110002
 #define TAP_ID 20001
 #define WIFI_ID 20002
+#define FORCE_ID 20015
+#define RESTART_ID 20016
 #define LAUNCH_ID 20003
 #define PATCHES_TAB_ID 20006
 #define ADB_TAB_ID 20007
@@ -88,6 +91,7 @@ static void (*register_timer)(void *, int, int);
 static void *table[17], *prepared;
 static struct settings settings;
 static int phase, section, settings_ok = 1;
+static unsigned int watchdog_pending;
 static unsigned int loading_dot;
 static const char *launch_error;
 static void *list_owner;
@@ -187,6 +191,10 @@ static void render(void *self) {
     color(self, ADB_TAB_ID, section == 1 ? 0xf1f2f4 : 0x858c94);
     label(self, WIFI_ID, "Enable ADB");
     label(self, WIFI_TOGGLE_ID, settings.wifi_adb ? "1" : "0");
+    label(self,50066,settings.wifi_adb ? (debug_is_forced() ? "1" : "0") : "2");
+    label(self,50067,settings.wifi_adb && debug_is_forced() ? (settings.adb_auto_restart ? "1" : "0") : "2");
+    color(self,FORCE_ID,settings.wifi_adb ? 0xd9dde2 : 0x666e77);
+    color(self,RESTART_ID,settings.wifi_adb && debug_is_forced() ? 0xd9dde2 : 0x666e77);
     color(self, WIFI_ID, settings.wifi_adb ? 0xc2c9d1 : 0xd9dde2);
     const char *ip = debug_ip();
     label(self, STATUS_ID, debug_status());
@@ -310,12 +318,31 @@ static void launch(void *self) {
     }
     launch_error = (const char *)0;
     if (!state_save(&settings)) { settings_ok = 0; phase = 1; render(self); return; }
+    if(debug_is_forced() && !(settings.wifi_adb && settings.adb_force)) {
+        launch_error="Force ADB cleanup failed. Restart before continuing.";
+        phase=1;render(self);return;
+    }
+    if(settings.wifi_adb && settings.adb_force && !debug_is_forced()) {
+        launch_error="Force ADB is unavailable. Disable Force ADB to continue.";
+        phase=1;render(self);return;
+    }
+    if(settings.wifi_adb && debug_is_forced() && settings.adb_auto_restart) {
+        unregister_timer(self,BOOT_TIMER);unregister_timer(self,LOADING_TIMER);
+        if(!watchdog_start()) {
+            launch_error="Could not start crash recovery. Check the microSD files.";
+            phase=1;render(self);return;
+        }
+        if(!watchdog_ready()) {
+            watchdog_pending=1;phase=1;launch_error="Starting crash recovery...";render(self);return;
+        }
+    }
     phase = 2; unregister_timer(self, BOOT_TIMER); unregister_timer(self, LOADING_TIMER);
     void *notice=find_control(self, NOTICE_ID);
     if(notice)set_color(notice,0x858c94);
     label(self, NOTICE_ID, "Loading selected extensions...");
     int result = state_apply(&settings, log_line);
     if (result < 0) {
+        watchdog_stop();
         launch_error = "Extension could not be applied. Disable it to continue.";
         phase = 1; render(self);
         return;
@@ -327,6 +354,7 @@ static void launch(void *self) {
     int activated = extensions_start(extensions, extension_count, stock, runtime,
                                     result > 0 ? "/res/ui/dash1act.ftu" : (const char *)0, log_line);
     if (activated < 0) {
+        watchdog_stop();
         state_restore();
         extension_recovery_ok = activated != -2;
         launch_error = extension_recovery_ok ?
@@ -335,8 +363,9 @@ static void launch(void *self) {
         phase = 1; render(self);
         return;
     }
-    phase = 3; unregister_timer(self, NETWORK_TIMER);
-    debug_release();
+    phase = 3;
+    if(!debug_is_forced()) {unregister_timer(self,NETWORK_TIMER);debug_release();}
+    watchdog_beat();
     log_line("official-selected\n");
     open_activity(ui_instance(), extensions_activity(stock_screen), (void *)0);
 }
@@ -365,9 +394,15 @@ static int on_timer(void *self, int id) {
         return 1;
     }
     if (id == BOOT_TIMER && phase == 0) { continue_boot(self); return 1; }
-    /* Only configuration owns a developer Wi-Fi connection. Never compete
-       with the official app's hotspot or CarPlay/Android Auto networking. */
-    if (id == NETWORK_TIMER && (phase == 1 || (phase == 0 && !settings.wifi_adb))) {
+    if(id==NETWORK_TIMER)watchdog_beat();
+    if(id==NETWORK_TIMER && watchdog_pending) {
+        if(watchdog_ready()) {watchdog_pending=0;launch(self);}
+        else if(++watchdog_pending>=6) {
+            watchdog_pending=0;watchdog_stop();
+            launch_error="Crash recovery unavailable or restart limit reached. Reboot to reset.";
+        }
+    }
+    if (id == NETWORK_TIMER && (phase == 1 || debug_is_forced() || (phase == 0 && !settings.wifi_adb))) {
         debug_poll();
         if (phase == 1) render(self);
     }
@@ -399,7 +434,11 @@ static void on_create(void *self) {
         extern int unlink(const char *);
         (void)unlink("/mnt/extsd/Dashborne/config.once"); phase = 1;
     }
-    if (phase == 1 || !settings.wifi_adb) debug_set_enabled(settings.wifi_adb);
+    if(watchdog_recovery()) {
+        phase=1;launch_error="UI recovered. Crash logs are in Dashborne/diagnostics.";
+    }
+    if (phase == 1 || !settings.wifi_adb || settings.adb_force) debug_set_enabled(settings.wifi_adb);
+    if(settings.wifi_adb && settings.adb_force)(void)debug_set_forced(1);
     render(self);
     register_timer(self, NETWORK_TIMER, 1000);
     loading_dot = 0;
@@ -415,6 +454,7 @@ static void on_click(void *self, void *control) {
         phase = 1; unregister_timer(self, BOOT_TIMER); unregister_timer(self, LOADING_TIMER); log_line("configuration-entered\n");
         debug_set_enabled(settings.wifi_adb);
     } else if (phase != 1) return;
+    else if(watchdog_pending)return;
     else if (id == LAUNCH_ID) { continue_boot(self); return; }
     else if (id == PATCHES_TAB_ID) section = 0;
     else if (id == ADB_TAB_ID) section = 1;
@@ -433,6 +473,19 @@ static void on_click(void *self, void *control) {
            even if the card cannot persist that choice; keep the error visible. */
         if (!settings_ok && settings.wifi_adb) settings.wifi_adb = 0;
         debug_set_enabled(settings.wifi_adb);
+        if(settings.wifi_adb && settings.adb_force)(void)debug_set_forced(1);
+        if(!settings.wifi_adb)watchdog_stop();
+    } else if(id==FORCE_ID && section==1 && settings.wifi_adb) {
+        int before=settings.adb_force;settings.adb_force=!before;
+        settings_ok=state_save(&settings);
+        if(!settings_ok && settings.adb_force)settings.adb_force=before;
+        (void)debug_set_forced(settings.adb_force);
+        if(!settings.adb_force)watchdog_stop();
+    } else if(id==RESTART_ID && section==1 && settings.wifi_adb && debug_is_forced()) {
+        int before=settings.adb_auto_restart;settings.adb_auto_restart=!before;
+        settings_ok=state_save(&settings);
+        if(!settings_ok && settings.adb_auto_restart)settings.adb_auto_restart=before;
+        if(!settings.adb_auto_restart)watchdog_stop();
     }
     render(self);
 }
@@ -557,6 +610,7 @@ EXPORT void onEasyUIDeinit(void *ctx) {
     if(external_app) { external_deinit(ctx);return; }
     /* Leave the init-owned daemon alone, but cancel all pending work. */
     debug_release();
+    watchdog_stop();
     (void)extensions_stop();
     if (prepared) { destroy(prepared); prepared = (void *)0; }
     log_line("shutdown\n");
