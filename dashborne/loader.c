@@ -359,9 +359,9 @@ static void continue_boot(void *self) {
 static int on_timer(void *self, int id) {
     if (id == LOADING_TIMER) {
         if (phase == 0) {
-            color(self, LOADING_DOT_ID + loading_dot, 0x3d444d);
+            visible(self, LOADING_DOT_ID + loading_dot, 0);
             loading_dot = (loading_dot + 1) % 3;
-            color(self, LOADING_DOT_ID + loading_dot, 0xc2c9d1);
+            visible(self, LOADING_DOT_ID + loading_dot, 1);
         }
         return 1;
     }

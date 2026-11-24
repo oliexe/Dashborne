@@ -60,3 +60,15 @@ def write_boot_button(destination):
                         covered += (px-cx)**2 + (py-cy)**2 <= radius**2
                 pixels.extend((*color, round(covered*255/16)))
         (destination / (name + '.png')).write_bytes(png(width, height, pixels))
+
+
+def write_loading(destination):
+    """Small bitmap dots; splash animation does not depend on font glyphs."""
+    for name, color in [('off', (61, 68, 77)), ('on', (194, 201, 209))]:
+        pixels = bytearray()
+        for y in range(10):
+            for x in range(10):
+                covered = sum((x+(sx+.5)/4-5)**2 + (y+(sy+.5)/4-5)**2 <= 25
+                              for sy in range(4) for sx in range(4))
+                pixels.extend((*color, round(covered*255/16)))
+        (destination / ('loading-' + name + '.png')).write_bytes(png(10, 10, pixels))

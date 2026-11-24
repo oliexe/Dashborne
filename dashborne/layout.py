@@ -37,12 +37,16 @@ def screen():
                 visible=True, topmost=False, beepEnable=False, hideTimeout=-1)
     splash = dict(id=110001, position=position(0, 0, 1920, 480), visible=True)
     splash['button__1'] = dict(id=20001, position=position(0, 0, 1920, 480), touchable=True)
-    splash['textview__2'] = dict(id=50010, position=position(824, 100, 272, 272), touchable=False,
+    splash['textview__2'] = dict(id=50010, position=position(856, 133, 208, 208), touchable=False,
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
     splash['textview__3'] = label(50011, 'Tap screen to enter boot option', 560, 434, 800, 24, 16, 0x858c94, 37)
     for i in range(3):
-        splash['textview__loading_'+str(i)] = label(50060+i, '•', 940+i*14, 337, 12, 18, 18,
-            0xc2c9d1 if i == 0 else 0x3d444d, 37)
+        for state in ('off', 'on'):
+            splash['textview__loading_'+state+'_'+str(i)] = dict(
+                id=50060+i if state == 'on' else 50063+i,
+                position=position(940+i*15, 322, 10, 10), touchable=False,
+                visible=state == 'off' or i == 0,
+                backgroundPic='../../../mnt/extsd/Dashborne/ui/loading-'+state+'.png')
     config = dict(id=110002, position=position(0, 0, 1920, 480), visible=False, backgroundColor=0x000000)
     config['textview__4'] = dict(id=50012, position=position(170, 404, 60, 60), touchable=False,
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
@@ -159,6 +163,7 @@ if __name__ == '__main__':
     source = screen(); blob = encode(source)
     assert decode(blob) == source
     out.write_bytes(blob)
-    from switches import write_switches, write_boot_button
+    from switches import write_switches, write_boot_button, write_loading
     write_switches(out.parent)
+    write_loading(out.parent)
     write_boot_button(out.parent)

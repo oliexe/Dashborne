@@ -300,7 +300,14 @@ int main(int argc, char **argv) {
             void **v = *(void ***)p;
             void (*click)(void *, void *) = (void (*)(void *, void *))v[2];
             int (*tick)(void *, int) = (int (*)(void *, int))v[5];
-            for (int i = 0; i < 17; ++i) tick(p, LOADING_TIMER);
+            for (int i = 0; i < 17; ++i) {
+                unsigned int previous=loading_dot;
+                tick(p, LOADING_TIMER);
+                if(!marked) {
+                    assert(!((struct mock_control *)find(p,LOADING_DOT_ID+previous))->shown);
+                    assert(((struct mock_control *)find(p,LOADING_DOT_ID+loading_dot))->shown);
+                }
+            }
             assert(loading_dot == (marked ? 0u : 2u) && !opened && !applied);
             for (int i = 0; i < 120; ++i) tick(p, NETWORK_TIMER);
             assert(retried == (is("config-on") ? 1 : 0));
