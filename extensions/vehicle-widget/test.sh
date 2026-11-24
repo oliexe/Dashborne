@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+export UBSAN_OPTIONS=halt_on_error=1
 cd "$(dirname "$0")"
 output=$(mktemp -d)
 trap 'rm -rf "$output"' EXIT
@@ -14,3 +15,11 @@ clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
     -I../../dashborne/extensions tests/test_panels.c panels.c -o "$output/panels"
 "$output/panels"
 python3 tests/test_assets.py
+
+clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+    -I../../dashborne/extensions tests/test_registry.c -o "$output/registry"
+"$output/registry"
+clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+    -I../../dashborne/extensions tests/test_memory.c -o "$output/memory"
+"$output/memory"
+python3 tests/test_storage.py

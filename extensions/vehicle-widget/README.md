@@ -1,22 +1,29 @@
 # 3D Vehicle Widget
 
-An experimental car widget injected into the official dashboard. It uses native
-controls in the existing dashboard activity, with no separate page to open.
-The standalone Tesla UI extension can stay disabled.
+Adds **3D Vehicle** to the official widget picker. The dashboard editor owns its
+position, occupied cells and removal. The standalone Tesla UI extension can stay
+disabled.
 
 ## Try it
 
-1. Leave an empty **2×2 area** on a dashboard page: two columns across both rows.
-2. Install the current build and enable **3D Vehicle Widget** in Dashborne.
-3. Continue booting and open that dashboard page. The car appears in a free area,
-   preferring the right side. If the page is full, the widget stays hidden.
-4. Tap **Preview** to cycle through sample gears, doors, frunk and trunk states.
-   **Stop** returns to live readings. Samples never enter the stock data buffers.
+1. Install the current build and enable **3D Vehicle Widget** in Dashborne.
+2. Continue booting, enter the dashboard's layout editor and select an empty cell.
+3. Open the special widgets' **Gauges** category and choose **3D Vehicle**.
+4. Leave editing to use **Preview**. **Stop** returns to live vehicle readings.
 
-This test places a native control in unused dashboard space; it does not yet
-add a selectable type to the stock widget editor. It leaves the saved layout
-alone and hides during layout editing and page transitions. Removing Dashborne
-or disabling the extension removes the injected widget on the next boot.
+The widget needs a **2×2 area** and supports one car per page. It uses a free
+native gauge container; the existing gauge choices remain available. If all four
+containers are in use or no 2×2 area fits, the picker explains that it cannot be
+placed. Use the stock editor to change or remove it. Preview is hidden while
+editing, leaving the stock controls available.
+
+The extension starts with a copy of your current dashboard layout. While it is
+enabled, layout changes are saved in the root card's `dashborne.conf`, under
+`vehicle-widget.layout.*`. Disabling the extension or booting without Dashborne
+returns to the flash layout; enabling it again restores the card's layout.
+
+This build has passed local checks. The picker, touch handling and placement
+still need testing on a DASH.
 
 ## Vehicle state
 
@@ -42,8 +49,9 @@ overhead. It loads no Tesla UI fonts, road graphics, graph or standalone activit
 Unchanged scenes do not request another repaint; only one repaint can be pending.
 
 Data and placement are sampled at 10 Hz, with animation ticks every 16 ms.
-Hidden and paused widgets release their images. Shutdown restores the native
-draw callback, removes listeners and timers, and restores the dashboard hooks.
+Hidden and paused widgets release their images. Cleanup restores the native
+draw callback, picker tables, layout-path references and dashboard hooks after
+the dashboard has closed. A live dashboard requires a restart before unloading.
 The widget does not change display-sleep or networking policy.
 
 ## Local checks
@@ -55,6 +63,8 @@ sh test.sh
 ```
 
 Tests cover all 128 Park/Drive panel poses, cache bounds, partial asset failures,
-invalid state, repeated Preview/Stop, editing, page movement, pause/resume,
-destruction and hook restoration conflicts. The build copies shared car assets
-into this extension's package, so it can run without Tesla UI's module loaded.
+invalid state, repeated Preview/Stop, picker selection, placement, replacement
+rollback, re-editing, page movement, pause/resume, destruction and hook conflicts.
+Storage tests cover round trips, malformed data, size limits and failed writes.
+The build copies shared car assets into this extension's package, so it can run
+without Tesla UI's module loaded.

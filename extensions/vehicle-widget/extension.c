@@ -1,12 +1,14 @@
 #include "dashborne_extension.h"
 #include "scene.h"
 #include "data.h"
+#include "registry.h"
 #include "../tesla-ui/sample.h"
 typedef __SIZE_TYPE__ usize;
 typedef __UINTPTR_TYPE__ uintptr;
 extern int snprintf(char *,usize,const char *,...);
 extern int strcmp(const char *,const char *);
 extern usize strlen(const char *);
+extern void *memcpy(void *,const void *,usize);
 extern int mprotect(void *,usize,int);
 extern void *fopen(const char *,const char *);
 extern char *fgets(char *,int,void *);
@@ -26,7 +28,7 @@ static const struct dashborne_host *host;
 static void *live,*window,*canvas,*status,*button,*drawing;
 static void **activity_table,**text_table,*draw_table[13];
 static void *hook_page;
-static int hook_protection,installed,hook_count,paused,preview,failed,shown;
+static int hook_protection,installed,hook_count,paused,preview,failed,shown,editing;
 static int placed_x=-1,placed_y=-1;
 static unsigned long long started,next_sample,next_place;
 static struct hook hooks[24];
@@ -38,8 +40,7 @@ static void (*stock_destroy)(void *),(*stock_delete)(void *),(*stock_click)(void
 static int (*stock_timer)(void *,int),(*stock_timer_secondary)(void *,int);
 static void *(*find)(void *,int),*(*book)(void),*(*grid_active)(void *),*(*parent_of)(void *);
 static void *(*grid_widgets)(void *);
-static unsigned int (*grid_size)(void *,int);
-static int (*grid_free)(void *,int,struct cell,struct cell *,unsigned short);
+
 static const struct rect *(*position_of)(void *);
 static void (*position)(void *,const struct rect *),(*visible)(void *,int);
 static void (*text)(void *,const char *),(*listener)(void *,void *);
@@ -54,7 +55,7 @@ static int (*bitmap_load)(void *,const char *,int,int);
 static void (*bitmap_fill)(void *,void *,int,int,int,int);
 
 static const char layout[]=
-    "{\"window__vehicle\":{\"id\":119700,\"visible\":false,\"backgroundColor\":657930,"
+    "{\"window__vehicle\":{\"id\":119700,\"visible\":false,\"touchable\":false,\"backgroundColor\":657930,"
     "\"position\":{\"left\":0,\"top\":11,\"width\":510,\"height\":458},"
     "\"textview__title\":{\"id\":599700,\"text\":\"3D Vehicle\",\"fontSize\":22,\"touchable\":false,"
     "\"colorTab\":{\"color0\":14738154},\"position\":{\"left\":18,\"top\":16,\"width\":300,\"height\":40}},"
@@ -120,7 +121,6 @@ static int controls(void *self) {
 }
 static int placement(void) {
     void *grid=grid_active(book());if(!grid)return 0;
-    if(grid_size(grid,5)!=0x00020002u)return 0;
     /* The first pooled widget supplies the native page container. Its ABI is
        covered by the full app fingerprint, not guessed from the current page. */
     void *first=*(void **)((unsigned char *)grid+40);
@@ -131,15 +131,25 @@ static int placement(void) {
     if(!vector)return 0;
     uintptr begin=(uintptr)vector[0],end=(uintptr)vector[1];
     if(end<begin || (end-begin)%sizeof(void *) || (end-begin)/sizeof(void *)>64)return 0;
+    void *vehicle=0;
     for(void **it=(void **)begin;(uintptr)it<end;++it) {
-        if(!*it || ((unsigned char *)*it)[0x14])return 0; /* Stock edit mode. */
+        if(!*it)return 0;
+        if(registry_widget(*it)) {
+            if(vehicle)return 0;
+            vehicle=*it;
+        }
     }
-    struct cell free_cell={-1,-1};
-    if(!grid_free(grid,5,(struct cell){4,0},&free_cell,65535) ||
-       free_cell.x<0 || free_cell.x>4 || free_cell.y!=0)return 0;
-    if(free_cell.x!=placed_x || free_cell.y!=placed_y) {
-        position(window,&(struct rect){free_cell.x*260,11,510,458});
-        placed_x=free_cell.x;placed_y=free_cell.y;
+    if(!vehicle)return 0;
+    int is_editing=((unsigned char *)vehicle)[0x14]!=0;
+    if(is_editing!=editing) {
+        editing=is_editing;visible(button,!editing);
+        if(editing && preview){preview=0;text(button,"Preview");next_sample=0;}
+    }
+    void *native_window;memcpy(&native_window,(unsigned char *)vehicle+4,sizeof(native_window));
+    const struct rect *p=native_window?position_of(native_window):0;
+    if(!p || p->w!=510 || p->h!=458 || p->x<0 || p->x>1040 || p->y!=11)return 0;
+    if(p->x!=placed_x || p->y!=placed_y) {
+        position(window,p);placed_x=p->x;placed_y=p->y;
     }
     return 1;
 }
@@ -169,7 +179,7 @@ static void update(unsigned long long now) {
 static void created(void *self) {
     stock_create(self);
     if(live)return;
-    live=self;paused=preview=failed=0;next_sample=next_place=0;
+    live=self;paused=preview=failed=editing=0;next_sample=next_place=0;
     if(controls(self)){failed=1;detach();host->log(host,"vehicle-widget: native controls unavailable");return;}
     register_timer(self,TIMER,16);host->log(host,"vehicle-widget: dashboard control injected");
 }
@@ -183,7 +193,7 @@ static int timer_secondary(void *self,int id) {
     return timer((unsigned char *)self-sizeof(void *),id);
 }
 static void clicked(void *self,void *control) {
-    if(self==live && !paused && !failed && shown && control==button && id_of(control)==PREVIEW) {
+    if(self==live && !paused && !failed && !editing && shown && control==button && id_of(control)==PREVIEW) {
         preview=!preview;started=source_microseconds();next_sample=0;
         text(button,preview?"Stop":"Preview");update(started);return;
     }
@@ -238,8 +248,7 @@ static int activate(const struct dashborne_host *api) {
     APP(stock_click,"_ZN16dash1actActivity7onClickEP6ZKBase");
     APP(book,"_ZN10WidgetBook8instanceEv");APP(grid_active,"_ZNK10WidgetBook13getActiveGridEv");
     APP(grid_widgets,"_ZNK11DisplayGrid16getActiveWidgetsEv");
-    APP(grid_size,"_ZN11DisplayGrid13getWidgetSizeE12WdgOutlook_t");
-    APP(grid_free,"_ZN11DisplayGrid15findNearestFreeE12WdgOutlook_t12WdgGridPos_tRS1_t");
+
     UI(find,"_ZN7BaseApp15findControlByIDEi");UI(parent_of,"_ZNK6ZKBase9getParentEv");
     UI(position_of,"_ZNK6ZKBase11getPositionEv");UI(position,"_ZN6ZKBase11setPositionERK14LayoutPosition");
     UI(visible,"_ZN6ZKBase10setVisibleEb");UI(text,"_ZN10ZKTextView7setTextEPKc");
@@ -257,7 +266,7 @@ static int activate(const struct dashborne_host *api) {
 #undef APP
 #undef UI
 #undef BIND
-    if(text_table[10]!=(void *)base_draw)return -1;
+    if(text_table[10]!=(void *)base_draw || registry_bind(api))return -1;
     for(int i=0;i<13;++i)draw_table[i]=text_table[i];draw_table[10]=(void *)draw;
     if(add_hook(2,(void *)stock_destroy,(void *)destroy,0) || add_hook(3,(void *)stock_delete,(void *)deleting,0) ||
        add_hook(4,(void *)stock_click,(void *)clicked,1) || add_hook(6,(void *)stock_create,(void *)created,0) ||
@@ -282,6 +291,8 @@ static int activate(const struct dashborne_host *api) {
     api->log(api,"vehicle-widget: experimental dashboard injection ready");return 0;
 }
 static int deactivate(void) {
+    /* Native widget pools and editor state remain live until Activity teardown. */
+    if(live)return -1;
     if(live)unregister_timer(live,TIMER);
     paused=1;
     if(detach())return -1;
@@ -291,6 +302,7 @@ static int deactivate(void) {
         for(int i=0;i<hook_count;++i)activity_table[hooks[i].index]=hooks[i].before;
         if(mprotect(hook_page,4096,hook_protection))return -1;
     }
+    if(registry_cleanup())return -1;
     installed=0;live=0;host=0;hook_count=0;failed=0;return 0;
 }
 DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *dashborne_extension_v1(void) {

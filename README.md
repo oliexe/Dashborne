@@ -100,8 +100,8 @@ See [configuration and operation](dashborne/README.md).
 - [Contrast](extensions/contrast): display contrast and luminance controls in stock Settings.
 - [Tesla UI](extensions/tesla-ui): a fixed Model S style instrument view in Extra,
   with live readings, energy history and navigation trip details.
-- [3D Vehicle Widget](extensions/vehicle-widget): an experimental animated car
-  injected into a free 2×2 area of the stock dashboard, with a local preview.
+- [3D Vehicle Widget](extensions/vehicle-widget): an animated car in the stock widget
+  picker, placed through the dashboard editor, with a local preview.
 - [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
   viewer with aspect controls; Back restores CarPlay/Android Auto.
 - [Dashborne badge](dashborne/patches/definitions/badge.json): an optional dashboard label.

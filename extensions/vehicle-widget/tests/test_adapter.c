@@ -28,6 +28,9 @@ static const struct dashborne_host api={.extension_directory="/test/vehicle-widg
 int source_bind(const struct dashborne_host *h){(void)h;return 0;}
 unsigned long long source_microseconds(void){return now;}
 void vehicle_read(struct readings *r){*r=input;}
+int registry_bind(const struct dashborne_host *h){(void)h;return 0;}
+int registry_cleanup(void){return 0;}
+int registry_widget(const void *w){return w==fake_widget && available;}
 void *test_fopen(const char *name,const char *mode){(void)name;(void)mode;return (void *)1;}
 char *test_fgets(char *buffer,int length,void *file){(void)file;snprintf(buffer,(usize)length,"%lx-%lx r--p 0000",(unsigned long)native_activity,(unsigned long)native_activity+4096);return buffer;}
 int test_fclose(void *file){(void)file;return 0;}
@@ -54,7 +57,8 @@ static void json_init(void *p,int type){(void)p;assert(!type);}
 static int parse_json(void *p,const char *b,const char *e,void *v,int comments){(void)p;(void)v;assert(e-b==(long)strlen(b) && !comments);return 1;}
 static void parse_tree(void *p,const void *v){assert(p==&root_control && v);parsed=1;}
 static void listen(void *p,void *l){assert(p==&button_control && (!l || l==(void *)1));}
-static void set_visible(void *p,int on){assert(p==&window_control);visible_count=on;}
+static int preview_visible=1;
+static void set_visible(void *p,int on){if(p==&button_control){preview_visible=on;return;}assert(p==&window_control);visible_count=on;}
 static void set_text(void *p,const char *s) {
     if(p==&status_control)snprintf(status_value,sizeof(status_value),"%s",s);
     else {assert(p==&button_control);snprintf(button_value,sizeof(button_value),"%s",s);}
@@ -65,12 +69,8 @@ static void *get_book(void){return (void *)2;}
 static void *get_grid(void *p){assert(p==(void *)2);return fake_grid;}
 static void *get_widgets(void *p){assert(p==fake_grid);return vector;}
 static void *get_parent(void *p){assert(p==&root_control);return &parent_position;}
-static const struct rect *get_position(void *p){assert(p==&parent_position);return &parent_position;}
-static unsigned int get_size(void *p,int type){assert(p==fake_grid && type==5);return 0x00020002;}
-static int free_cell(void *p,int type,struct cell preferred,struct cell *out,unsigned short excluded) {
-    assert(p==fake_grid && type==5 && preferred.x==4 && preferred.y==0 && excluded==65535);
-    *out=(struct cell){4,0};return available;
-}
+static struct rect native_position={1040,11,510,458};
+static const struct rect *get_position(void *p){if(p==&window_control)return &native_position;assert(p==&parent_position);return &parent_position;}
 static void place(void *p,const struct rect *r){assert(p==&window_control && r->x==1040 && r->y==11 && r->w==510 && r->h==458);}
 static int get_id(void *p){return ((struct control *)p)->id;}
 static void init_bitmap(void *p){((void **)p)[0]=(void *)1;++live_bitmaps;if(live_bitmaps>bitmap_peak)bitmap_peak=live_bitmaps;}
@@ -87,8 +87,8 @@ int main(void) {
     stock_create=original_created;stock_click=original_click;stock_timer=stock_timer_secondary=original_timer;
     stock_pause=original_pause;stock_resume=original_resume;stock_destroy=stock_delete=original_destroy;
     register_timer=register_tick;unregister_timer=unregister_tick;
-    book=get_book;grid_active=get_grid;grid_widgets=get_widgets;grid_size=get_size;grid_free=free_cell;
-    parent_of=get_parent;position_of=get_position;*(void **)(fake_grid+40)=&root_control;
+    book=get_book;grid_active=get_grid;grid_widgets=get_widgets;
+    parent_of=get_parent;position_of=get_position;*(void **)(fake_grid+40)=&root_control;memcpy(fake_widget+4,&(void *){&window_control},sizeof(void *));
     bitmap_ctor=init_bitmap;bitmap_dtor=free_bitmap;bitmap_load=read_bitmap;bitmap_fill=paint_bitmap;
     invalidate=invalid;base_draw=native_draw;text_table=native_text;
     for(int i=0;i<13;++i)draw_table[i]=native_text[i];draw_table[10]=(void *)draw;
@@ -106,9 +106,10 @@ int main(void) {
     input.body_open=63;tick(100000);tick(500000);assert(scene.body==63 && bitmap_peak<=77);
     input.connected=0;tick(100000);assert(!scene.body && scene.frame==0 && !strcmp(status_value,"Waiting for vehicle"));
     parent_position.y=20;tick(100000);assert(!visible_count && !live_bitmaps);
-    parent_position.y=0;fake_widget[0x14]=1;tick(100000);assert(!visible_count);
+    parent_position.y=0;fake_widget[0x14]=1;tick(100000);assert(visible_count && editing && !preview_visible);
+    clicked((void *)1,&button_control);assert(!preview);
     fake_widget[0x14]=0;available=0;tick(100000);assert(!visible_count);
-    available=1;tick(100000);assert(visible_count && live_bitmaps);
+    available=1;tick(100000);assert(visible_count && live_bitmaps && preview_visible && !editing);
     pause_view((void *)1);assert(paused && !live_bitmaps && pauses==1);
     tick(100000);assert(!visible_count && !live_bitmaps);
     resume_view((void *)1);tick(100000);assert(!paused && resumes==1 && live_bitmaps);
