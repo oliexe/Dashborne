@@ -115,6 +115,8 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 - [Widget Example](extensions/widget-example): boilerplate for adding widgets to any stock picker category.
 - [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
   viewer with aspect controls; Back restores CarPlay/Android Auto.
+- [T9 UI](extensions/t9-ui): experimental dashboard views using locally imported T9 layouts
+  and the stock data service.
 
 See the [extension development guide](dashborne/extensions/README.md) to build your own.
 

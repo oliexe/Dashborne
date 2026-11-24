@@ -1,0 +1,7 @@
+{
+  "id": "t9-ui",
+  "title": "T9 UI (experimental)",
+  "description": "T9 dashboard layouts in Extra, using locally imported resources and the stock data service.",
+  "abi": 1,
+  "sources": ["extension.c"]
+}
