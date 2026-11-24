@@ -42,6 +42,13 @@ and assets. It adds a native entry to the shared patch catalog. Set
 preserves existing selections.
 The catalog determines activation order. IDs must be unique across both types.
 
+Bundled modules can reuse another extension's source assets without duplicating
+them in Git. Add `"asset_sources": [{"extension": "tesla-ui", "paths": ["motion",
+"Model3-CREDITS.md"]}]` to the manifest. The builder copies those files from the
+named extension's `assets/` directory into the new package's own `assets/` tree;
+the provider module does not need to be enabled. Paths cannot leave that source
+directory, and duplicate destinations fail the build.
+
 The supplied builder handles freestanding C sources. Other languages, C++,
 additional dependencies or custom build systems can produce the same shared
 library ABI: ARMv7 Linux, little-endian, hard-float, with dependencies compatible

@@ -1,0 +1,8 @@
+{
+  "id": "vehicle-widget",
+  "title": "3D Vehicle Widget",
+  "description": "Experimental animated car in an empty 2×2 dashboard area. Includes a local Preview button.",
+  "abi": 1,
+  "sources": ["extension.c", "scene.c", "motion.c", "data.c", "panels.c", "sample.c"],
+  "asset_sources": [{"extension": "tesla-ui", "paths": ["motion", "Model3-CREDITS.md"]}]
+}

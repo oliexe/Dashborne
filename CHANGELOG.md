@@ -3,6 +3,10 @@
 This changelog tracks Dashborne core, starting with 0.1.0. Extension changes are
 tracked separately in their source history.
 
+## Unreleased
+
+- The extension builder can package shared source assets into independent modules.
+
 ## 0.1.0 — 2026-11-24
 
 Initial release. This is the baseline for future Dashborne releases.
