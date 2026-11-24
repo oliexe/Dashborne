@@ -22,8 +22,7 @@ enabled, layout changes are saved in the root card's `dashborne.conf`, under
 `vehicle-widget.layout.*`. Disabling the extension or booting without Dashborne
 returns to the flash layout; enabling it again restores the card's layout.
 
-This build has passed local checks. The picker, touch handling and placement
-still need testing on a DASH.
+Picker placement has been tested on a DASH.
 
 ## Vehicle state
 
@@ -48,9 +47,14 @@ sequence. Its decoded pixels total at most 19.54 MiB, excluding native bitmap
 overhead. It loads no Tesla UI fonts, road graphics, graph or standalone activity.
 Unchanged scenes do not request another repaint; only one repaint can be pending.
 
-Data and placement are sampled at 10 Hz, with animation ticks every 16 ms.
-Hidden and paused widgets release their images. Cleanup restores the native
-draw callback, picker tables, layout-path references and dashboard hooks after
+Vehicle data is sampled at 10 Hz, with animation ticks every 16 ms. Each car view
+is a child of its native widget window: page movement, clipping and visibility
+follow the stock hierarchy. Reusing a container for a stock gauge hides its car
+view before the container appears.
+The three native page containers share this cache, so swiping does not reload
+the car images. The cache is released when none contains a car or the dashboard
+pauses. Cleanup restores the native
+draw callbacks, picker tables, layout-path references and dashboard hooks after
 the dashboard has closed. A live dashboard requires a restart before unloading.
 The widget does not change display-sleep or networking policy.
 
@@ -64,7 +68,8 @@ sh test.sh
 
 Tests cover all 128 Park/Drive panel poses, cache bounds, partial asset failures,
 invalid state, repeated Preview/Stop, picker selection, placement, replacement
-rollback, re-editing, page movement, pause/resume, destruction and hook conflicts.
+rollback, re-editing, simultaneous page slides, container reuse, pause/resume,
+partial creation, destruction and hook conflicts.
 Storage tests cover round trips, malformed data, size limits and failed writes.
 The build copies shared car assets into this extension's package, so it can run
 without Tesla UI's module loaded.

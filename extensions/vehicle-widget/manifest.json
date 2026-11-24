@@ -13,7 +13,8 @@
     "registry.c",
     "memory.c",
     "storage.c",
-    "settings.c"
+    "settings.c",
+    "views.c"
   ],
   "asset_sources": [
     {

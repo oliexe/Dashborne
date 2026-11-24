@@ -12,6 +12,9 @@ clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
     ../tesla-ui/sample.c -o "$output/adapter"
 "$output/adapter"
 clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+    -I../../dashborne/extensions tests/test_views.c -o "$output/views"
+"$output/views"
+clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
     -I../../dashborne/extensions tests/test_panels.c panels.c -o "$output/panels"
 "$output/panels"
 python3 tests/test_assets.py

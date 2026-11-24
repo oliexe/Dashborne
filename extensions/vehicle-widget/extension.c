@@ -2,6 +2,7 @@
 #include "scene.h"
 #include "data.h"
 #include "registry.h"
+#include "views.h"
 #include "../tesla-ui/sample.h"
 typedef __SIZE_TYPE__ usize;
 typedef __UINTPTR_TYPE__ uintptr;
@@ -15,56 +16,25 @@ extern char *fgets(char *,int,void *);
 extern int fclose(void *),sscanf(const char *,const char *,...);
 
 #define TIMER 97400
-#define WINDOW 119700
-#define CANVAS 599701
-#define STATUS 599702
-#define PREVIEW 299700
 #define TABLE_WORDS 63
-struct rect {int x,y,w,h;};
-struct cell {int x,y;};
 struct bitmap {void *words[6];int initialized;};
 struct hook {int index;void *before,*after;};
 static const struct dashborne_host *host;
-static void *live,*window,*canvas,*status,*button,*drawing;
-static void **activity_table,**text_table,*draw_table[13];
+static void *live,*drawing;
+static void **activity_table;
 static void *hook_page;
 static int hook_protection,installed,hook_count,paused,preview,failed,shown,editing;
-static int placed_x=-1,placed_y=-1;
-static unsigned long long started,next_sample,next_place;
+static unsigned long long started,next_sample;
 static struct hook hooks[24];
 static struct vehicle_scene scene;
 static struct bitmap bitmaps[VEHICLE_BITMAP_SLOTS];
-static char previous_status[100];
 static void (*stock_create)(void *),(*stock_pause)(void *),(*stock_resume)(void *);
 static void (*stock_destroy)(void *),(*stock_delete)(void *),(*stock_click)(void *,void *);
 static int (*stock_timer)(void *,int),(*stock_timer_secondary)(void *,int);
-static void *(*find)(void *,int),*(*book)(void),*(*grid_active)(void *),*(*parent_of)(void *);
-static void *(*grid_widgets)(void *);
-
-static const struct rect *(*position_of)(void *);
-static void (*position)(void *,const struct rect *),(*visible)(void *,int);
-static void (*text)(void *,const char *),(*listener)(void *,void *);
-static int (*id_of)(void *);
 static void (*register_timer)(void *,int,int),(*unregister_timer)(void *,int);
-static void (*json_ctor)(void *,int),(*json_dtor)(void *),(*reader_ctor)(void *),(*reader_dtor)(void *);
-static int (*json_parse)(void *,const char *,const char *,void *,int);
-static void (*parse_controls)(void *,const void *);
-static void (*base_draw)(void *,void *),(*invalidate)(void *,const struct rect *);
 static void (*bitmap_ctor)(void *),(*bitmap_dtor)(void *);
 static int (*bitmap_load)(void *,const char *,int,int);
 static void (*bitmap_fill)(void *,void *,int,int,int,int);
-
-static const char layout[]=
-    "{\"window__vehicle\":{\"id\":119700,\"visible\":false,\"touchable\":false,\"backgroundColor\":657930,"
-    "\"position\":{\"left\":0,\"top\":11,\"width\":510,\"height\":458},"
-    "\"textview__title\":{\"id\":599700,\"text\":\"3D Vehicle\",\"fontSize\":22,\"touchable\":false,"
-    "\"colorTab\":{\"color0\":14738154},\"position\":{\"left\":18,\"top\":16,\"width\":300,\"height\":40}},"
-    "\"textview__car\":{\"id\":599701,\"touchable\":false,\"position\":{\"left\":15,\"top\":78,\"width\":480,\"height\":288}},"
-    "\"textview__status\":{\"id\":599702,\"fontSize\":19,\"touchable\":false,\"alignment\":37,"
-    "\"colorTab\":{\"color0\":10068407},\"position\":{\"left\":18,\"top\":389,\"width\":474,\"height\":44}},"
-    "\"button__preview\":{\"id\":299700,\"text\":\"Preview\",\"fontSize\":18,\"alignment\":37,\"touchable\":true,"
-    "\"backgroundColor\":2237484,\"colorTab\":{\"color0\":14738154},"
-    "\"position\":{\"left\":380,\"top\":16,\"width\":112,\"height\":42}}}}";
 
 static void image_unload(void *context,int slot) {
     (void)context;
@@ -78,89 +48,26 @@ static int image_load(void *context,int slot,const char *name) {
     bitmap_ctor(bitmaps[slot].words);bitmaps[slot].initialized=1;
     return bitmap_load(bitmaps[slot].words,path,0,0);
 }
-static void image_invalidate(void *context) {(void)context;if(canvas)invalidate(canvas,0);}
+static void image_invalidate(void *context) {(void)context;views_invalidate();}
 static void image_draw(void *context,int slot,int x,int y,int w,int h) {
     (void)context;
     if(drawing)bitmap_fill(bitmaps[slot].words,drawing,x*4/5,y*4/5,w*4/5,h*4/5);
 }
 static const struct vehicle_scene_ops scene_ops={image_load,image_unload,image_invalidate,image_draw};
-static void draw(void *self,void *surface) {
-    base_draw(self,surface);
-    if(self==canvas && shown && !paused) {drawing=surface;vehicle_scene_draw(&scene);drawing=0;}
-}
-static void show(int value) {
-    if(window && value!=shown){visible(window,value);shown=value;}
-}
-static void label(const char *value) {
-    if(status && strcmp(previous_status,value)) {
-        text(status,value);snprintf(previous_status,sizeof(previous_status),"%s",value);
-    }
+static void draw(void *surface) {
+    if(!paused && scene.active) {drawing=surface;vehicle_scene_draw(&scene);drawing=0;}
 }
 static int detach(void) {
-    if(canvas && *(void ***)canvas!=draw_table+2 && *(void ***)canvas!=text_table+2)return -1;
-    show(0);
-    if(canvas && *(void ***)canvas==draw_table+2)*(void ***)canvas=text_table+2;
-    if(button)listener(button,0);
-    vehicle_scene_close(&scene);drawing=0;preview=0;
-    window=canvas=status=button=0;return 0;
-}
-static int controls(void *self) {
-    void *root=find(self,110001);
-    if(!root || find(self,WINDOW) || find(self,CANVAS) || find(self,STATUS) || find(self,PREVIEW))return -1;
-    union {double align;unsigned char bytes[256];} reader;
-    union {double align;unsigned char bytes[64];} json;
-    reader_ctor(&reader);json_ctor(&json,0);
-    int ok=json_parse(&reader,layout,layout+strlen(layout),&json,0);
-    if(ok)parse_controls(root,&json);
-    json_dtor(&json);reader_dtor(&reader);
-    window=find(self,WINDOW);canvas=find(self,CANVAS);status=find(self,STATUS);button=find(self,PREVIEW);
-    if(!ok || !window || !canvas || !status || !button || *(void ***)canvas!=text_table+2)return -1;
-    *(void ***)canvas=draw_table+2;listener(button,self);
-    placed_x=placed_y=-1;shown=0;previous_status[0]=0;
-    return 0;
-}
-static int placement(void) {
-    void *grid=grid_active(book());if(!grid)return 0;
-    /* The first pooled widget supplies the native page container. Its ABI is
-       covered by the full app fingerprint, not guessed from the current page. */
-    void *first=*(void **)((unsigned char *)grid+40);
-    void *parent=first?parent_of(first):0;
-    const struct rect *r=parent?position_of(parent):0;
-    if(!r || r->x || r->y)return 0; /* Hide while the stock page slides. */
-    void **vector=grid_widgets(grid);
-    if(!vector)return 0;
-    uintptr begin=(uintptr)vector[0],end=(uintptr)vector[1];
-    if(end<begin || (end-begin)%sizeof(void *) || (end-begin)/sizeof(void *)>64)return 0;
-    void *vehicle=0;
-    for(void **it=(void **)begin;(uintptr)it<end;++it) {
-        if(!*it)return 0;
-        if(registry_widget(*it)) {
-            if(vehicle)return 0;
-            vehicle=*it;
-        }
-    }
-    if(!vehicle)return 0;
-    int is_editing=((unsigned char *)vehicle)[0x14]!=0;
-    if(is_editing!=editing) {
-        editing=is_editing;visible(button,!editing);
-        if(editing && preview){preview=0;text(button,"Preview");next_sample=0;}
-    }
-    void *native_window;memcpy(&native_window,(unsigned char *)vehicle+4,sizeof(native_window));
-    const struct rect *p=native_window?position_of(native_window):0;
-    if(!p || p->w!=510 || p->h!=458 || p->x<0 || p->x>1040 || p->y!=11)return 0;
-    if(p->x!=placed_x || p->y!=placed_y) {
-        position(window,p);placed_x=p->x;placed_y=p->y;
-    }
-    return 1;
+    if(views_detach())return -1;
+    vehicle_scene_close(&scene);drawing=0;preview=0;shown=0;return 0;
 }
 static void update(unsigned long long now) {
-    if(!live || paused || failed || !canvas)return;
-    if(!next_place || now>=next_place || next_place-now>100000) {
-        next_place=now+100000;show(placement());
-    }
+    if(!live || paused || failed)return;
+    shown=views_sync();editing=views_editing();
+    if(editing && preview){preview=0;views_preview(0);next_sample=0;}
     if(!shown) {vehicle_scene_close(&scene);return;}
     if(!scene.active && vehicle_scene_open(&scene,&scene_ops,0)) {
-        failed=1;label("Car images unavailable");host->log(host,"vehicle-widget: asset load failed");return;
+        failed=1;views_label("Car images unavailable");host->log(host,"vehicle-widget: asset load failed");return;
     }
     if(!next_sample || now>=next_sample || next_sample-now>100000) {
         next_sample=now+100000;struct readings r;const char *sample=0;
@@ -172,16 +79,16 @@ static void update(unsigned long long now) {
         else if(!scene.connected)snprintf(line,sizeof(line),"Waiting for vehicle");
         else if(!scene.panels_known)snprintf(line,sizeof(line),"Panel status unavailable");
         else snprintf(line,sizeof(line),"Live: %s",r.gear==1?"Park":r.gear==2?"Reverse":r.gear==3?"Neutral":"Drive");
-        label(scene.body_failed?"Car image unavailable":line);
+        views_label(scene.body_failed?"Car image unavailable":line);
     }
     vehicle_scene_tick(&scene,now);
 }
 static void created(void *self) {
     stock_create(self);
     if(live)return;
-    live=self;paused=preview=failed=editing=0;next_sample=next_place=0;
-    if(controls(self)){failed=1;detach();host->log(host,"vehicle-widget: native controls unavailable");return;}
-    register_timer(self,TIMER,16);host->log(host,"vehicle-widget: dashboard control injected");
+    live=self;paused=preview=failed=editing=0;next_sample=0;
+    if(views_create(self)){failed=1;detach();host->log(host,"vehicle-widget: native controls unavailable");return;}
+    register_timer(self,TIMER,16);host->log(host,"vehicle-widget: car views attached to native page containers");
 }
 static int timer(void *self,int id) {
     if(id!=TIMER)return stock_timer(self,id);
@@ -193,19 +100,19 @@ static int timer_secondary(void *self,int id) {
     return timer((unsigned char *)self-sizeof(void *),id);
 }
 static void clicked(void *self,void *control) {
-    if(self==live && !paused && !failed && !editing && shown && control==button && id_of(control)==PREVIEW) {
+    if(self==live && !paused && !failed && !editing && shown && views_click(control)) {
         preview=!preview;started=source_microseconds();next_sample=0;
-        text(button,preview?"Stop":"Preview");update(started);return;
+        views_preview(preview);update(started);return;
     }
     stock_click(self,control);
 }
 static void pause_view(void *self) {
-    if(self==live){paused=1;unregister_timer(self,TIMER);show(0);vehicle_scene_close(&scene);preview=0;if(button)text(button,"Preview");}
+    if(self==live){paused=1;unregister_timer(self,TIMER);vehicle_scene_close(&scene);preview=0;views_preview(0);}
     stock_pause(self);
 }
 static void resume_view(void *self) {
     stock_resume(self);
-    if(self==live && !failed){paused=0;next_sample=next_place=0;register_timer(self,TIMER,16);}
+    if(self==live && !failed){paused=0;next_sample=0;register_timer(self,TIMER,16);}
 }
 static void retiring(void *self) {
     if(self==live){paused=1;unregister_timer(self,TIMER);detach();live=0;}
@@ -246,28 +153,14 @@ static int activate(const struct dashborne_host *api) {
     APP(stock_pause,"_ZN16dash1actActivity7onPauseEv");APP(stock_resume,"_ZN16dash1actActivity8onResumeEv");
     APP(stock_destroy,"_ZN16dash1actActivityD1Ev");APP(stock_delete,"_ZN16dash1actActivityD0Ev");
     APP(stock_click,"_ZN16dash1actActivity7onClickEP6ZKBase");
-    APP(book,"_ZN10WidgetBook8instanceEv");APP(grid_active,"_ZNK10WidgetBook13getActiveGridEv");
-    APP(grid_widgets,"_ZNK11DisplayGrid16getActiveWidgetsEv");
-
-    UI(find,"_ZN7BaseApp15findControlByIDEi");UI(parent_of,"_ZNK6ZKBase9getParentEv");
-    UI(position_of,"_ZNK6ZKBase11getPositionEv");UI(position,"_ZN6ZKBase11setPositionERK14LayoutPosition");
-    UI(visible,"_ZN6ZKBase10setVisibleEb");UI(text,"_ZN10ZKTextView7setTextEPKc");
-    UI(listener,"_ZN6ZKBase16setClickListenerEPNS_14IClickListenerE");UI(id_of,"_ZNK6ZKBase5getIDEv");
     UI(register_timer,"_ZN7BaseApp13registerTimerEii");UI(unregister_timer,"_ZN7BaseApp15unregisterTimerEi");
-    UI(json_ctor,"_ZN4Json5ValueC1ENS_9ValueTypeE");UI(json_dtor,"_ZN4Json5ValueD1Ev");
-    UI(reader_ctor,"_ZN4Json6ReaderC1Ev");UI(reader_dtor,"_ZN4Json6ReaderD2Ev");
-    UI(json_parse,"_ZN4Json6Reader5parseEPKcS2_RNS_5ValueEb");
-    UI(parse_controls,"_ZN8ZKWindow21parseControlsFromJsonERKN4Json5ValueE");
-    UI(text_table,"_ZTV10ZKTextView");UI(base_draw,"_ZN10ZKTextView6onDrawEP8ZKCanvas");
-    UI(invalidate,"_ZN6ZKBase10invalidateEPK14LayoutPosition");
     UI(bitmap_ctor,"_ZN13BitmapWrapperC1Ev");UI(bitmap_dtor,"_ZN13BitmapWrapperD1Ev");
     UI(bitmap_load,"_ZN13BitmapWrapper18loadBitmapFromFileEPKcii");
     UI(bitmap_fill,"_ZN13BitmapWrapper17fillBoxWithBitmapEPviiii");
 #undef APP
 #undef UI
 #undef BIND
-    if(text_table[10]!=(void *)base_draw || registry_bind(api))return -1;
-    for(int i=0;i<13;++i)draw_table[i]=text_table[i];draw_table[10]=(void *)draw;
+    if(registry_bind(api) || views_bind(api,draw))return -1;
     if(add_hook(2,(void *)stock_destroy,(void *)destroy,0) || add_hook(3,(void *)stock_delete,(void *)deleting,0) ||
        add_hook(4,(void *)stock_click,(void *)clicked,1) || add_hook(6,(void *)stock_create,(void *)created,0) ||
        add_hook(7,(void *)stock_timer,(void *)timer,0) || add_hook(9,(void *)stock_resume,(void *)resume_view,0) ||
@@ -288,7 +181,7 @@ static int activate(const struct dashborne_host *api) {
     for(int i=0;i<hook_count;++i)activity_table[hooks[i].index]=hooks[i].after;
     installed=1;
     if(mprotect(hook_page,4096,hook_protection))return -1;
-    api->log(api,"vehicle-widget: experimental dashboard injection ready");return 0;
+    api->log(api,"vehicle-widget: native child views ready");return 0;
 }
 static int deactivate(void) {
     /* Native widget pools and editor state remain live until Activity teardown. */
@@ -302,7 +195,7 @@ static int deactivate(void) {
         for(int i=0;i<hook_count;++i)activity_table[hooks[i].index]=hooks[i].before;
         if(mprotect(hook_page,4096,hook_protection))return -1;
     }
-    if(registry_cleanup())return -1;
+    if(views_cleanup() || registry_cleanup())return -1;
     installed=0;live=0;host=0;hook_count=0;failed=0;return 0;
 }
 DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *dashborne_extension_v1(void) {
