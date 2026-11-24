@@ -106,9 +106,11 @@ See [configuration and operation](dashborne/README.md).
 
 ## Extensions
 
-Dashborne includes the [Extra menu](dashborne/core/extra-menu) and
-[widget runtime](dashborne/core/widget-runtime). Extensions use these built-in
-services to add pages to **Tweaks** or widgets to the stock picker.
+Custom extensions can modify any part of the DASH's Linux-based OS, including
+its UI, features, and behavior. Dashborne includes the
+[Extra menu](dashborne/core/extra-menu) and
+[widget runtime](dashborne/core/widget-runtime), which extensions can use to add
+entries to the floating Extra menu or build custom widgets for the stock widget picker.
 
 - [Widget Example](extensions/widget-example): boilerplate for adding widgets to any stock picker category.
 - [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
