@@ -51,7 +51,7 @@ int main(int argc,char **argv) {
     open_activity=opening;close_activity=closing_fake;ctor=noop;dtor=noop;base_created=noop;
     register_timer=reg;unregister_timer=unreg;
     fixture=(struct readings){.connected=1,.gear=4,.speed=72,.limit=80,.battery=68,.range=312,
-        .temperature=21,.power_valid=1,.power_kw=34,.nav_valid=1,.nav_distance=42,.nav_minutes=36,.nav_battery=57};
+        .temperature=21,.body_known=BODY_ALL,.power_valid=1,.power_kw=34,.nav_valid=1,.nav_distance=42,.nav_minutes=36,.nav_battery=57};
     snprintf(fixture.clock,sizeof(fixture.clock),"11:42");
     cluster_window_open();cluster_window_open();assert(opens==1 && pending && cluster_window_cleanup());
     void *s=create();assert(s && !create());created(s);resumed(s);
@@ -69,6 +69,22 @@ int main(int argc,char **argv) {
     if(argc>1)dump("drive");
     fixture.gear=1;fixture.nav_valid=0;render();assert(state.mode==PARKED);
     if(argc>1)dump("park");
+    fixture.body_open=FRONT_RIGHT;render();
+    assert(strstr(((struct control *)lookup(s,599306))->image,"park-04.png"));
+    assert(!strcmp(((struct control *)lookup(s,599308))->value,"Front right door open"));
+    if(argc>1)dump("door-open");
+    fixture.body_open=BODY_ALL;render();
+    assert(strstr(((struct control *)lookup(s,599306))->image,"park-3f.png"));
+    if(argc>1)dump("all-open");
+    fixture.gear=4;render();
+    assert(((struct control *)lookup(s,599307))->shown);
+    assert(strstr(((struct control *)lookup(s,599307))->image,"drive-3f.png"));
+    if(argc>1)dump("drive-open");
+    fixture.gear=1;fixture.body_known=0;render();
+    assert(strstr(((struct control *)lookup(s,599306))->image,"/park.png"));
+    assert(!strcmp(((struct control *)lookup(s,599308))->value,"Door status unavailable"));
+    if(argc>1)dump("body-unknown");
+    fixture.body_known=BODY_ALL;fixture.body_open=0;
     fixture.charging=1;fixture.power_kw=11;render();assert(state.mode==CHARGING);
     if(argc>1)dump("charge");
     fixture.gear=4;fixture.charging=0;fixture.power_kw=-28;render();

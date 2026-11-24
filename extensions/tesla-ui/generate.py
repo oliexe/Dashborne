@@ -29,7 +29,7 @@ def screen():
             backgroundColor=0x85817a,visible=False,touchable=False)
     s['textview__nav']=label(599304,'',185,395,490,26,21)
     s['textview__car_park']=picture(599306,'park',720,103,500,300)
-    s['textview__car_drive']=dict(picture(599307,'drive',865,145,230,260),visible=False)
+    s['textview__car_drive']=dict(picture(599307,'drive',865,125,230,260),visible=False)
     s['textview__state']=label(599308,'Connecting to vehicle',745,365,500,38,23,0x92969c,37)
     s['textview__speed_missing']=label(599309,'—',1355,137,300,148,126,align=37)
     for i in range(3):

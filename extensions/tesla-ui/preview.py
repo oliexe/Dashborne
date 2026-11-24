@@ -25,7 +25,7 @@ def render(snapshot):
             value=node['backgroundColor'];draw.rectangle((x,y,x+w-1,y+h-1),fill=f'#{value:06x}')
         path=node.get('backgroundPic') or node.get('picTab',{}).get('pic0')
         if path:
-            asset=Image.open(ROOT/'assets'/Path(path).name).convert('RGBA')
+            asset=Image.open(ROOT/'assets'/path.split('/assets/',1)[-1]).convert('RGBA')
             ip=node.get('iconPosition',dict(left=0,top=0,width=w,height=h))
             asset=asset.resize((ip['width'],ip['height']),Image.Resampling.LANCZOS)
             image.alpha_composite(asset,(x+ip['left'],y+ip['top']))

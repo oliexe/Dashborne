@@ -22,5 +22,12 @@ int main(void) {
     r.demo=0;r.gear=0;cluster_update(&c,&r,110);assert(c.mode==WAITING && c.data.speed==UNKNOWN && c.data.battery==UNKNOWN);
     r.gear=4;r.power_kw=1500;r.power_valid=1;
     cluster_update(&c,&r,111);cluster_update(&c,&r,200);assert(c.count==60 && c.history[58]==UNKNOWN);
+    r.body_known=BODY_ALL;r.body_open=FRONT_LEFT|TRUNK;
+    cluster_update(&c,&r,201);assert(c.data.body_known==BODY_ALL && c.data.body_open==(FRONT_LEFT|TRUNK));
+    r.body_known=FRONT_LEFT;r.body_open=BODY_ALL;
+    cluster_update(&c,&r,202);assert(c.data.body_open==FRONT_LEFT);
+    r.body_known=0;cluster_update(&c,&r,203);assert(!c.data.body_known && !c.data.body_open);
+    r.body_known=BODY_ALL;r.body_open=BODY_ALL;r.connected=0;
+    cluster_update(&c,&r,204);assert(!c.data.body_known && !c.data.body_open);
     cluster_reset(&c);assert(!c.count && !c.sampled && c.history[59]==UNKNOWN);
 }

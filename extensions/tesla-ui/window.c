@@ -12,7 +12,7 @@ struct rectangle {int left,top,width,height;};
 static const struct dashborne_host *api;
 static void *table[17],*live;
 static int pending,closing,paused_state;
-static int rendered_speed=-2,history_drawn,history_count;
+static int rendered_speed=-2,rendered_body=-2,history_drawn,history_count;
 static unsigned int history_second;
 static struct cluster state;
 static struct {void *fill,*trace;int negative;} graph_controls[GRAPH_WIDTH];
@@ -46,6 +46,38 @@ static void speed_digits(int speed_value) {
         visible(p,on);
     }
 }
+static void vehicle_body(const struct readings *d,int driving,int waiting) {
+    /* Only a complete verified snapshot chooses a posed model. */
+    int mask=d->body_known==BODY_ALL?(int)d->body_open:-1;
+    int view_key=(mask+1)*2+driving;
+    if(view_key!=rendered_body) {
+        void *p=find(live,599306+driving);
+        if(p) {
+            char path[160];const char *view=driving?"drive":"park";
+            if(mask>=0)snprintf(path,sizeof(path),ASSETS "body/%s-%02x.png",view,mask);
+            else snprintf(path,sizeof(path),ASSETS "%s.png",view);
+            struct rectangle r=driving?(mask>=0?(struct rectangle){780,80,400,300}:
+                (struct rectangle){865,125,230,260}):(struct rectangle){720,103,500,300};
+            position(p,&r);picture(p,path);
+        }
+        rendered_body=view_key;
+    }
+    show(599306,!driving);show(599307,driving);
+    if(waiting)label(599308,d->demo?"Vehicle demo mode":"Waiting for vehicle data");
+    else if(mask<0)label(599308,"Door status unavailable");
+    else if(mask) {
+        const char *names[]={"Front left door open","Rear left door open","Front right door open",
+            "Rear right door open","Frunk open","Trunk open"};
+        int count=0,last=0;
+        for(int i=0;i<6;++i)if(mask&(1<<i)) {++count;last=i;}
+        const char *message="Doors open";
+        if(!(mask&15))message="Frunk and trunk open";
+        else if((mask&48)==48)message="Doors, frunk and trunk open";
+        else if(mask&FRUNK)message="Doors and frunk open";
+        else if(mask&TRUNK)message="Doors and trunk open";
+        label(599308,count==1?names[last]:message);
+    } else label(599308,d->charging?"Charging":"");
+}
 static void render(void) {
     struct readings raw;source_read(&raw);cluster_update(&state,&raw,source_seconds());
     const struct readings *d=&state.data;char line[100];
@@ -54,8 +86,7 @@ static void render(void) {
     show(599309,!driving || d->speed==UNKNOWN);
     label(599309,waiting?"—":driving?"—":"P");
     label(599313,driving?(d->mph?"MPH":"KM/H"):state.mode==CHARGING?"CHARGING":waiting?"":"PARK");
-    show(599306,!driving);show(599307,driving);
-    label(599308,waiting?(d->demo?"Vehicle demo mode":"Waiting for vehicle data"):state.mode==CHARGING?"Charging":"");
+    vehicle_body(d,driving,waiting);
     show(599314,driving && d->limit!=UNKNOWN);
     if(driving && d->limit!=UNKNOWN)snprintf(line,sizeof(line),"%d",d->limit);else line[0]=0;
     label(599315,line);
@@ -129,7 +160,7 @@ static void click(void *s,void *c) {if(c && id_of(c)==BACK)back(s);}
 static void created(void *s) {
     base_created(s);pending=0;closing=0;paused_state=0;
     for(int x=0;x<GRAPH_WIDTH;++x) {graph_controls[x].fill=0;graph_controls[x].trace=0;}
-    cluster_reset(&state);rendered_speed=-2;history_drawn=0;render();register_timer(s,TIMER,100);
+    cluster_reset(&state);rendered_speed=-2;rendered_body=-2;history_drawn=0;render();register_timer(s,TIMER,100);
 }
 static void resumed(void *s) {
     if(closing)return;

@@ -15,12 +15,19 @@ sit beneath the plot. It records one reading per second over 60 seconds while
 this view is visible; missing intervals remain gaps. Its fixed scale is
 +100/−50 kW. This is a power history, not Tesla's distance-based Wh/km graph.
 The lower power meter uses +400/−100 kW and appears while driving. Both displays
-clip at their bounds; the numeric power reading retains its value.
+clip at their bounds; the numeric average retains its value.
 
 Navigation shows remaining distance, travel time and estimated arrival charge
 when the stock data source supplies them. Maps and traffic/lane visualization
 are replaced by the energy panel and pre-rendered Model 3 Highland views. These
-images do not indicate doors, lights or nearby objects.
+images have poses for all combinations of the four doors, frunk and trunk.
+Open/closed flags select fixed hinge angles; the images do not represent measured
+opening angles. Turn signals use the existing arrows.
+
+The body-state renderer is ready locally, but the live adapter does not yet read
+those six panel states. Until their mapping is verified over ADB, the view shows
+**Door status unavailable** with the neutral car image. Disconnects clear body
+state. Headlights, brake lights, locks and charge-port state are not mapped yet.
 
 ## Data and lifecycle
 
@@ -57,19 +64,24 @@ from the repository root (Blender 5.2.3):
 
 ```sh
 blender -b --python extensions/tesla-ui/render_vehicle.py -- /path/to/2024_tesla_model_3.glb
+blender -b --python extensions/tesla-ui/render_vehicle.py -- /path/to/2024_tesla_model_3.glb --states all --samples 48 --output extensions/tesla-ui/assets/body
 ```
 
 The renderer verifies the source hash and produces both transparent PNGs at the
-widget dimensions. The regular DASH build uses these images without a 3D runtime.
+widget dimensions. `--states all` renders 64 combinations for each camera;
+`--states 4,16` renders only front-right-door and frunk poses. The bit order is
+front left, rear left, front right, rear right, frunk, trunk, using vehicle-relative
+left/right. The regular DASH build uses these images without a 3D runtime.
 
 Previews in `dashborne/build/tesla-ui-previews/` use test fixtures passed through
 the native window renderer. They cover Drive, Park, Charging, regeneration and
-disconnection. Preview body text uses Inter; on the DASH, supporting labels use
-the stock font. Large speed numerals use the bundled Inter glyph images on both.
+disconnection, open panels and unknown body state. Preview body text uses Inter;
+on the DASH, supporting labels use the stock font. Large speed numerals use the bundled Inter glyph images on both.
 
 Tests cover units, signed power, invalid values, connection loss, history gaps,
-state transitions, graph interpolation and gaps, bounds, timer cleanup and repeated open/back actions. The
-ARM package is built; installation and visual checks on the DASH are pending.
+state transitions, unknown panel states, graph interpolation and gaps, bounds,
+timer cleanup and repeated open/back actions. The ARM package is built;
+installation and visual checks on the DASH are pending.
 
 ## References
 

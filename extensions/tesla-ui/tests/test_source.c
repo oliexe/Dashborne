@@ -23,6 +23,7 @@ int main(void) {
     units=unit;connected_to=connection;clock12=format;clock_instance=clock_inst;blinkers=blinker_inst;
     m[0]=4;q[1]=40000;q[2]=(unsigned int)-1000;b[0x25]=b[0x35]='N';
     struct readings r;source_read(&r);assert(r.connected && r.speed==100 && r.limit==80);
+    assert(!r.body_known && !r.body_open);
     assert(r.power_valid && fabsf(r.power_kw-40)<0.01f && !r.nav_valid && !r.left && !r.right);
     unit_mode=1;source_read(&r);assert(r.speed==100 && r.limit==80 && r.mph && r.miles && r.fahrenheit);
     q[2]=500;source_read(&r);assert(r.power_kw==-20);

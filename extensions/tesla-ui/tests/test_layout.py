@@ -1,4 +1,5 @@
 import sys
+import struct
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from generate import screen,decode,ROOT
@@ -24,3 +25,11 @@ assert s['textview__limit_0bg']['id']==599314
 assert s['textview__limit_1value']['id']==599315
 assert s['textview__power_0line']['id']==599322
 assert s['textview__power_1fill']['id']==599323
+
+# Every reachable panel combination must be packaged for both views.
+for mask in range(64):
+    for view,size in (('park',(500,300)),('drive',(400,300))):
+        path=ROOT/'assets/body'/f'{view}-{mask:02x}.png'
+        header=path.read_bytes()[:24]
+        assert header[:8]==b'\x89PNG\r\n\x1a\n',path
+        assert struct.unpack('>II',header[16:24])==size,path

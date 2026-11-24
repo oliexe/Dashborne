@@ -56,6 +56,8 @@ unsigned int source_seconds(void) {
 }
 void source_read(struct readings *r) {
     *r=(struct readings){0};
+    /* Body-state mapping still requires ADB verification. Leave body_known=0;
+       a zero-filled transport buffer must never imply six closed panels. */
     long now=time(0);struct calendar tm;
     if(now>1609459200 && localtime_r(&now,&tm)) {
         if(clock12(clock_instance()))snprintf(r->clock,sizeof(r->clock),"%d:%02d %s",tm.hour%12?tm.hour%12:12,tm.min,tm.hour>=12?"pm":"am");
