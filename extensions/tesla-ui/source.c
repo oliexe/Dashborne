@@ -8,6 +8,22 @@ extern long time(long *);
 /* glibc struct tm on the target, also valid for the host test ABI. */
 struct calendar {int sec,min,hour,mday,mon,year,wday,yday,isdst;long offset;const char *zone;};
 extern struct calendar *localtime_r(const long *,struct calendar *);
+static void *(*display_instance)(void);
+static void (*display_inhibit)(void *,int,int);
+static void *preview_display;
+void source_preview_awake(int enabled) {
+    if(!enabled) {
+        if(preview_display)display_inhibit(preview_display,0x80,0);
+        preview_display=0;return;
+    }
+    if(preview_display || !display_instance || !display_inhibit)return;
+    void *d=display_instance();
+    /* Same temporary inhibitor used by the dedicated projection viewer.
+       Never clear a hold acquired elsewhere; manual display-off stays native. */
+    if(d && !(((const unsigned char *)d)[8]&0x80)) {
+        preview_display=d;display_inhibit(d,0x80,1);
+    }
+}
 static int (*speed)(void),(*limit)(void),(*battery)(void),(*range)(void),(*temperature)(void);
 static int (*units)(int),(*connected_to)(const void *),(*clock12)(void *);
 static void *(*clock_instance)(void);
@@ -34,6 +50,8 @@ int source_bind(const struct dashborne_host *h) {
     if(!source_fingerprint("/res/lib/libzkgui.so",3464120u,0x9de99542u) ||
        !source_fingerprint("/lib/libeasyui.so",826052u,0xece0feecu))return -1;
 #define BIND(v,s) do {*(void **)(&(v))=h->resolve(h->official_library,s);if(!(v))return -1;}while(0)
+    BIND(display_instance,"_ZN17DisplayController8instanceEv");
+    BIND(display_inhibit,"_ZN17DisplayController17inhibitDisplayOffENS_11InhibitUserEb");
     BIND(speed,"_ZN14SideIndicators8getSpeedEv");
     BIND(limit,"_ZN14SideIndicators13getSpeedLimitEv");
     BIND(battery,"_ZN14SideIndicators20getBatteryPercentageEv");

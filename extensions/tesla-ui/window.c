@@ -2,6 +2,7 @@
 #include "source.h"
 #include "graph.h"
 #include "road.h"
+#include "road_canvas.h"
 #include "sample.h"
 extern void *calloc(__SIZE_TYPE__,__SIZE_TYPE__);
 extern void free(void *);
@@ -117,14 +118,7 @@ static void paint_road(unsigned long long now) {
     road_step(&road_motion,&state,now);
     if(!road_drawn || on!=road_visible || road_motion.phase!=road_phase_drawn) {
         show(ROAD_ID,on);show(ROAD_ID+1,on);
-        for(int i=0;i<ROAD_MARKS;++i) {
-            int id=ROAD_ID+4+i;
-            if(on) {
-                struct road_mark m=road_mark(road_motion.phase,i);
-                place(id,(struct rectangle){m.x,m.y,m.width,m.height});
-            }
-            show(id,on);
-        }
+        if(on)road_canvas_frame(road_motion.phase,now);
         road_drawn=1;road_visible=on;road_phase_drawn=road_motion.phase;
     }
     for(int side=0;side<2;++side) {
@@ -286,7 +280,7 @@ static void report(void) {
 }
 static void back(void *s) {
     (void)s;if(closing)return;
-    preview_active=0;
+    preview_active=0;source_preview_awake(0);
     closing=1;unregister_timer(live,TIMER);report();close_activity(context(),ACTIVITY);
 }
 static void focus_back(int selected) {
@@ -309,7 +303,7 @@ static void click(void *s,void *c) {
     if(!c || closing || paused_state)return;
     if(id_of(c)==BACK)back(s);
     else if(id_of(c)==PREVIEW) {
-        preview_active=!preview_active;
+        preview_active=!preview_active;source_preview_awake(preview_active);
         unsigned long long now=source_microseconds();preview_started=now;
         /* Never carry sample history, poses or interpolation into live mode. */
         cluster_reset(&state);history_drawn=0;road_motion=(struct road_motion){0};
@@ -323,6 +317,8 @@ static void created(void *s) {
     for(int i=0;i<GRAPH_WIDTH;++i)fills[i]=traces[i]=(struct control_cache){0};
     for(int i=0;i<35;++i)means[i]=(struct control_cache){0};
     for(int i=0;i<ROAD_CONTROLS;++i)road_controls[i]=(struct control_cache){0};
+    struct control_cache *road=control(ROAD_ID);
+    if(!road || road_canvas_attach(road->pointer))api->log(api,"tesla-ui: road canvas unavailable");
     road_motion=(struct road_motion){0};
     road_drawn=0;road_zones[0]=road_zones[1]=-1;
     active_fills=active_traces=0;
@@ -348,7 +344,7 @@ static void resumed(void *s) {
 }
 static void paused(void *s) {
     if(preview_active) {
-        preview_active=0;show(PREVIEW_LABEL,0);
+        preview_active=0;source_preview_awake(0);show(PREVIEW_LABEL,0);
         void *button=find(s,PREVIEW);if(button)text(button,"Preview");
     }
     paused_state=1;focus_back(0);road_motion=(struct road_motion){0};unregister_timer(s,TIMER);report();
@@ -381,6 +377,7 @@ static int timer(void *s,int id) {
 }
 static int timer_secondary(void *s,int id) {return timer((char *)s-sizeof(void *),id);}
 static void destroy_only(void *s) {
+    road_canvas_detach();source_preview_awake(0);
     unregister_timer(s,TIMER);report();if(live==s)live=0;pending=0;dtor(s);
 }
 static void destroy(void *s) {destroy_only(s);free(s);}
@@ -397,6 +394,7 @@ void cluster_window_open(void) {
 }
 int cluster_window_bind(const struct dashborne_host *host) {
     api=host;
+    if(road_canvas_bind(host))return -1;
 #define BIND(v,s) do {*(void **)(&(v))=api->resolve(api->ui_runtime,s);if(!(v))return -1;}while(0)
     BIND(ctor,"_ZN8ActivityC1Ev");BIND(dtor,"_ZN8ActivityD1Ev");
     BIND(base_created,"_ZN7BaseApp8onCreateEv");BIND(find,"_ZN7BaseApp15findControlByIDEi");

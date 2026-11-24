@@ -15,6 +15,8 @@ blind-spot warnings, hazards, reverse, charging and disconnection. An amber
 PREVIEW label names the current scene. **Stop preview** returns to live readings
 and clears the sample history. Leaving the view also ends preview; it starts
 disabled each time you open Tesla UI. Sample values stay inside this view.
+Preview temporarily inhibits automatic display sleep and releases that hold on
+Stop preview, Back, pause or destruction.
 
 The controller-navigation handler is prepared locally: previous/next highlights
 Back, select activates it, and Back returns to Extra. The native Activity Back
@@ -95,10 +97,12 @@ adjacent identical columns without changing its pixels: a flat nonzero trace
 needs two visible controls, compared with 828 separate columns. Steep, varying
 traces can still use the full pool; unused controls stay hidden.
 
-Road animation moves at most 12 small marking controls per tick. Its textures
-stay loaded; the frame loop changes positions without swapping images. Warning
-textures are cropped to their side zones and change only with warning state.
-A stationary scene produces no repeated native updates.
+Road markings draw inside one fixed native control. Animation does not move or
+resize controls, and at most one road repaint can be pending. A slow renderer
+uses the latest phase instead of processing a backlog. Repaint requests are
+limited to one per 16,667 microseconds; the native timer's actual cadence may be
+slower. Warning textures change only with warning state. A stationary scene
+produces no repeated native updates.
 
 On Back or pause, the extension log records callback average/max duration,
 callbacks exceeding 16,667 microseconds, scheduling gaps over 25 ms, source-read

@@ -30,6 +30,18 @@ def render(snapshot):
             ip=node.get('iconPosition',dict(left=0,top=0,width=w,height=h))
             asset=asset.resize((ip['width'],ip['height']),Image.Resampling.LANCZOS)
             image.alpha_composite(asset,(x+ip['left'],y+ip['top']))
+        if node['id']==603000:
+            phase=snapshot.get('road_phase',0)
+            for i in range(12):
+                distance=((i%6)*12-phase)%72
+                near,far=18/(18+distance),18/(22+distance)
+                yn,yf=int(360*near),int(360*far)
+                xn,xf=int(210*near),int(210*far)
+                left=300-xn-1 if i<6 else 300+xf-1
+                for row in range(yn-yf):
+                    dx=int((xn-xf)*row/(yn-yf))
+                    xx=x+left+(xn-xf-dx if i<6 else dx)
+                    draw.line((xx,y+yf+row,xx+1,y+yf+row),fill='#73777e')
         if node.get('text'):
             size=node.get('fontSize',24)
             if size not in fonts:

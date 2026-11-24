@@ -27,7 +27,7 @@ assert s['textview__limit_0bg']['id']==599314
 assert s['textview__limit_1value']['id']==599315
 assert s['textview__power_0line']['id']==599322
 assert s['textview__power_1fill']['id']==599323
-assert all(603000+i in ids for i in range(16))
+assert all(603000+i in ids for i in range(4))
 order=sorted(s)
 assert order.index('textview__car_00_road')<order.index('textview__car_02_fog')<order.index('textview__car_drive')
 for side in ('left','right'):

@@ -15,7 +15,12 @@ static unsigned long long clock_extra;
 static unsigned int read_cost;
 static int writes,pictures,lookups;
 static int opens,closes,registered,reads;
-static int reports;
+static int reports,road_frames,awake;
+int road_canvas_bind(const struct dashborne_host *h) {(void)h;return 0;}
+int road_canvas_attach(void *p) {assert(p);return 0;}
+void road_canvas_detach(void) {}
+void road_canvas_frame(float p,unsigned long long now) {(void)p;(void)now;++road_frames;}
+void source_preview_awake(int enabled) {awake=enabled;}
 static char last_report[512];
 void source_read(struct readings *r) {*r=fixture;++reads;clock_extra+=read_cost;}
 unsigned int source_seconds(void) {return seconds;}
@@ -63,9 +68,9 @@ static void performance_checks(void *s) {
 
     seconds=150;subsecond=0;render(source_microseconds(),1);next_sample=source_microseconds()+SAMPLE_US;
     before_writes=writes;before_pictures=pictures;before_lookups=lookups;before_reads=reads;
-    float previous_phase=road_motion.phase;
+    float previous_phase=road_motion.phase;int previous_frames=road_frames;
     for(int i=1;i<=6;++i) {subsecond=(unsigned long long)i*16000;timer(s,TIMER);}
-    assert(road_motion.phase!=previous_phase && writes>before_writes && writes-before_writes<=ROAD_MARKS*6);
+    assert(road_motion.phase!=previous_phase && road_frames>previous_frames && writes==before_writes);
     assert(pictures==before_pictures && lookups==before_lookups && reads==before_reads);
 
     seconds=200;subsecond=0;fixture.power_kw=0;render(source_microseconds(),1);
@@ -85,7 +90,7 @@ static void performance_checks(void *s) {
     assert(!power_motion.active && !((struct control *)lookup(s,599323))->shown);
     assert(state.mode==WAITING && !active_fills && !active_traces);
     assert(!((struct control *)lookup(s,ROAD_ID))->shown);
-    for(int i=0;i<ROAD_MARKS;++i)assert(!((struct control *)lookup(s,ROAD_ID+4+i))->shown);
+
 
     /* A delayed event samples once and skips missed callbacks; no catch-up loop. */
     before_reads=reads;seconds+=120;timer(s,TIMER);assert(reads==before_reads+1);
@@ -102,7 +107,7 @@ static void performance_checks(void *s) {
     read_cost=0;clock_extra=0;resumed(s);
 }
 static void dump(const char *name) {
-    printf("{\"name\":\"%s\",\"controls\":[",name);
+    printf("{\"name\":\"%s\",\"road_phase\":%.6f,\"controls\":[",name,(double)road_motion.phase);
     for(int i=0;i<control_count;++i) {
         struct control *c=&controls[i];
         printf("%s{\"id\":%d,\"visible\":%d,\"text\":\"%s\",\"image\":\"%s\"",i?",":"",c->id,c->shown,c->value,c->image);
@@ -208,7 +213,7 @@ int main(int argc,char **argv) {
     /* Preview feeds only this view, including without any vehicle connected. */
     struct control *preview_button=lookup(s,PREVIEW);
     seconds=500;subsecond=0;int sample_reads=reads;
-    click(s,preview_button);assert(preview_active && state.mode==DRIVING && reads==sample_reads);
+    click(s,preview_button);assert(preview_active && awake && state.mode==DRIVING && reads==sample_reads);
     assert(!strcmp(preview_button->value,"Stop preview"));
     assert(((struct control *)lookup(s,PREVIEW_LABEL))->shown);
     unsigned int panels=0,blind=0;int modes=0,regen=0,reverse=0,turns=0;
@@ -236,7 +241,7 @@ int main(int argc,char **argv) {
     assert(!((struct control *)lookup(s,PREVIEW_LABEL))->shown);
     assert(!state.data.body_known && !state.data.blind_known);
     click(s,preview_button);assert(preview_active);paused(s);
-    assert(!preview_active);click(s,preview_button);assert(!preview_active);
+    assert(!preview_active && !awake);click(s,preview_button);assert(!preview_active);
     resumed(s);assert(state.mode==WAITING && !preview_active);
     /* Connected live data replaces preview immediately, without sample history. */
     click(s,preview_button);fixture.connected=1;fixture.gear=4;fixture.speed=37;fixture.power_kw=7;

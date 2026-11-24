@@ -13,4 +13,6 @@ clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined tests/test_gra
 "$output/graph"
 clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined tests/test_road.c model.c road.c -o "$output/road"
 "$output/road"
+clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I../../dashborne/extensions tests/test_road_canvas.c road.c -o "$output/road-canvas"
+"$output/road-canvas"
 python3 tests/test_layout.py

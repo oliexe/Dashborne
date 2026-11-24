@@ -3,7 +3,7 @@
 #include "model.h"
 #define ROAD_ID 603000
 #define ROAD_MARKS 12
-#define ROAD_CONTROLS (4+ROAD_MARKS)
+#define ROAD_CONTROLS 4
 struct road_motion {float phase;unsigned long long last;int primed;};
 struct road_mark {int x,y,width,height;};
 enum road_zone {ZONE_OFF,ZONE_TURN,ZONE_BLIND,ZONE_ALERT};
