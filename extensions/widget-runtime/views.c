@@ -46,14 +46,14 @@ static struct view *native_view(void *p) {
 static int noop(void *p,...) {(void)p;return 0;}
 static void apply_theme(void *p,const void *config) {
     struct view *v=native_view(p);if(!v || !v->public.window || !config)return;
-    /* Match the stock value/combined frames for the three small sizes and
-       the projection frame geometry for 2x2 through 6x2, without its logic. */
+    /* Borrow only the size-matched edit outline. Normal/pressed stock
+       pictures can contain widget content, including projection branding. */
     int offset=v->public.height==224?(v->public.width==250?0x5c:0x7c):
         v->public.width==250?0x6c:0x1a4+(v->public.width-510)/260*12;
     int invalid=offset<0x100?12:8;
     const unsigned char *c=config;
-    button_picture(v->button,0,pointer(c+offset));
-    button_picture(v->button,1,pointer(c+offset+4));
+    button_picture(v->button,0,"");
+    button_picture(v->button,1,"");
     button_picture(v->button,4,pointer(c+offset+invalid));
     unsigned int primary,secondary,selected;memcpy(&primary,c+0x20c,4);
     memcpy(&selected,c+0x210,4);memcpy(&secondary,c+0x214,4);

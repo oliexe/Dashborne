@@ -5,7 +5,7 @@
 struct widget_provider providers[PROVIDERS];
 const struct widget_geometry widget_sizes[8]={{1,1,0,250,224},{2,1,2,510,224},{1,2,4,250,458},{2,2,5,510,458},{3,2,13,770,458},{4,2,14,1030,458},{5,2,15,1290,458},{6,2,16,1550,458}};
 const struct widget_provider *provider_for(unsigned int s){return s==0x212?&providers[0]:0;}
-struct control {void **table;int id,shown;struct rect rect,icon_rect;void *parent;char text[100];};
+struct control {void **table;int id,shown;struct rect rect,icon_rect;void *parent;char text[100];const char *pictures[5];};
 static struct control controls[36][7],pages[3],stock[3];
 static unsigned char grids[3][80];
 static int current,creates,destroys,updates,draws,clicks,delegations,lookup_calls,deactivations,parse_fail;
@@ -24,6 +24,8 @@ static void font_size(void *p,unsigned int n){assert(p && n>=16 && n<=22);}
 static int original_count(void *e,int t){(void)e;(void)t;return 2;}
 static void geometry(void *p,const struct rect *r){((struct control *)p)->rect=*r;}
 static void icon_geometry(void *p,const struct rect *r){((struct control *)p)->icon_rect=*r;}
+static void picture(void *p,int state,const char *name){assert(state==0 || state==1 || state==4);((struct control *)p)->pictures[state]=name;}
+static void color(void *p,int state,unsigned int value){(void)p;(void)state;(void)value;}
 static void listen(void *p,void *a){(void)p;(void)a;}
 static void ctor(void *p,int n){(void)p;(void)n;}
 static void reader_init(void *p){(void)p;}
@@ -53,7 +55,7 @@ int main(void) {
     const struct dashborne_widget w={.create=on_create,.destroy=on_destroy,.update=on_update,.draw=on_draw,.click=on_click,.title="Test"};
     providers[0]=(struct widget_provider){&h,&w,0x212};
     parent=get_parent;find=lookup;visible=visibility;is_visible=shown;get_id=id;text=caption;listener=listen;
-    set_position=geometry;set_icon_position=icon_geometry;text_size=font_size;json_ctor=ctor;json_dtor=reader_dtor=dtor;reader_ctor=reader_init;json_parse=parse;parse_controls=controls_parse;
+    set_position=geometry;set_icon_position=icon_geometry;button_picture=picture;text_color=color;text_size=font_size;json_ctor=ctor;json_dtor=reader_dtor=dtor;reader_ctor=reader_init;json_parse=parse;parse_controls=controls_parse;
     base_ctor=init_base;set_ui=ui_base;set_editable=editable;grid_activate=activate_grid;grid_deactivate=deactivate_grid;cpp_delete=dtor;
     factory=stock_factory;button_lookup=stock_lookup;theme=get_theme;invalidate=dirty;base_draw=original_draw;text_table=tables;
     for(int i=0;i<3;++i){pages[i].shown=1;stock[i].parent=&pages[i];void *p=&stock[i];memcpy(grids[i]+40,&p,sizeof(p));}
@@ -68,6 +70,21 @@ int main(void) {
             assert(((struct control *)v->public.canvas)->rect.w==v->public.width-24);
             struct control *frame=v->button;
             assert(frame->icon_rect.x==0 && frame->icon_rect.y==0 && frame->icon_rect.w==v->public.width && frame->icon_rect.h==v->public.height);
+            /* A loading, missing or failed provider must never reveal a
+               stock widget picture. Theme switches and pooled reuse must
+               retain only the native editor outline at the current size. */
+            for(int variant=0;variant<2;++variant) {
+                unsigned char config[0x218]={0};
+                int offset=size==0?0x5c:size==1?0x7c:size==2?0x6c:0x1a4+(size-3)*12;
+                int selected=offset+(offset<0x100?12:8);
+                const char *outline=variant?"light edit outline":"dark edit outline";
+                memcpy(config+selected,&outline,sizeof(outline));
+                frame->pictures[0]=frame->pictures[1]="stock placeholder";
+                apply_theme(p,config);
+                assert(frame->pictures[0] && !*frame->pictures[0]);
+                assert(frame->pictures[1] && !*frame->pictures[1]);
+                assert(frame->pictures[4]==outline);
+            }
             assert(get_by_button(grids[page],id(v->button))==p);
             /* A newly reassigned window cannot draw the retired provider. */
             int old_draws=draws;render(v->public.canvas,0);assert(draws==old_draws);
