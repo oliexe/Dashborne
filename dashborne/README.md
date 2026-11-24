@@ -5,8 +5,8 @@ loader for the official S3XY DASH UI.
 
 ## Startup
 
-The splash shows a centered icon and **Tap screen to enter configuration**
-for three seconds. Tapping anywhere on the splash cancels it and opens
+The splash shows the centered logo, animated loading dots, and
+**Tap screen to enter boot option** at the bottom for three seconds. Tapping anywhere on the splash cancels it and opens
 configuration; there is no further timeout while configuring. Otherwise,
 Dashborne applies the selected patches and opens the official startup activity
 from the installed app in flash.
