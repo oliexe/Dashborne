@@ -120,10 +120,21 @@ int main(int argc,char **argv) {
         fixture.power_kw=(float)(power[i]+(power[i+1]-power[i])*t/3);timer(s,TIMER);
     }
     fixture.power_kw=34;render(source_microseconds(),1);
+    assert(!cluster_window_input(CLUSTER_SELECT,1));
+    assert(!cluster_window_input(CLUSTER_NEXT,0) && !navigation_focus);
+    assert(!cluster_window_input(CLUSTER_PREVIOUS_PAGE,1));
+    assert(!cluster_window_input(CLUSTER_NEXT_PAGE,1));
+    assert(!cluster_window_input((enum cluster_input)1000,1));
     assert(((struct control *)lookup(s,599309))->shown==0);
     assert(((struct control *)lookup(s,599310))->shown==1);
     assert(((struct control *)lookup(s,599312))->shown==0);
     if(argc>1)dump("drive");
+    assert(cluster_window_input(CLUSTER_NEXT,1) && navigation_focus);
+    assert(((struct control *)lookup(s,599326))->shown);
+    if(argc>1)dump("navigation-focus");
+    int prior_writes=writes;
+    assert(cluster_window_input(CLUSTER_PREVIOUS,1) && writes==prior_writes);
+    assert(!cluster_window_input(CLUSTER_SELECT,0) && !navigation_focus);
     fixture.gear=1;fixture.nav_valid=0;render(source_microseconds(),1);assert(state.mode==PARKED);
     if(argc>1)dump("park");
     fixture.body_open=FRONT_RIGHT;render(source_microseconds(),1);
@@ -150,16 +161,24 @@ int main(int argc,char **argv) {
     fixture.connected=0;render(source_microseconds(),1);assert(state.mode==WAITING && state.count==0);
     if(argc>1)dump("disconnected");
     performance_checks(s);
-    paused(s);int before=reads;timer(s,TIMER);assert(reads==before && !registered);
+    assert(cluster_window_input(CLUSTER_NEXT,1));
+    paused(s);int before=reads;timer(s,TIMER);assert(reads==before && !registered && !navigation_focus);
+    assert(!cluster_window_input(CLUSTER_BACK,1) && !hardware_back(s) && !closes);
     resumed(s);assert(registered && reads>before);
     assert(cluster_window_cleanup());
+    assert(!navigation_focus && !cluster_window_input(CLUSTER_SELECT,1));
+    assert(cluster_window_input(CLUSTER_NEXT,1));
+    assert(cluster_window_input(CLUSTER_SELECT,1));
+    assert(cluster_window_input(CLUSTER_SELECT,1));
     struct control b={.id=BACK};click(s,&b);click(s,&b);assert(closes==1 && !registered);
     before=reads;timer(s,TIMER);assert(reads==before);
     assert(cluster_window_cleanup());destroy(s);assert(!cluster_window_cleanup());
     assert(!live && !pending && !registered);
+    assert(!cluster_window_input(CLUSTER_BACK,1));
     /* A new native Activity needs fresh pointers and cached properties. */
     api=&h;control_count=0;memset(controls,0,sizeof(controls));
     s=create();int previous_lookups=lookups;created(s);assert(lookups>previous_lookups);
+    assert(!navigation_focus && hardware_back(s) && closes==2);
     destroy(s);assert(!cluster_window_cleanup());
     return 0;
 }

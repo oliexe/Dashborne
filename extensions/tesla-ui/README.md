@@ -9,6 +9,11 @@ time occupy the bottom row. Park and charging use a larger Model 3 Highland rend
 Drive, Reverse and Neutral use the rear view. The layout has no customization
 controls.
 
+The controller-navigation handler is prepared locally: previous/next highlights
+Back, select activates it, and Back returns to Extra. The native Activity Back
+callback uses this handler; Knob and steering-wheel events still need an ADB
+capture and adapter. See [controller input](../../docs/controller-input.md).
+
 The left panel follows the Model S energy graph: an amber power trace, green
 regeneration, a fading fill and a dashed average line. The average and time span
 sit beneath the plot. It records one reading per second over 60 seconds while

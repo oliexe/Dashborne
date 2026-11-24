@@ -47,6 +47,9 @@ def screen():
     s['textview__power_1fill']=dict(id=599323,position=pos(1090,431,1,3),backgroundColor=0xd9dce0,touchable=False,visible=False)
     for id,name,x in [(599324,'left',750),(599325,'right',1150)]:
         s['textview__turn_'+name]=dict(picture(id,name,x,28,38,28),visible=False)
+    for i,rect in enumerate(((1824,383,84,2),(1824,467,84,2),(1824,385,2,82),(1906,385,2,82))):
+        s[f'textview__focus_{i}']=dict(id=599326+i,position=pos(*rect),backgroundColor=0xd9dce0,
+            visible=False,touchable=False)
     s['window__z_back']=dict(id=119300,position=pos(1826,385,80,80),
         button__back=dict(id=299300,caption='Back',position=pos(0,0,80,80),iconPosition=pos(8,8,64,64),
                          touchable=True,picTab={'pic0':ASSETS+'back.png','pic1':ASSETS+'back-pressed.png'}))

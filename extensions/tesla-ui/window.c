@@ -16,6 +16,7 @@ struct rectangle {int left,top,width,height;};
 static const struct dashborne_host *api;
 static void *table[17],*live;
 static int pending,closing,paused_state;
+static int navigation_focus;
 static int rendered_speed=-2,rendered_body=-2,history_drawn,history_count;
 static unsigned int history_second;
 static struct cluster state;
@@ -27,8 +28,8 @@ struct control_cache {
     unsigned int rgb,known;
     int shown,image_kind;
 };
-static struct control_cache primary[26],fills[GRAPH_WIDTH],traces[GRAPH_WIDTH],means[35];
-static char labels[26][100],images[26][160];
+static struct control_cache primary[30],fills[GRAPH_WIDTH],traces[GRAPH_WIDTH],means[35];
+static char labels[30][100],images[30][160];
 static struct graph_runs runs;
 static int active_fills,active_traces;
 static unsigned long long next_sample;
@@ -48,7 +49,7 @@ static void (*open_activity)(void *,const char *,void *),(*close_activity)(void 
 static const char *layout(void *s) {(void)s;return ASSETS "cluster.ftu";}
 static struct control_cache *control(int id) {
     struct control_cache *c=0;
-    if(id>=599300 && id<599326)c=&primary[id-599300];
+    if(id>=599300 && id<599330)c=&primary[id-599300];
     else if(id>=GRAPH_FILL_ID && id<GRAPH_FILL_ID+GRAPH_WIDTH)c=&fills[id-GRAPH_FILL_ID];
     else if(id>=GRAPH_TRACE_ID && id<GRAPH_TRACE_ID+GRAPH_WIDTH)c=&traces[id-GRAPH_TRACE_ID];
     else if(id>=602000 && id<602035)c=&means[id-602000];
@@ -240,17 +241,33 @@ static void back(void *s) {
     (void)s;if(closing)return;
     closing=1;unregister_timer(live,TIMER);report();close_activity(context(),ACTIVITY);
 }
-static int hardware_back(void *s) {back(s);return 1;}
+static void focus_back(int selected) {
+    navigation_focus=selected;
+    for(int i=0;i<4;++i)show(599326+i,selected);
+}
+int cluster_window_input(enum cluster_input action,int navigation_allowed) {
+    if(!live || pending || paused_state)return 0;
+    if(!navigation_allowed) {if(navigation_focus)focus_back(0);return 0;}
+    /* The fixed cluster currently has one interactive control: Back. Keep
+       page navigation unhandled until this view actually has multiple pages. */
+    if(action<CLUSTER_PREVIOUS || action>CLUSTER_BACK)return 0;
+    if(closing)return 1;
+    if(action==CLUSTER_PREVIOUS || action==CLUSTER_NEXT) {focus_back(1);return 1;}
+    if(action==CLUSTER_SELECT && !navigation_focus)return 0;
+    back(live);return 1;
+}
+static int hardware_back(void *s) {(void)s;return cluster_window_input(CLUSTER_BACK,1);}
 static void click(void *s,void *c) {if(c && id_of(c)==BACK)back(s);}
 static void created(void *s) {
     base_created(s);pending=0;closing=0;paused_state=0;
-    for(int i=0;i<26;++i)primary[i]=(struct control_cache){0};
+    for(int i=0;i<30;++i)primary[i]=(struct control_cache){0};
     for(int i=0;i<GRAPH_WIDTH;++i)fills[i]=traces[i]=(struct control_cache){0};
     for(int i=0;i<35;++i)means[i]=(struct control_cache){0};
     active_fills=active_traces=0;
     perf=(__typeof__(perf)){0};power_motion=(__typeof__(power_motion)){0};
     cluster_reset(&state);rendered_speed=-2;rendered_body=-2;history_drawn=0;
     unsigned long long now=source_microseconds();
+    focus_back(0);
     /* Resolve the graph pool before starting the timer, not when the first
        steep trace suddenly needs hundreds of additional rectangles. */
     for(int i=0;i<GRAPH_WIDTH;++i) {control(GRAPH_FILL_ID+i);control(GRAPH_TRACE_ID+i);}
@@ -267,7 +284,7 @@ static void resumed(void *s) {
     paused_state=0;perf.last_tick=0;
     unregister_timer(s,TIMER);register_timer(s,TIMER,FRAME_MS);
 }
-static void paused(void *s) {paused_state=1;unregister_timer(s,TIMER);report();}
+static void paused(void *s) {paused_state=1;focus_back(0);unregister_timer(s,TIMER);report();}
 static int timer(void *s,int id) {
     (void)s;
     if(id!=TIMER || closing || paused_state || !live)return 1;
