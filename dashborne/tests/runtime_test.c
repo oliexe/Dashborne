@@ -107,7 +107,7 @@ const char *debug_status(void) { return "ADB listening"; }
 const char *debug_ip(void) { return ip; }
 const char *debug_wifi_name(void) { return "TestNetwork"; }
 static void timer(void *p, int id, int interval) {
-    assert(p && ((id == NETWORK_TIMER && interval == 1000) || (id == BOOT_TIMER && interval == 3000))); ++timer_calls;
+    assert(p && ((id == NETWORK_TIMER && interval == 1000) || (id == BOOT_TIMER && interval == 3000) || (id == LOADING_TIMER && interval == 180))); ++timer_calls;
 }
 static int is(const char *s) { return !strcmp(scenario, s); }
 static void original_init(void *p) { assert(p == (void *)123); ++init_calls; }
@@ -156,7 +156,7 @@ static void visibility(void *p, int shown) { ((struct mock_control *)p)->shown =
 static void selection(void *p, int selected) { ((struct mock_control *)p)->selected = selected; }
 static void text_color(void *p, int rgb) { assert(p && rgb); }
 static int id_of(void *p) { return ((struct mock_control *)p)->id; }
-static void cancel_timer(void *p, int id) { assert(p && (id == BOOT_TIMER || id == NETWORK_TIMER)); ++cancelled; }
+static void cancel_timer(void *p, int id) { assert(p && (id == BOOT_TIMER || id == NETWORK_TIMER || id == LOADING_TIMER)); ++cancelled; }
 static void *ui(void) { return (void *)789; }
 static void navigate(void *p, const char *activity, void *intent) {
     assert(p == (void *)789 && !strcmp(activity, "installedActivity") && !intent); ++opened;
@@ -292,7 +292,7 @@ int main(int argc, char **argv) {
     if (is("extension") || is("extension-failure") || is("extension-cleanup-failure") || is("config-on") || is("config-off") || is("list") || is("developer-auto") || is("developer-tap") || is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
         assert(!strcmp(selected, ACTIVITY) && registered && create_calls == 1);
         int marked = is("config-on") || is("config-off");
-        assert(phase == marked && timer_calls == (marked ? 1 : 2) && !opened);
+        assert(phase == marked && timer_calls == (marked ? 1 : 3) && !opened);
         assert(retried == (is("config-on") ? 1 : 0));
         if (!is("shutdown-prepared")) {
             void *p = registered();
@@ -300,18 +300,22 @@ int main(int argc, char **argv) {
             void **v = *(void ***)p;
             void (*click)(void *, void *) = (void (*)(void *, void *))v[2];
             int (*tick)(void *, int) = (int (*)(void *, int))v[5];
+            for (int i = 0; i < 17; ++i) tick(p, LOADING_TIMER);
+            assert(loading_dot == (marked ? 0u : 2u) && !opened && !applied);
             for (int i = 0; i < 120; ++i) tick(p, NETWORK_TIMER);
             assert(retried == (is("config-on") ? 1 : 0));
             assert(adb_polls == ((marked || !settings.wifi_adb) ? 120 : 0));
             adb_polls = 0;
             if (marked || is("list") || is("developer-tap") || is("tapped") || is("toggles")) {
                 if (!marked) click(p, find(p, TAP_ID));
-                assert(phase == 1 && cancelled == (marked ? 0 : 1));
+                assert(phase == 1 && cancelled == (marked ? 0 : 2));
                 if (is("developer-tap")) {
                     assert(retried == 1);
                     tick(p, NETWORK_TIMER);
                     assert(adb_polls == 1);
                 }
+                unsigned int stopped_dot=loading_dot;
+                tick(p, LOADING_TIMER);assert(loading_dot==stopped_dot);
                 tick(p, BOOT_TIMER); assert(!opened && !applied);
                 if (is("toggles")) {
                     click(p, find(p, ADB_TAB_ID)); assert(section == 1);

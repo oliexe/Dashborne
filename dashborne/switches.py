@@ -15,7 +15,7 @@ def write_switches(destination):
     destination.mkdir(parents=True, exist_ok=True)
     for name, track, knob, center in [
         ('off', (48, 50, 56), (195, 199, 209), 18),
-        ('on', (90, 117, 242), (255, 255, 255), 54),
+        ('on', (107, 119, 133), (241, 243, 245), 54),
         ('disabled', (25, 26, 29), (76, 79, 87), 18),
     ]:
         pixels = bytearray()
@@ -38,11 +38,11 @@ def write_switches(destination):
 def write_boot_button(destination):
     """Antialiased rounded backgrounds for navigation and the footer action."""
     for name, width, height, radius, color in [
-        ('continue', 300, 48, 14, (78, 105, 211)),
-        ('continue-pressed', 300, 48, 14, (61, 83, 173)),
+        ('continue', 300, 48, 14, (91, 102, 115)),
+        ('continue-pressed', 300, 48, 14, (74, 84, 96)),
         ('nav-idle', 400, 64, 14, (0, 0, 0)),
-        ('nav-selected', 400, 64, 14, (21, 23, 29)),
-        ('nav-pressed', 400, 64, 14, (30, 33, 42)),
+        ('nav-selected', 400, 64, 14, (23, 26, 30)),
+        ('nav-pressed', 400, 64, 14, (30, 34, 39)),
         ('content-panel', 1060, 376, 20, (7, 8, 10)),
     ]:
         pixels = bytearray()

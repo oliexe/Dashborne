@@ -29,6 +29,8 @@ EXPORT const char *onStartupApp(void *);
 #define LAYOUT "/mnt/extsd/Dashborne/ui/loader.ftu"
 #define BOOT_TIMER 92001
 #define NETWORK_TIMER 92002
+#define LOADING_TIMER 92003
+#define LOADING_DOT_ID 50060
 #define SPLASH_ID 110001
 #define CONFIG_ID 110002
 #define TAP_ID 20001
@@ -86,6 +88,7 @@ static void (*register_timer)(void *, int, int);
 static void *table[17], *prepared;
 static struct settings settings;
 static int phase, section, settings_ok = 1;
+static unsigned int loading_dot;
 static const char *launch_error;
 static void *list_owner;
 static void (*set_adapter)(void *, void *), (*set_list_listener)(void *, void *);
@@ -157,7 +160,7 @@ static void render(void *self) {
     visible(self, 50050, section == 3);
     void *device_tab = find_control(self, DEVICE_TAB_ID);
     if (device_tab) set_selected(device_tab, section == 3);
-    color(self, DEVICE_TAB_ID, section == 3 ? 0xf0f2ff : 0x79849a);
+    color(self, DEVICE_TAB_ID, section == 3 ? 0xf1f2f4 : 0x858c94);
     visible(self, BROWSER_PANEL_ID, section == 2);
     visible(self, 50035, section == 2);
     visible(self, 50020, section == 0); visible(self, 50021, section == 1);
@@ -166,7 +169,7 @@ static void render(void *self) {
     if (adb_tab) set_selected(adb_tab, section == 1);
     void *browser_tab = find_control(self, BROWSER_TAB_ID);
     if (browser_tab) set_selected(browser_tab, section == 2);
-    color(self, BROWSER_TAB_ID, section == 2 ? 0xf0f2ff : 0x79849a);
+    color(self, BROWSER_TAB_ID, section == 2 ? 0xf1f2f4 : 0x858c94);
     if (section == 2) {
         label(self, 50041, browser_path());
         const char *status=browser_status();
@@ -177,14 +180,14 @@ static void render(void *self) {
         }
         label(self,50042,status);
         label(self,50044,settings.loader_autolaunch ? "1" : "0");
-        color(self,AUTOLAUNCH_ID,settings.loader_autolaunch || browser_can_load() ? 0xdce2ee : 0x657080);
+        color(self,AUTOLAUNCH_ID,settings.loader_autolaunch || browser_can_load() ? 0xd9dde2 : 0x666e77);
         visible(self, BROWSER_LOAD_ID, browser_can_load());
     }
-    color(self, PATCHES_TAB_ID, section == 0 ? 0xf0f2ff : 0x79849a);
-    color(self, ADB_TAB_ID, section == 1 ? 0xf0f2ff : 0x79849a);
+    color(self, PATCHES_TAB_ID, section == 0 ? 0xf1f2f4 : 0x858c94);
+    color(self, ADB_TAB_ID, section == 1 ? 0xf1f2f4 : 0x858c94);
     label(self, WIFI_ID, "Enable ADB");
     label(self, WIFI_TOGGLE_ID, settings.wifi_adb ? "1" : "0");
-    color(self, WIFI_ID, settings.wifi_adb ? 0x8eb5ff : 0xd8deeb);
+    color(self, WIFI_ID, settings.wifi_adb ? 0xc2c9d1 : 0xd9dde2);
     const char *ip = debug_ip();
     label(self, STATUS_ID, debug_status());
     char address[40] = "";
@@ -221,7 +224,7 @@ static void list_data(void *self, void *list, void *item, int index) {
     if (index < 0 || (unsigned int)index >= settings.count) return;
     struct patch_entry *p = &settings.patches[index];
     set_text(item, p->title);
-    set_color(item, p->compatible ? 0xe6e9f1 : 0x657080);
+    set_color(item, p->compatible ? 0xe4e7eb : 0x666e77);
     void *detail = find_subitem(item, DETAIL_ID), *toggle = find_subitem(item, TOGGLE_ID);
     if (detail) set_text(detail, p->compatible ? p->description : "Not compatible with this installed app");
     if (toggle) set_text(toggle, !p->compatible ? "2" : p->enabled ? "1" : "0");
@@ -307,9 +310,9 @@ static void launch(void *self) {
     }
     launch_error = (const char *)0;
     if (!state_save(&settings)) { settings_ok = 0; phase = 1; render(self); return; }
-    phase = 2; unregister_timer(self, BOOT_TIMER);
+    phase = 2; unregister_timer(self, BOOT_TIMER); unregister_timer(self, LOADING_TIMER);
     void *notice=find_control(self, NOTICE_ID);
-    if(notice)set_color(notice,0x79849a);
+    if(notice)set_color(notice,0x858c94);
     label(self, NOTICE_ID, "Applying selected patches...");
     int result = state_apply(&settings, log_line);
     if (result < 0) {
@@ -340,7 +343,7 @@ static void launch(void *self) {
 }
 static void continue_boot(void *self) {
     if(!settings.loader_autolaunch){launch(self);return;}
-    unregister_timer(self,BOOT_TIMER);
+    unregister_timer(self,BOOT_TIMER);unregister_timer(self,LOADING_TIMER);
     if(!browser_prepare_path(settings.loader_app)) {
         phase=1;section=2;launch_error=browser_status();
         if(!browser_initialized){browser_init();browser_initialized=1;refresh_browser(self);}
@@ -354,6 +357,14 @@ static void continue_boot(void *self) {
     debug_set_enabled(settings.wifi_adb);register_timer(self,NETWORK_TIMER,1000);render(self);
 }
 static int on_timer(void *self, int id) {
+    if (id == LOADING_TIMER) {
+        if (phase == 0) {
+            color(self, LOADING_DOT_ID + loading_dot, 0x3d444d);
+            loading_dot = (loading_dot + 1) % 3;
+            color(self, LOADING_DOT_ID + loading_dot, 0xc2c9d1);
+        }
+        return 1;
+    }
     if (id == BOOT_TIMER && phase == 0) { continue_boot(self); return 1; }
     /* Only configuration owns a developer Wi-Fi connection. Never compete
        with the official app's hotspot or CarPlay/Android Auto networking. */
@@ -392,13 +403,17 @@ static void on_create(void *self) {
     if (phase == 1 || !settings.wifi_adb) debug_set_enabled(settings.wifi_adb);
     render(self);
     register_timer(self, NETWORK_TIMER, 1000);
-    if (!phase) register_timer(self, BOOT_TIMER, 3000);
+    loading_dot = 0;
+    if (!phase) {
+        register_timer(self, BOOT_TIMER, 3000);
+        register_timer(self, LOADING_TIMER, 180);
+    }
     log_line(phase ? "configuration-created\n" : "splash-created\n");
 }
 static void on_click(void *self, void *control) {
     int id = control_id(control);
     if (id == TAP_ID && phase == 0) {
-        phase = 1; unregister_timer(self, BOOT_TIMER); log_line("configuration-entered\n");
+        phase = 1; unregister_timer(self, BOOT_TIMER); unregister_timer(self, LOADING_TIMER); log_line("configuration-entered\n");
         debug_set_enabled(settings.wifi_adb);
     } else if (phase != 1) return;
     else if (id == LAUNCH_ID) { continue_boot(self); return; }
@@ -424,6 +439,7 @@ static void on_click(void *self, void *control) {
 }
 
 static void destroy(void *self) {
+    unregister_timer(self, LOADING_TIMER);
     if (list_owner == self) list_owner = (void *)0;
     activity_dtor(self); free(self);
 }
