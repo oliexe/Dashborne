@@ -2,6 +2,7 @@
 #include "source.h"
 #include "graph.h"
 #include "road.h"
+#include "sample.h"
 extern void *calloc(__SIZE_TYPE__,__SIZE_TYPE__);
 extern void free(void *);
 extern int strcmp(const char *,const char *);
@@ -9,6 +10,8 @@ extern int snprintf(char *,__SIZE_TYPE__,const char *,...);
 #define ACTIVITY "dashborneExtension_tesla_ui"
 #define TIMER 97300
 #define BACK 299300
+#define PREVIEW 299301
+#define PREVIEW_LABEL 599333
 #define FRAME_MS 16
 #define SAMPLE_US 100000ull
 #define FRAME_BUDGET_US 16667ull
@@ -18,6 +21,8 @@ static const struct dashborne_host *api;
 static void *table[17],*live;
 static int pending,closing,paused_state;
 static int navigation_focus;
+static int preview_active;
+static unsigned long long preview_started;
 static int rendered_speed=-2,rendered_body=-2,history_drawn,history_count;
 static unsigned int history_second;
 static struct cluster state;
@@ -29,13 +34,13 @@ struct control_cache {
     unsigned int rgb,known;
     int shown,image_kind;
 };
-static struct control_cache primary[30],fills[GRAPH_WIDTH],traces[GRAPH_WIDTH],means[35];
+static struct control_cache primary[34],fills[GRAPH_WIDTH],traces[GRAPH_WIDTH],means[35];
 static struct control_cache road_controls[ROAD_CONTROLS];
 static struct road_motion road_motion;
 static char road_images[2][160];
 static int road_drawn,road_visible,road_zones[2];
 static float road_phase_drawn;
-static char labels[30][100],images[30][160];
+static char labels[34][100],images[34][160];
 static struct graph_runs runs;
 static int active_fills,active_traces;
 static unsigned long long next_sample;
@@ -55,7 +60,7 @@ static void (*open_activity)(void *,const char *,void *),(*close_activity)(void 
 static const char *layout(void *s) {(void)s;return ASSETS "cluster.ftu";}
 static struct control_cache *control(int id) {
     struct control_cache *c=0;
-    if(id>=599300 && id<599330)c=&primary[id-599300];
+    if(id>=599300 && id<599334)c=&primary[id-599300];
     else if(id>=GRAPH_FILL_ID && id<GRAPH_FILL_ID+GRAPH_WIDTH)c=&fills[id-GRAPH_FILL_ID];
     else if(id>=GRAPH_TRACE_ID && id<GRAPH_TRACE_ID+GRAPH_WIDTH)c=&traces[id-GRAPH_TRACE_ID];
     else if(id>=602000 && id<602035)c=&means[id-602000];
@@ -201,7 +206,13 @@ static void vehicle_body(const struct readings *d,int driving,int waiting) {
     } else label(599308,d->charging?"Charging":"");
 }
 static void render(unsigned long long now,int immediate) {
-    struct readings raw;unsigned long long started=source_microseconds();source_read(&raw);
+    struct readings raw;unsigned long long started=source_microseconds();
+    if(preview_active) {
+        char caption[100];
+        const char *scene=sample_read(&raw,now>=preview_started?now-preview_started:0);
+        snprintf(caption,sizeof(caption),"PREVIEW · %s",scene);label(PREVIEW_LABEL,caption);
+    } else source_read(&raw);
+    show(PREVIEW_LABEL,preview_active);
     unsigned long long ended=source_microseconds();
     unsigned int elapsed=ended>=started?(unsigned int)(ended-started):0;
     ++perf.samples;if(elapsed>perf.max_source_us)perf.max_source_us=elapsed;
@@ -275,6 +286,7 @@ static void report(void) {
 }
 static void back(void *s) {
     (void)s;if(closing)return;
+    preview_active=0;
     closing=1;unregister_timer(live,TIMER);report();close_activity(context(),ACTIVITY);
 }
 static void focus_back(int selected) {
@@ -293,10 +305,21 @@ int cluster_window_input(enum cluster_input action,int navigation_allowed) {
     back(live);return 1;
 }
 static int hardware_back(void *s) {(void)s;return cluster_window_input(CLUSTER_BACK,1);}
-static void click(void *s,void *c) {if(c && id_of(c)==BACK)back(s);}
+static void click(void *s,void *c) {
+    if(!c || closing || paused_state)return;
+    if(id_of(c)==BACK)back(s);
+    else if(id_of(c)==PREVIEW) {
+        preview_active=!preview_active;
+        unsigned long long now=source_microseconds();preview_started=now;
+        /* Never carry sample history, poses or interpolation into live mode. */
+        cluster_reset(&state);history_drawn=0;road_motion=(struct road_motion){0};
+        text(c,preview_active?"Stop preview":"Preview");
+        render(now,1);next_sample=now+SAMPLE_US;
+    }
+}
 static void created(void *s) {
-    base_created(s);pending=0;closing=0;paused_state=0;
-    for(int i=0;i<30;++i)primary[i]=(struct control_cache){0};
+    base_created(s);pending=0;closing=0;paused_state=0;preview_active=0;
+    for(int i=0;i<34;++i)primary[i]=(struct control_cache){0};
     for(int i=0;i<GRAPH_WIDTH;++i)fills[i]=traces[i]=(struct control_cache){0};
     for(int i=0;i<35;++i)means[i]=(struct control_cache){0};
     for(int i=0;i<ROAD_CONTROLS;++i)road_controls[i]=(struct control_cache){0};
@@ -324,6 +347,10 @@ static void resumed(void *s) {
     unregister_timer(s,TIMER);register_timer(s,TIMER,FRAME_MS);
 }
 static void paused(void *s) {
+    if(preview_active) {
+        preview_active=0;show(PREVIEW_LABEL,0);
+        void *button=find(s,PREVIEW);if(button)text(button,"Preview");
+    }
     paused_state=1;focus_back(0);road_motion=(struct road_motion){0};unregister_timer(s,TIMER);report();
 }
 static int timer(void *s,int id) {

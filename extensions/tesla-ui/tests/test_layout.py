@@ -21,6 +21,8 @@ def check(node,parent):
 check(s,dict(left=0,top=0,width=1920,height=480))
 assert all(600000+i in ids and 601000+i in ids for i in range(414))
 assert s['window__z_back']['button__back']['touchable']
+assert s['window__z_preview']['button__preview']['touchable']
+assert not s['textview__preview_status']['visible']
 assert s['textview__limit_0bg']['id']==599314
 assert s['textview__limit_1value']['id']==599315
 assert s['textview__power_0line']['id']==599322

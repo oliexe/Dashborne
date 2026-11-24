@@ -28,6 +28,10 @@ def screen():
         s[f'textview__graph_mean_{i:02}']=dict(id=602000+i,position=pos(185+i*12,262,6,1),
             backgroundColor=0x85817a,visible=False,touchable=False)
     s['textview__nav']=label(599304,'',185,395,490,26,21)
+    s['textview__preview_status']=dict(label(599333,'',185,25,500,38,20,0xeaa34b),visible=False)
+    s['window__z_preview']=dict(id=119301,position=pos(1710,24,180,48),
+        button__preview=dict(label(299301,'Preview',0,0,180,48,20,0xc8ccd1,37),
+            touchable=True,backgroundColor=0x17191d,bgColorTab={'color1':0x30343b}))
     # Alphabetical control order keeps the road, markings and side zones behind the car.
     s['textview__car_00_road']=dict(picture(603000,'road',680,55,600,360),visible=False)
     for i in range(12):

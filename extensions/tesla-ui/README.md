@@ -9,6 +9,13 @@ time occupy the bottom row. Park and charging use a larger Model 3 Highland rend
 Drive, Reverse and Neutral use the rear view. The layout has no customization
 controls.
 
+Tap **Preview** at the upper right to cycle through sample states, six seconds
+per scene: each door and hatch, acceleration, regeneration, turn signals,
+blind-spot warnings, hazards, reverse, charging and disconnection. An amber
+PREVIEW label names the current scene. **Stop preview** returns to live readings
+and clears the sample history. Leaving the view also ends preview; it starts
+disabled each time you open Tesla UI. Sample values stay inside this view.
+
 The controller-navigation handler is prepared locally: previous/next highlights
 Back, select activates it, and Back returns to Extra. The native Activity Back
 callback uses this handler; Knob and steering-wheel events still need an ADB

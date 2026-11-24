@@ -45,7 +45,7 @@ if __name__=='__main__':
     with tempfile.TemporaryDirectory() as temp:
         binary=str(Path(temp)/'fixtures')
         subprocess.run(['clang','-std=c11','-fno-builtin','-I'+str(ROOT.parents[1]/'dashborne/extensions'),
-                        str(ROOT/'tests/test_window.c'),str(ROOT/'model.c'),str(ROOT/'graph.c'),str(ROOT/'road.c'),'-o',binary],check=True)
+                        str(ROOT/'tests/test_window.c'),str(ROOT/'model.c'),str(ROOT/'graph.c'),str(ROOT/'road.c'),str(ROOT/'sample.c'),'-o',binary],check=True)
         motion='--motion' in sys.argv
         snapshots=subprocess.check_output([binary,'--motion' if motion else '--preview'],text=True).splitlines()
     if motion:

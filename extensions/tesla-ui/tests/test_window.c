@@ -205,6 +205,38 @@ int main(int argc,char **argv) {
     if(previews)dump("regen");
     fixture.connected=0;render(source_microseconds(),1);assert(state.mode==WAITING && state.count==0);
     if(previews)dump("disconnected");
+    /* Preview feeds only this view, including without any vehicle connected. */
+    struct control *preview_button=lookup(s,PREVIEW);
+    seconds=500;subsecond=0;int sample_reads=reads;
+    click(s,preview_button);assert(preview_active && state.mode==DRIVING && reads==sample_reads);
+    assert(!strcmp(preview_button->value,"Stop preview"));
+    assert(((struct control *)lookup(s,PREVIEW_LABEL))->shown);
+    unsigned int panels=0,blind=0;int modes=0,regen=0,reverse=0,turns=0;
+    for(int scene=0;scene<SAMPLE_SCENES;++scene) {
+        seconds=500+scene*6;timer(s,TIMER);
+        panels|=state.data.body_open;blind|=state.data.blind_active;
+        modes|=1<<state.mode;regen|=state.data.power_valid && state.data.power_kw<0;
+        reverse|=state.data.gear==2;turns|=state.data.left?1:0;turns|=state.data.right?2:0;
+        assert(reads==sample_reads && !fixture.connected);
+        assert(strstr(((struct control *)lookup(s,PREVIEW_LABEL))->value,"PREVIEW"));
+        if(previews && scene==5)dump("sample-preview");
+    }
+    assert(panels==BODY_ALL && blind==SIDES_ALL && turns==3 && regen && reverse);
+    assert(modes==((1<<WAITING)|(1<<PARKED)|(1<<DRIVING)|(1<<CHARGING)));
+    seconds=500+SAMPLE_SCENES*6;timer(s,TIMER);assert(state.mode==DRIVING);
+    click(s,preview_button);
+    assert(!preview_active && reads==sample_reads+1 && state.mode==WAITING && !state.count);
+    assert(!strcmp(preview_button->value,"Preview"));
+    assert(!((struct control *)lookup(s,PREVIEW_LABEL))->shown);
+    assert(!state.data.body_known && !state.data.blind_known);
+    click(s,preview_button);assert(preview_active);paused(s);
+    assert(!preview_active);click(s,preview_button);assert(!preview_active);
+    resumed(s);assert(state.mode==WAITING && !preview_active);
+    /* Connected live data replaces preview immediately, without sample history. */
+    click(s,preview_button);fixture.connected=1;fixture.gear=4;fixture.speed=37;fixture.power_kw=7;
+    click(s,preview_button);assert(state.data.speed==37 && state.count==1);
+    assert(state.history[HISTORY-1]==70 && state.history[HISTORY-2]==UNKNOWN);
+    reports=0;
     performance_checks(s);
     assert(cluster_window_input(CLUSTER_NEXT,1));
     paused(s);int before=reads;timer(s,TIMER);assert(reads==before && !registered && !navigation_focus);
@@ -223,7 +255,9 @@ int main(int argc,char **argv) {
     /* A new native Activity needs fresh pointers and cached properties. */
     api=&h;control_count=0;memset(controls,0,sizeof(controls));
     s=create();int previous_lookups=lookups;created(s);assert(lookups>previous_lookups);
-    assert(!navigation_focus && hardware_back(s) && closes==2);
+    assert(!preview_active);click(s,lookup(s,PREVIEW));assert(preview_active);
+    assert(!navigation_focus && hardware_back(s) && closes==2 && !preview_active);
+    click(s,lookup(s,PREVIEW));assert(!preview_active);
     destroy(s);assert(!cluster_window_cleanup());
     return 0;
 }
