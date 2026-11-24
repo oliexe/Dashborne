@@ -7,48 +7,6 @@ official Linux-based OS. It gives users the tools to modify every aspect of the
 DASH's software or load custom apps. It loads patches from a microSD card and
 applies them temporarily, without writing them to the DASH's internal flash memory.
 
-## Install
-
-After building Dashborne, install it from the repository root:
-
-1. Prepare a microSD card with an **MBR partition table and a FAT32 partition**.
-   We tested an 8 GB FAT32 partition. Formatting erases the card.
-2. Mount the card and run:
-   ```sh
-   python3 dashborne/install.py --card /Volumes/CARD
-   ```
-   Replace `/Volumes/CARD` with its mount path. The installer copies
-   **`dashborne/build/card/Dashborne/`** to the card root and creates **`EasyUI.cfg`**
-   and **`dashborne.conf`**. Upgrades keep your settings and startup backup.
-3. Eject the card, insert it into the powered-off DASH, then power on.
-   **Tap the splash within three seconds** to configure Dashborne; otherwise it
-   continues to the official dashboard with your selected tweaks.
-
-For developer Wi-Fi, edit `wifi.ssid` and `wifi.password` in the card-root
-`dashborne.conf`, then enable ADB in the boot menu. ADB is off by default.
-Power off and remove the card to boot the original dashboard without Dashborne.
-
-## Boot menu
-
-- Patches: enable individual tweaks and extensions.
-- ADB: opt-in Wi-Fi debugging with connection status and address.
-- Loader: browse and launch compatible apps from microSD, with optional autolaunch.
-- Device: software versions, serials and system information.
-
-Dashborne saves preferences in the card-root `dashborne.conf`.
-See [configuration and operation](dashborne/README.md).
-
-## Extensions
-
-- [Extra menu](extensions/extra-menu): the core star button opens a stock-style
-  **Tweaks** menu where extensions can register pages.
-- [Contrast](extensions/contrast): display contrast and luminance controls in stock Settings.
-- [Tesla UI](extensions/tesla-ui): a fixed Model S style instrument view in Extra,
-  with live readings, energy history and navigation trip details.
-- [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
-  viewer with aspect controls; Back restores CarPlay/Android Auto.
-- [Dashborne badge](dashborne/patches/definitions/badge.json): an optional dashboard label.
-
 ## FAQ
 
 <details>
@@ -101,6 +59,48 @@ Use the [extension SDK](dashborne/extensions/README.md) for modules and the
 Yes.
 
 </details>
+
+## Install
+
+After building Dashborne, install it from the repository root:
+
+1. Prepare a microSD card with an **MBR partition table and a FAT32 partition**.
+   We tested an 8 GB FAT32 partition. Formatting erases the card.
+2. Mount the card and run:
+   ```sh
+   python3 dashborne/install.py --card /Volumes/CARD
+   ```
+   Replace `/Volumes/CARD` with its mount path. The installer copies
+   **`dashborne/build/card/Dashborne/`** to the card root and creates **`EasyUI.cfg`**
+   and **`dashborne.conf`**. Upgrades keep your settings and startup backup.
+3. Eject the card, insert it into the powered-off DASH, then power on.
+   **Tap the splash within three seconds** to configure Dashborne; otherwise it
+   continues to the official dashboard with your selected tweaks.
+
+For developer Wi-Fi, edit `wifi.ssid` and `wifi.password` in the card-root
+`dashborne.conf`, then enable ADB in the boot menu. ADB is off by default.
+Power off and remove the card to boot the original dashboard without Dashborne.
+
+## Boot menu
+
+- Patches: enable individual tweaks and extensions.
+- ADB: opt-in Wi-Fi debugging with connection status and address.
+- Loader: browse and launch compatible apps from microSD, with optional autolaunch.
+- Device: software versions, serials and system information.
+
+Dashborne saves preferences in the card-root `dashborne.conf`.
+See [configuration and operation](dashborne/README.md).
+
+## Extensions
+
+- [Extra menu](extensions/extra-menu): the core star button opens a stock-style
+  **Tweaks** menu where extensions can register pages.
+- [Contrast](extensions/contrast): display contrast and luminance controls in stock Settings.
+- [Tesla UI](extensions/tesla-ui): a fixed Model S style instrument view in Extra,
+  with live readings, energy history and navigation trip details.
+- [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
+  viewer with aspect controls; Back restores CarPlay/Android Auto.
+- [Dashborne badge](dashborne/patches/definitions/badge.json): an optional dashboard label.
 
 ## Hardware
 
