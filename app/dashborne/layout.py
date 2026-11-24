@@ -110,7 +110,11 @@ def screen():
         rows=4, cols=1, rowSpacing=0, colSpacing=0, item=file_item,
         hasScrollbar=True, scrollbarColor=0x596173, autoRollback=True,
         dragMaxDis=12, beepEnable=False, backgroundColor=0x07080a)
-    browser['textview__status'] = label(50042, 'Select an app', 24, 324, 760, 32, 17, 0x9ba6bd)
+    browser['textview__status'] = label(50042, 'Select an app', 24, 324, 420, 32, 17, 0x9ba6bd)
+    browser['button__autolaunch'] = dict(label(20014, 'Autolaunch', 464, 320, 328, 40, 18),
+        touchable=True, textPosition=position(12, 0, 220, 40),
+        bgColorTab={'color0': 0x07080a, 'color1': 0x15171d})
+    browser['textview__autolaunch_toggle'] = switch(50044, 708, 322)
     browser['button__load'] = dict(label(20011, 'Load app', 816, 320, 220, 40, 20, 0xffffff, 37),
         touchable=True, visible=False,
         picTab={'pic0': '../../../mnt/extsd/Dashborne/ui/continue.png',

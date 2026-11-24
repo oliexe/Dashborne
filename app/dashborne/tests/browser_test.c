@@ -11,6 +11,14 @@ static unsigned int find(const char *name) {
 int main(int argc,char **argv) {
     assert(argc>=2);
     if(!strcmp(argv[1],"validate")) { assert(argc==3);return browser_validate(argv[2]) ? 0 : 1; }
+    if(!strcmp(argv[1],"autolaunch")) {
+        assert(!browser_prepare_path(BROWSER_ROOT "/missing.so"));
+        assert(!browser_prepare_path(BROWSER_ROOT "/Apps/readme.txt"));
+        assert(browser_prepare_path(BROWSER_ROOT "/Apps/A sample.so"));
+        char path[BROWSER_PATH];assert(browser_take_request(path)==1);
+        assert(!strcmp(path,BROWSER_ROOT "/Apps/A sample.so"));
+        assert(browser_take_request(path)==0 && browser_take_return()==1);return 0;
+    }
     browser_init();
     assert(!strcmp(browser_path(),BROWSER_ROOT));
     browser_up();assert(!strcmp(browser_path(),BROWSER_ROOT));

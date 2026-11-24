@@ -9,6 +9,8 @@ struct settings {
     int wifi_adb;
     unsigned int count;
     struct patch_entry patches[MAX_PATCHES];
+    int config_ok, loader_autolaunch;
+    char loader_app[1024];
 };
 void state_restore(void);
 void state_load(struct settings *);

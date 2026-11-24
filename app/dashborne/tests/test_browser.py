@@ -66,6 +66,7 @@ class BrowserTests(unittest.TestCase):
 
     def test_browse_select_and_consumed_handoff(self):
         self.run_case('handoff')
+        self.run_case('autolaunch')
 
     def test_deleted_or_unsupported_selection(self):
         self.run_case('unsupported'); self.run_case('removed')

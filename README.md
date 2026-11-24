@@ -49,13 +49,16 @@ Dashborne/ui/loader.ftu
 Dashborne/ui/icon.png
 Dashborne/patches/catalog.tsv
 Dashborne/patches/*.dbp
-Dashborne/settings.conf
-Dashborne/wifi.conf
+dashborne.conf
 ```
 
 The **Loader** category browses the microSD and starts compatible native DASH
-apps for one session. See [loading an app](app/dashborne/README.md#load-an-app-from-microsd)
+apps for one session, or automatically after the splash when **Autolaunch** is enabled. See [loading an app](app/dashborne/README.md#load-an-app-from-microsd)
 for the app format and resource paths.
+
+All Dashborne preferences live in **`dashborne.conf`** at the card root: Wi-Fi,
+ADB, enabled tweaks and Loader autolaunch. Existing settings migrate automatically.
+See the [configuration format](app/dashborne/README.md#configuration-file).
 
 The [Dashborne installer](app/dashborne/README.md) builds this card layout, saves
 the previous startup configuration and selects the loader. It preserves display

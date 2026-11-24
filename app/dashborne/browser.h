@@ -14,6 +14,7 @@ const char *browser_selection(void);
 const char *browser_status(void);
 int browser_can_load(void);
 int browser_prepare(void);
+int browser_prepare_path(const char *path);
 /* Consume before loading an app: a crash cannot repeatedly select it. */
 int browser_take_request(char path[BROWSER_PATH]);
 int browser_take_return(void);

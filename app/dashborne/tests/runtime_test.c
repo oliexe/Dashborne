@@ -34,7 +34,8 @@ static struct mock_control controls[64];
 static int control_count;
 void state_restore(void) { ++restored; }
 void state_load(struct settings *s) {
-    *s = (struct settings){0}; s->count = 2;
+    *s = (struct settings){0}; s->count = 2;s->config_ok=strcmp(scenario,"config-invalid")!=0;
+    if(!strncmp(scenario,"autolaunch",10)){s->loader_autolaunch=1;strcpy(s->loader_app,"/mnt/extsd/test.so");}
     s->wifi_adb = !strcmp(scenario, "developer-auto") || !strcmp(scenario, "developer-tap") || !strcmp(scenario, "config-on");
     strcpy(s->patches[0].id, "badge"); strcpy(s->patches[0].title, "Badge");
     s->patches[0].compatible = 1; s->patches[0].enabled = 1;
@@ -82,19 +83,20 @@ void browser_select(unsigned int i) { (void)i; }
 unsigned int browser_count(void) { return 0; }
 const struct browser_entry *browser_entry(unsigned int i) { (void)i;return NULL; }
 const char *browser_path(void) { return "/mnt/extsd"; }
-const char *browser_selection(void) { return ""; }
+const char *browser_selection(void) { return "/mnt/extsd/test.so"; }
 const char *browser_status(void) { return "Select an app"; }
 int browser_can_load(void) { return 1; }
+int browser_prepare_path(const char *p) {assert(!strcmp(p,"/mnt/extsd/test.so"));++browser_prepared;return strcmp(scenario,"autolaunch-invalid")!=0;}
 int browser_prepare(void) { ++browser_prepared;return strcmp(scenario,"browser-prepare-failure")!=0; }
 void browser_cancel_request(void) { ++browser_cancelled; }
 int browser_take_request(char *path) {
     if(!strcmp(scenario,"external-app") || !strcmp(scenario,"external-empty") || !strcmp(scenario,"external-load-failure") || !strcmp(scenario,"external-symbol-failure") || !strcmp(scenario,"external-self")) { strcpy(path,"/mnt/extsd/app.so");return 1; }
     return !strcmp(scenario,"external-invalid") ? -1 : 0;
 }
-int browser_take_return(void) { return !strcmp(scenario,"external-return"); }
+int browser_take_return(void) { return !strcmp(scenario,"external-return") || !strcmp(scenario,"autolaunch-return"); }
 static int restart_prop(const char *key,const char *value) {
     assert(!strcmp(key,"ctl.restart") && !strcmp(value,"zkswe"));++restarts;
-    return !strcmp(scenario,"browser-restart-failure") ? -1 : 0;
+    return (!strcmp(scenario,"browser-restart-failure") || !strcmp(scenario,"autolaunch-restart-failure")) ? -1 : 0;
 }
 static const char *ip = "";
 void debug_bind(void *s, void *r, void (*logger)(const char *)) { assert(s == (void *)1 && r == (void *)2 && logger); }
@@ -237,6 +239,24 @@ int main(int argc, char **argv) {
         assert(external_app && !ready && !registered && !applied);
         assert(is("external-empty") ? !selected && restarts==1 : selected && !strcmp(selected,"installedActivity"));
         onEasyUIDeinit((void *)123);assert(deinit_calls==1);
+        printf("PASS: %s\n",scenario);return 0;
+    }
+    if(!strncmp(scenario,"autolaunch",10) || is("config-invalid")) {
+        assert(!strcmp(selected,ACTIVITY));void *p=registered();
+        if(is("config-invalid")){assert(phase==1 && launch_error && !settings.wifi_adb);}
+        else if(is("autolaunch-return")){assert(phase==1 && section==2);on_timer(p,BOOT_TIMER);assert(!restarts);}
+        else if(is("autolaunch-tap")) {
+            on_click(p,find(p,TAP_ID));on_timer(p,BOOT_TIMER);assert(phase==1 && !restarts && !browser_prepared);
+            on_click(p,find(p,BROWSER_TAB_ID));on_click(p,find(p,AUTOLAUNCH_ID));assert(!settings.loader_autolaunch && saved==1);
+            on_click(p,find(p,AUTOLAUNCH_ID));assert(settings.loader_autolaunch && saved==2);
+            force_save_failure=1;on_click(p,find(p,AUTOLAUNCH_ID));assert(settings.loader_autolaunch && !settings_ok);
+        } else {
+            on_timer(p,BOOT_TIMER);assert(browser_prepared==1 && !opened && !applied);
+            if(is("autolaunch-invalid"))assert(phase==1 && !restarts && launch_error);
+            else if(is("autolaunch-restart-failure"))assert(phase==1 && restarts==1 && browser_cancelled==1);
+            else assert(phase==2 && restarts==1);
+        }
+        destroy(p);onEasyUIDeinit((void *)123);assert(allocations==frees);
         printf("PASS: %s\n",scenario);return 0;
     }
     if(is("device")) {

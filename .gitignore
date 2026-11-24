@@ -10,3 +10,5 @@ app/official-ui/build/
 app/injector/build/
 app/dashborne/build/
 app/extensions/build/
+dashborne.conf
+dashborne.conf.next

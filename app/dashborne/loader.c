@@ -37,6 +37,7 @@ EXPORT const char *onStartupApp(void *);
 #define PATCHES_TAB_ID 20006
 #define ADB_TAB_ID 20007
 #define BROWSER_TAB_ID 20008
+#define AUTOLAUNCH_ID 20014
 #define DEVICE_TAB_ID 20012
 #define DEVICE_REFRESH_ID 20013
 #define DEVICE_PANEL_ID 110006
@@ -168,7 +169,15 @@ static void render(void *self) {
     color(self, BROWSER_TAB_ID, section == 2 ? 0xf0f2ff : 0x79849a);
     if (section == 2) {
         label(self, 50041, browser_path());
-        label(self, 50042, browser_status());
+        const char *status=browser_status();
+        char auto_status[128]="";
+        if(settings.loader_autolaunch && !browser_can_load()) {
+            const char *name=settings.loader_app;for(const char *p=name;*p;++p)if(*p=='/')name=p+1;
+            unsigned int at=append(auto_status,0,"Autolaunch: ",sizeof(auto_status));append(auto_status,at,name,sizeof(auto_status));status=auto_status;
+        }
+        label(self,50042,status);
+        label(self,50044,settings.loader_autolaunch ? "1" : "0");
+        color(self,AUTOLAUNCH_ID,settings.loader_autolaunch || browser_can_load() ? 0xdce2ee : 0x657080);
         visible(self, BROWSER_LOAD_ID, browser_can_load());
     }
     color(self, PATCHES_TAB_ID, section == 0 ? 0xf0f2ff : 0x79849a);
@@ -196,7 +205,7 @@ static void render(void *self) {
     label(self, COUNT_ID, counts);
     visible(self, EMPTY_ID, settings.count == 0);
     visible(self, LIST_ID, settings.count != 0);
-    label(self, NOTICE_ID, launch_error ? launch_error : settings_ok ? "" : "Could not save settings to microSD");
+    label(self, NOTICE_ID, launch_error ? launch_error : settings_ok ? "" : "Could not read or save dashborne.conf");
 }
 /* Independent C adapters for the runtime's list interfaces. The first two
    virtual slots are destructors; the installed ARM ABI dispatches count at
@@ -278,6 +287,15 @@ static void load_app(void *self) {
     debug_set_enabled(settings.wifi_adb); register_timer(self,NETWORK_TIMER,1000); render(self);
 }
 
+static void toggle_autolaunch(void *self) {
+    if(!settings.loader_autolaunch && !browser_can_load())return;
+    int before=settings.loader_autolaunch;char previous[BROWSER_PATH];append(previous,0,settings.loader_app,sizeof(previous));
+    settings.loader_autolaunch=!before;
+    if(settings.loader_autolaunch)append(settings.loader_app,0,browser_selection(),sizeof(settings.loader_app));
+    settings_ok=state_save(&settings);
+    if(!settings_ok){settings.loader_autolaunch=before;append(settings.loader_app,0,previous,sizeof(settings.loader_app));}
+    render(self);
+}
 static void launch(void *self) {
     if (phase == 2 || phase == 3) return;
     if (!extension_recovery_ok) {
@@ -316,8 +334,23 @@ static void launch(void *self) {
     log_line("official-selected\n");
     open_activity(ui_instance(), extensions_activity(stock_screen), (void *)0);
 }
+static void continue_boot(void *self) {
+    if(!settings.loader_autolaunch){launch(self);return;}
+    unregister_timer(self,BOOT_TIMER);
+    if(!browser_prepare_path(settings.loader_app)) {
+        phase=1;section=2;launch_error=browser_status();
+        if(!browser_initialized){browser_init();browser_initialized=1;refresh_browser(self);}
+        debug_set_enabled(settings.wifi_adb);render(self);return;
+    }
+    /* The existing one-use request/return marker prevents a crashing app from
+       being selected again on the service's automatic restart. */
+    phase=2;unregister_timer(self,NETWORK_TIMER);debug_release();
+    if(restart_ui())return;
+    browser_cancel_request();phase=1;launch_error="Could not restart the UI for autolaunch.";
+    debug_set_enabled(settings.wifi_adb);register_timer(self,NETWORK_TIMER,1000);render(self);
+}
 static int on_timer(void *self, int id) {
-    if (id == BOOT_TIMER && phase == 0) { launch(self); return 1; }
+    if (id == BOOT_TIMER && phase == 0) { continue_boot(self); return 1; }
     /* Only configuration owns a developer Wi-Fi connection. Never compete
        with the official app's hotspot or CarPlay/Android Auto networking. */
     if (id == NETWORK_TIMER && (phase == 1 || (phase == 0 && !settings.wifi_adb))) {
@@ -332,8 +365,10 @@ static int on_timer_secondary(void *self, int id) {
 static void on_create(void *self) {
     base_on_create(self);
     state_load(&settings);
+    settings_ok=settings.config_ok;
     phase = browser_returning ? 1 : 0; section = browser_returning ? 2 : 0;
     launch_error = browser_failed ? "App could not be loaded. See loader.log." : (const char *)0;
+    if(!settings.config_ok){phase=1;launch_error="Could not read dashborne.conf. Check the microSD configuration.";}
     list_owner = self;
     void *list = find_control(self, LIST_ID);
     if (list) {
@@ -362,7 +397,7 @@ static void on_click(void *self, void *control) {
         phase = 1; unregister_timer(self, BOOT_TIMER); log_line("configuration-entered\n");
         debug_set_enabled(settings.wifi_adb);
     } else if (phase != 1) return;
-    else if (id == LAUNCH_ID) { launch(self); return; }
+    else if (id == LAUNCH_ID) { continue_boot(self); return; }
     else if (id == PATCHES_TAB_ID) section = 0;
     else if (id == ADB_TAB_ID) section = 1;
     else if (id == DEVICE_TAB_ID) { section=3;refresh_device(self); }
@@ -371,6 +406,7 @@ static void on_click(void *self, void *control) {
         section=2; if(!browser_initialized) { browser_init();browser_initialized=1;refresh_browser(self); }
     } else if (id == BROWSER_UP_ID && section == 2) { browser_up();refresh_browser(self); }
     else if (id == BROWSER_REFRESH_ID && section == 2) { browser_refresh();refresh_browser(self); }
+    else if (id == AUTOLAUNCH_ID && section == 2) { toggle_autolaunch(self);return; }
     else if (id == BROWSER_LOAD_ID && section == 2) { load_app(self);return; }
     else if (id == WIFI_ID && section == 1) {
         settings.wifi_adb = !settings.wifi_adb;

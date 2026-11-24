@@ -173,6 +173,13 @@ int browser_prepare(void) {
     }
     message="Loading app...";return 1;
 }
+int browser_prepare_path(const char *path) {
+    char real[BROWSER_PATH];
+    if(!canonical(path,real) || !browser_validate(real)) {
+        message="Autolaunch app is missing or unsupported";return 0;
+    }
+    memcpy(selected,real,strlen(real)+1);loadable=1;return browser_prepare();
+}
 int browser_take_request(char path[BROWSER_PATH]) {
     int fd=open(BROWSER_REQUEST,0); if(fd<0)return 0;
     unlink(BROWSER_REQUEST);

@@ -23,7 +23,7 @@ class Entry(ctypes.Structure):
     _fields_ = [('id', ctypes.c_char*32), ('title', ctypes.c_char*64), ('description', ctypes.c_char*128),
                 ('enabled', ctypes.c_int), ('compatible', ctypes.c_int), ('native', ctypes.c_int)]
 class Settings(ctypes.Structure):
-    _fields_ = [('wifi_adb', ctypes.c_int), ('count', ctypes.c_uint), ('patches', Entry*64)]
+    _fields_ = [('wifi_adb', ctypes.c_int), ('count', ctypes.c_uint), ('patches', Entry*64), ('config_ok',ctypes.c_int), ('loader_autolaunch',ctypes.c_int), ('loader_app',ctypes.c_char*1024)]
 
 
 class StateTests(unittest.TestCase):
@@ -35,9 +35,11 @@ class StateTests(unittest.TestCase):
         stub.write_text('int core_available; int extension_probe(const char*id){return id[0]==110 || (core_available && id[0]==101);}\nint mount(const char*a,const char*b,const char*c,unsigned long d,const void*e){(void)a;(void)b;(void)c;(void)d;(void)e;return 0;}\nint umount2(const char*a,int b){(void)a;(void)b;return 0;}\n')
         output = cls.root/'state.so'
         subprocess.run(['cc','-shared','-fPIC','-std=c11', '-Wall','-Wextra','-Werror',
+                        '-DCONFIG_CARD=\"'+str(cls.root/'card')+'\"',
+                        '-DCONFIG_LEGACY=\"'+str(cls.root/'card')+'\"',
                         '-DDASHBORNE_ROOT="'+str(cls.root/'card')+'"',
                         '-DDASHBORNE_TARGET="'+str(cls.root/'base.ftu')+'"',
-                        str(ROOT/'state.c'),str(ROOT.parent/'injector/patch.c'),str(stub),'-lz','-o',str(output)],check=True)
+                        str(ROOT/'state.c'),str(ROOT/'config.c'),str(ROOT.parent/'injector/patch.c'),str(stub),'-lz','-o',str(output)],check=True)
         cls.lib = ctypes.CDLL(str(output))
         cls.lib.state_load.argtypes = [ctypes.POINTER(Settings)]
         cls.lib.state_save.argtypes = [ctypes.POINTER(Settings)]
@@ -145,3 +147,17 @@ class StateTests(unittest.TestCase):
         self.assertEqual(self.lib.state_save(ctypes.byref(s)), 1)
         restored = self.load()
         self.assertEqual([restored.patches[i].enabled for i in range(64)], [i % 2 for i in range(64)])
+
+    def test_unified_settings_preserve_wifi_future_and_missing_tweaks(self):
+        raw=b'# User comment\nformat=1\nadb.enabled=1\nwifi.ssid= Test #= network \nwifi.password=password #= spaces\ntweak.removed.enabled=1\nfuture.setting=retained\nloader.autolaunch=1\nloader.app=/mnt/extsd/My App.so\n'
+        (self.card/'dashborne.conf').write_bytes(raw)
+        s=self.load();self.assertTrue(s.config_ok and s.loader_autolaunch)
+        self.assertEqual(s.loader_app,b'/mnt/extsd/My App.so')
+        s.wifi_adb=0;self.assertEqual(self.lib.state_save(ctypes.byref(s)),1)
+        after=(self.card/'dashborne.conf').read_bytes()
+        for line in raw.splitlines():
+            if not line.startswith(b'adb.enabled='):self.assertIn(line,after)
+        (self.card/'dashborne.conf').write_bytes(b'format=2\n')
+        self.assertFalse(self.load().config_ok)
+        self.assertEqual(self.lib.state_save(ctypes.byref(s)),0)
+        self.assertEqual((self.card/'dashborne.conf').read_bytes(),b'format=2\n')

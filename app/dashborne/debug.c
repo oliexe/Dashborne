@@ -1,6 +1,7 @@
 /* Configuration-only developer connection controller. All work is bounded and
    advances on the UI timer; no worker can change networking after handoff. */
 #include "debug.h"
+#include "config.h"
 typedef __SIZE_TYPE__ usize;
 extern void *dlsym(void *, const char *);
 extern int open(const char *, int, ...), read(int, void *, unsigned int), close(int);
@@ -74,52 +75,8 @@ static void fail(const char *message) {
     report(message);
 }
 static int load_config(void) {
-    char raw[100] = {0};
-    unsigned int used = 0;
-    int n = 0, ok = 0;
-    wipe(ssid, sizeof(ssid));
-    wipe(password, sizeof(password));
-    int fd = open("/mnt/extsd/Dashborne/wifi.conf", 0);
-    if (fd < 0)
-        return 0;
-    while (used < sizeof(raw) && (n = read(fd, raw + used, sizeof(raw) - used)) > 0)
-        used += (unsigned int)n;
-    close(fd);
-    if (n < 0 || used == sizeof(raw))
-        goto done;
-    unsigned int first = 0;
-    while (first < used && raw[first] != '\n')
-        ++first;
-    if (first == used)
-        goto done;
-    unsigned int slen = first;
-    if (slen && raw[slen - 1] == '\r')
-        --slen;
-    unsigned int end = used;
-    if (end && raw[end - 1] == '\n')
-        --end;
-    if (end && raw[end - 1] == '\r')
-        --end;
-    unsigned int begin = first + 1;
-    if (end < begin)
-        goto done;
-    unsigned int plen = end - begin;
-    if (!slen || slen > 32 || plen < 8 || plen > 63)
-        goto done;
-    for (unsigned int i = 0; i < slen; ++i)
-        if (!raw[i] || raw[i] == '\r')
-            goto done;
-    for (unsigned int i = begin; i < end; ++i)
-        if (!raw[i] || raw[i] == '\r' || raw[i] == '\n')
-            goto done;
-    for (unsigned int i = 0; i < slen; ++i)
-        ssid[i] = raw[i];
-    for (unsigned int i = 0; i < plen; ++i)
-        password[i] = raw[begin + i];
-    ok = 1;
-done:
-    wipe(raw, sizeof(raw));
-    return ok;
+    wipe(ssid,sizeof(ssid));wipe(password,sizeof(password));
+    return config_wifi(ssid,password);
 }
 static int properties(char *daemon, char *port) {
     daemon[0] = port[0] = 0;

@@ -13,8 +13,9 @@
 #define __errno_location mock_errno
 #include "../debug.c"
 
-static char config[160], proc4[2048], proc6[2048], mock_daemon[128], port[128];
-static unsigned int config_size, offsets[3], chunk;
+static int config_valid;
+static char configured_ssid[33], configured_password[64], proc4[2048], proc6[2048], mock_daemon[128], port[128];
+static unsigned int offsets[3], chunk;
 static int mode, connected, carrier, association, correct_ssid, ioctl_error, error_number;
 static unsigned char ipv4[4];
 static int modes, connects, disconnects, starts, stops, writes, opens, closes;
@@ -97,29 +98,22 @@ void *mock_dlsym(void *handle, const char *name) {
     assert(0);
     return NULL;
 }
-int mock_open(const char *path, int flags, ...) {
-    assert(flags == 0);
-    int fd;
-    if (strstr(path, "wifi.conf")) {
-        if (fail_open)
-            return -1;
-        fd = 0;
-    } else if (!strcmp(path, "/proc/net/tcp"))
-        fd = 1;
-    else {
-        assert(!strcmp(path, "/proc/net/tcp6"));
-        fd = 2;
-    }
-    offsets[fd] = 0;
-    ++opens;
-    return fd;
+int config_wifi(char s[33],char p[64]) {
+    s[0]=p[0]=0;if(!config_valid || fail_open || fail_read)return 0;
+    strcpy(s,configured_ssid);strcpy(p,configured_password);return 1;
+}
+int mock_open(const char *path,int flags,...) {
+    assert(flags==0);int fd;
+    if(!strcmp(path,"/proc/net/tcp"))fd=1;
+    else {assert(!strcmp(path,"/proc/net/tcp6"));fd=2;}
+    offsets[fd]=0;++opens;return fd;
 }
 int mock_read(int fd, void *out, unsigned int size) {
     assert(fd >= 0 && fd <= 2);
     if (fail_read || (read_error_after && offsets[fd] >= (unsigned int)read_error_after))
         return -1;
-    const char *src = fd == 0 ? config : fd == 1 ? proc4 : proc6;
-    unsigned int len = fd == 0 ? config_size : (unsigned int)strlen(src);
+    const char *src = fd == 1 ? proc4 : proc6;
+    unsigned int len = (unsigned int)strlen(src);
     if (offsets[fd] >= len)
         return 0;
     if (size > chunk)
@@ -202,8 +196,7 @@ static void reset(void) {
     debug_release();
     status = "Disabled";
     step = STOP;
-    strcpy(config, "TestNetwork\npassword123\n");
-    config_size = (unsigned int)strlen(config);
+    config_valid=1;strcpy(configured_ssid,"TestNetwork");strcpy(configured_password,"password123");
     proc4[0] = proc6[0] = 0;
     strcpy(mock_daemon, "stopped");
     strcpy(port, "-1");
@@ -265,44 +258,11 @@ static void test_default_and_normal(void) {
     cancelled();
 }
 static void test_config(void) {
-    const char *invalid[] = {"",
-                             "OnlySSID",
-                             "\npassword123",
-                             "SSID\nshort",
-                             "SSID\npassword123\nextra",
-                             "SSID\npassword\rword"};
-    for (unsigned int i = 0; i < sizeof(invalid) / sizeof(*invalid); ++i) {
-        reset();
-        strcpy(config, invalid[i]);
-        config_size = (unsigned int)strlen(config);
-        debug_set_enabled(1);
-        advance(100);
-        assert(strstr(debug_status(), "invalid") && !modes && !connects && !starts);
-    }
-    reset();
-    config[2] = 0;
-    debug_set_enabled(1);
-    assert(strstr(debug_status(), "invalid"));
-    reset();
-    memset(config, 's', 32);
-    memcpy(config + 32, "\r\n", 2);
-    memset(config + 34, 'p', 63);
-    memcpy(config + 97, "\r\n", 2);
-    config_size = 99;
-    essid_nul = 1;
-    ready();
-    assert(strlen(ssid) == 32 && strlen(password) == 63);
-    cancelled();
-    reset();
-    strcpy(config, "SSID\r\npassword123");
-    config_size = (unsigned int)strlen(config);
-    ready();
-    cancelled();
-    reset();
-    memset(config, 'x', 100);
-    config_size = 100;
-    debug_set_enabled(1);
-    assert(strstr(debug_status(), "invalid"));
+    reset();config_valid=0;debug_set_enabled(1);advance(100);
+    assert(strstr(debug_status(),"invalid") && !modes && !connects && !starts);
+    reset();memset(configured_ssid,'s',32);configured_ssid[32]=0;
+    memset(configured_password,'p',63);configured_password[63]=0;essid_nul=1;
+    ready();assert(strlen(ssid)==32 && strlen(password)==63);cancelled();
     reset();
     fail_open = 1;
     debug_set_enabled(1);
@@ -556,7 +516,7 @@ int main(void) {
     test_default_and_normal();
     puts("PASS: ADB default, normal transitions, address changes and reuse");
     test_config();
-    puts("PASS: configuration bounds, formats, read failures and missing APIs");
+    puts("PASS: configuration rejection, maximum-length credentials and missing APIs");
     test_service();
     puts("PASS: rapid toggles, delayed/failed stops, start recovery and other transports");
     test_network();

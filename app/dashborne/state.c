@@ -1,4 +1,5 @@
 #include "state.h"
+#include "config.h"
 #include "../extensions/engine.h"
 #include "../injector/patch.h"
 typedef __SIZE_TYPE__ usize;
@@ -28,10 +29,6 @@ static unsigned int copy(char *to, const char *from, unsigned int cap) {
 }
 static int equal(const char *a, const char *b) {
     while (*a && *a == *b) { ++a; ++b; } return *a == *b;
-}
-static int starts(const char *a, const char *b) {
-    while (*b) if (*a++ != *b++) return 0;
-    return 1;
 }
 static int valid_id(const char *s) {
     unsigned int n = 0;
@@ -125,35 +122,33 @@ void state_load(struct settings *state) {
         }
     }
     free(catalog); free(base);
-    unsigned char *config = load_limit(DASHBORNE_ROOT "/settings.conf", &n, 8192);
-    if (config && n < 8192) {
-        char *cursor = (char *)config, *entry;
-        while ((entry = line(&cursor))) {
-            if (equal(entry, "wifi_adb=1")) state->wifi_adb = 1;
-            if (equal(entry, "wifi_adb=0")) state->wifi_adb = 0;
-            if (!starts(entry, "patch.")) continue;
-            char *value = entry + 6;
-            while (*value && *value != '=') ++value;
-            if (!*value) continue;
-            *value++ = 0;
-            for (unsigned int i = 0; i < state->count; ++i)
-                if (equal(entry + 6, state->patches[i].id))
-                    state->patches[i].enabled = state->patches[i].compatible && equal(value, "1");
+    state->config_ok=config_load();
+    if(state->config_ok) {
+        char value[1024];
+        if(config_get("adb.enabled",value,sizeof(value)))state->wifi_adb=equal(value,"1");
+        if(config_get("loader.autolaunch",value,sizeof(value)))state->loader_autolaunch=equal(value,"1");
+        config_get("loader.app",state->loader_app,sizeof(state->loader_app));
+        for(unsigned int i=0;i<state->count;++i) {
+            char key[64]="tweak.";unsigned int at=copy(key+6,state->patches[i].id,sizeof(key)-6)+6;
+            copy(key+at,".enabled",sizeof(key)-at);
+            if(config_get(key,value,sizeof(value)))state->patches[i].enabled=state->patches[i].compatible && equal(value,"1");
         }
     }
-    free(config);
+    config_clear();
 }
 int state_save(const struct settings *state) {
-    if (state->count > MAX_PATCHES) return 0;
-    char data[4096];
-    unsigned int n = copy(data, state->wifi_adb ? "wifi_adb=1\n" : "wifi_adb=0\n", sizeof(data));
-    for (unsigned int i = 0; i < state->count; ++i) {
-        if (!valid_id(state->patches[i].id)) return 0;
-        n += copy(data + n, "patch.", sizeof(data) - n);
-        n += copy(data + n, state->patches[i].id, sizeof(data) - n);
-        n += copy(data + n, state->patches[i].enabled && state->patches[i].compatible ? "=1\n" : "=0\n", sizeof(data) - n);
+    if(state->count>MAX_PATCHES || !config_load())return 0;
+    int ok=config_set("adb.enabled",state->wifi_adb ? "1" : "0") &&
+        config_set("loader.autolaunch",state->loader_autolaunch ? "1" : "0") && config_set("loader.app",state->loader_app);
+    for(unsigned int i=0;ok && i<state->count;++i) {
+        if(!valid_id(state->patches[i].id)){ok=0;break;}
+        /* Preserve choices for temporarily unavailable/incompatible tweaks. */
+        if(!state->patches[i].compatible)continue;
+        char key[64]="tweak.";unsigned int at=copy(key+6,state->patches[i].id,sizeof(key)-6)+6;
+        copy(key+at,".enabled",sizeof(key)-at);
+        ok=config_set(key,state->patches[i].enabled ? "1" : "0");
     }
-    return save(DASHBORNE_ROOT "/settings.conf", DASHBORNE_ROOT "/settings.conf.next", (unsigned char *)data, n);
+    ok=ok && config_commit();config_clear();return ok;
 }
 int state_apply(const struct settings *state, void (*log)(const char *)) {
     if (state->count > MAX_PATCHES) return -1;

@@ -10,11 +10,13 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
+import configuration
 sys.path.insert(0, str(ROOT.parent / 'dashboard'))
 from stage import atomic_write, wifi_config_bytes
 STARTUP = '/mnt/extsd/Dashborne/lib/libdashborne.so'
 BACKUP = 'Dashborne/previous.cfg'
-SAVED = ('EasyUI.cfg', BACKUP, 'Dashborne/settings.conf', 'Dashborne/wifi.conf', 'adb-enabler/wifi.conf')
+SAVED = ('dashborne.conf', 'EasyUI.cfg', BACKUP, 'Dashborne/settings.conf', 'Dashborne/wifi.conf', 'adb-enabler/wifi.conf')
 
 
 def stage(card, wifi_config=None, configure=False, restore=False, build=None):
@@ -34,16 +36,9 @@ def stage(card, wifi_config=None, configure=False, restore=False, build=None):
         atomic_write(card / BACKUP, raw); changed.append(BACKUP)
     elif not (card / BACKUP).exists():
         raise ValueError('Previous startup configuration missing')
+    unified = configuration.migrate(card)
     if wifi_config:
-        atomic_write(card / 'Dashborne/wifi.conf', wifi_config_bytes(wifi_config))
-        changed.append('Dashborne/wifi.conf')
-    elif not (card / 'Dashborne/wifi.conf').exists() and (card / 'adb-enabler/wifi.conf').exists():
-        atomic_write(card / 'Dashborne/wifi.conf', (card / 'adb-enabler/wifi.conf').read_bytes())
-        changed.append('Dashborne/wifi.conf')
-    if not (card / 'Dashborne/settings.conf').exists():
-        settings = 'wifi_adb=0\npatch.dashborne-badge=1\n'
-        atomic_write(card / 'Dashborne/settings.conf', settings.encode())
-        changed.append('Dashborne/settings.conf')
+        unified = configuration.update(unified, configuration.wifi(wifi_config_bytes(wifi_config)))
     build = Path(build) if build else ROOT / 'build/card'
     library = (build / 'Dashborne/lib/libdashborne.so').read_bytes()
     if len(library) < 52 or library[:6] != b'\x7fELF\x01\x01' or library[18:20] != b'\x28\x00':
@@ -51,7 +46,12 @@ def stage(card, wifi_config=None, configure=False, restore=False, build=None):
     for source in sorted(build.rglob('*')):
         if source.is_file():
             name = str(source.relative_to(build))
+            if name in SAVED: continue
             atomic_write(card / name, source.read_bytes()); changed.append(name)
+    if not (card/'dashborne.conf').exists() or (card/'dashborne.conf').read_bytes() != unified:
+        atomic_write(card/'dashborne.conf', unified); changed.append('dashborne.conf')
+    for legacy in configuration.LEGACY:
+        (card/legacy).unlink(missing_ok=True)
     if configure:
         atomic_write(card / 'Dashborne/config.once', b''); changed.append('Dashborne/config.once')
     config['startupLibPath'] = STARTUP
@@ -73,7 +73,9 @@ def deploy(device, adb, wifi_config=None, configure=False, restore=False, previe
         for name in SAVED:
             local = card / name; local.parent.mkdir(parents=True, exist_ok=True)
             r = subprocess.run(command + ['pull', '/mnt/extsd/' + name, str(local)], capture_output=True, timeout=10)
-            if r.returncode and name == 'EasyUI.cfg': raise ValueError('Cannot read card startup')
+            if r.returncode:
+                if name == 'EasyUI.cfg' or b'No such file' not in r.stderr+r.stdout and b'does not exist' not in r.stderr+r.stdout:
+                    raise ValueError('Cannot read existing card configuration')
         original = (card / 'EasyUI.cfg').read_bytes()
         changed = stage(card, wifi_config, configure, restore)
         def upload(data, remote):
@@ -85,6 +87,10 @@ def deploy(device, adb, wifi_config=None, configure=False, restore=False, previe
             shell('mv ' + shlex.quote(pending) + ' ' + shlex.quote(remote))
         for name in changed:
             if name != 'EasyUI.cfg': upload((card / name).read_bytes(), '/mnt/extsd/' + name)
+        if not restore:
+            # Root configuration is verified before retiring the old active files.
+            for legacy in configuration.LEGACY:
+                shell('rm -f '+shlex.quote('/mnt/extsd/'+legacy))
         if preview:
             before = shell('if [ -f /mnt/extsd/Dashborne/loader.log ]; then cat /mnt/extsd/Dashborne/loader.log; fi').count(b'dashborne-selected')
             upload(original, '/mnt/extsd/Dashborne/preview-previous.cfg')
