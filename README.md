@@ -49,6 +49,59 @@ See [configuration and operation](dashborne/README.md).
   viewer with aspect controls; Back restores CarPlay/Android Auto.
 - [Dashborne badge](dashborne/patches/definitions/badge.json): an optional dashboard label.
 
+## FAQ
+
+<details>
+<summary>What does it allow?</summary>
+
+You can change the DASH's UI and behavior, add features through patches and
+modules, load custom apps, and enable ADB for development.
+
+</details>
+
+<details>
+<summary>Can it brick my device?</summary>
+
+Dashborne's normal patch loading leaves the OS in flash untouched.
+Custom apps and modules run with system privileges, so code that writes to
+internal storage can still damage the system.
+
+</details>
+
+<details>
+<summary>Are these patches permanent?</summary>
+
+No; Dashborne's normal patches apply only while running from the card.
+Power off and remove the microSD card to boot the unpatched OS.
+
+</details>
+
+<details>
+<summary>What if a module fails to load?</summary>
+
+If a module reports a loading or activation error, Dashborne stays in the boot
+menu and shows the error so you can disable it.
+If it crashes or freezes the UI, power-cycle the DASH and tap the splash to
+disable the module, or remove the card to boot stock.
+
+</details>
+
+<details>
+<summary>Can I create my own apps and modules?</summary>
+
+Yes, you can build custom apps and modules for the DASH's Linux platform.
+Use the [extension SDK](dashborne/extensions/README.md) for modules and the
+[Loader](dashborne/README.md) to launch compatible apps from microSD.
+
+</details>
+
+<details>
+<summary>Can S3XY DASH run DOOM?</summary>
+
+Yes.
+
+</details>
+
 ## Hardware
 
 The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
