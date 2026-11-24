@@ -46,7 +46,7 @@ def stage(card, wifi_config=None, configure=False, restore=False, build=None):
     unified = configuration.migrate(card)
     if wifi_config:
         unified = configuration.update(unified, configuration.wifi(wifi_config_bytes(wifi_config)))
-    build = Path(build) if build else ROOT / 'build/card'
+    build = Path(build) if build else (ROOT / 'card' if (ROOT / 'card').is_dir() else ROOT / 'build/card')
     library = (build / 'Dashborne/lib/libdashborne.so').read_bytes()
     if len(library) < 52 or library[:6] != b'\x7fELF\x01\x01' or library[18:20] != b'\x28\x00':
         raise ValueError('Build the ARM loader first')

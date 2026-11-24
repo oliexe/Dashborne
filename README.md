@@ -62,17 +62,19 @@ Yes.
 
 ## Install
 
-After building Dashborne, install it from the repository root:
+Download the microSD ZIP from the [latest release](https://github.com/oliexe/Dashborne/releases/latest)
+and extract it.
 
 1. Prepare a microSD card with an **MBR partition table and a FAT32 partition**.
    We tested an 8 GB FAT32 partition. Formatting erases the card.
-2. Mount the card and run:
+2. On a fresh card, copy everything inside the ZIP's `card/` directory to the
+   card root: **`Dashborne/`**, **`EasyUI.cfg`** and **`dashborne.conf`**.
+   For an upgrade, run this from the extracted ZIP using Python 3.10+:
    ```sh
-   python3 dashborne/install.py --card /Volumes/CARD
+   python3 install.py --card /Volumes/CARD
    ```
-   Replace `/Volumes/CARD` with its mount path. The installer copies
-   **`dashborne/build/card/Dashborne/`** to the card root and creates **`EasyUI.cfg`**
-   and **`dashborne.conf`**. Upgrades keep your settings and startup backup.
+   Replace `/Volumes/CARD` with its mount path. The installer preserves your
+   settings and startup backup.
 3. Eject the card, insert it into the powered-off DASH, then power on.
    **Tap the splash within three seconds** to configure Dashborne; otherwise it
    continues to the official dashboard with your selected tweaks.
@@ -148,5 +150,13 @@ sh dashborne/build.sh
 ```
 
 The build packages Dashborne and the bundled extensions into `dashborne/build/card/`.
+Install a source build with `python3 dashborne/install.py --card /Volumes/CARD`,
+or create a downloadable ZIP with `python3 tools/release.py`.
+
+The [build workflow](.github/workflows/release.yml) builds and tests pushes to
+`main`, pull requests and manual runs. To publish a release, update `VERSION` and
+the core [changelog](CHANGELOG.md), commit them, then push a matching `vX.Y.Z` tag.
+The workflow publishes the ZIP and its SHA-256 checksum after the tests pass.
+
 See the [extension SDK](dashborne/extensions/README.md),
 [layout patches](dashborne/patches/README.md), and [platform research](docs/research.md).
