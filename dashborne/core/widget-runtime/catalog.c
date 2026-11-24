@@ -1,5 +1,6 @@
+#include "../services.h"
 #include "runtime.h"
-#include "../../dashborne/config.h"
+#include "../../config.h"
 extern int strcmp(const char *,const char *),snprintf(char *,usize,const char *,...);
 extern usize strlen(const char *);
 const struct dashborne_host *runtime_host;
@@ -55,19 +56,16 @@ static int unregister_widget(const struct dashborne_host *h) {
     }
     for(int i=0;i<PROVIDERS;++i)if(providers[i].host)return 0;
     /* Binding happens with the first provider, after earlier extensions have
-       installed their hooks. Unwind here, before those extensions deactivate,
-       rather than waiting for this first-loaded core module to unload last. */
+       installed their hooks. Unwind with the last provider so those extensions
+       can then restore their callbacks. */
     return runtime_unbind();
 }
 DASHBORNE_EXTENSION_EXPORT const struct dashborne_widgets *dashborne_widgets_v1(void) {
     static const struct dashborne_widgets api={1,sizeof(api),register_widget,unregister_widget,views_text,views_invalidate};return &api;
 }
-static int activate(const struct dashborne_host *h){if(runtime_host)return -1;runtime_host=h;return 0;}
-static int deactivate(void) {
+int core_widgets_start(const struct dashborne_host *h){if(runtime_host)return -1;runtime_host=h;return 0;}
+int core_widgets_stop(void) {
     for(int i=0;i<PROVIDERS;++i)if(providers[i].host)return -1;
     if(runtime_unbind())return -1;
     runtime_host=0;return 0;
-}
-DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *dashborne_extension_v1(void) {
-    static const struct dashborne_extension e={1,sizeof(e),"widget-runtime",activate,deactivate};return &e;
 }

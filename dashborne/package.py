@@ -36,9 +36,8 @@ def package(source, destination, extensions=None):
             if not re.fullmatch('[a-z0-9_-]{1,31}', id) or id in ids or extension.get('abi') != 1:
                 raise ValueError('Invalid or duplicate extension ID/ABI')
             ids.add(id)
-            if extension.get('core'):
-                if id not in ('extra-menu', 'widget-runtime'): raise ValueError('Unknown core extension')
-                continue
+            if extension.get('core') or id in ('extra-menu', 'widget-runtime'):
+                raise ValueError('Core services cannot be packaged as extensions')
             title, description = extension['title'], extension['description']
             if not title or len(title.encode()) > 63 or len(description.encode()) > 127 or any(c in title + description for c in '\t\r\n\0'):
                 raise ValueError('Invalid extension labels')
@@ -53,3 +52,4 @@ if __name__ == '__main__':
     package(ROOT / 'patches/definitions', card / 'patches', card / 'extensions')
     (card / 'ui').mkdir(parents=True, exist_ok=True)
     shutil.copyfile(ROOT / 'assets/icon.png', card / 'ui/icon.png')
+    shutil.copytree(ROOT / 'core/extra-menu/assets', card / 'assets/extra-menu', dirs_exist_ok=True)

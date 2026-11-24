@@ -16,7 +16,7 @@ static void (*text)(void *,const char *),(*visible)(void *,int),(*mark)(void *,i
 static int (*id_of)(void *);
 static void (*set_adapter)(void *,void *),(*set_listener)(void *,void *),(*refresh)(void *);
 static void (*open_activity)(void *,const char *,void *),(*close_activity)(void *,const char *);
-static const char *layout(void *s) {(void)s;return "../../../mnt/extsd/Dashborne/extensions/extra-menu/assets/menu.ftu";}
+static const char *layout(void *s) {(void)s;return "../../../mnt/extsd/Dashborne/assets/extra-menu/menu.ftu";}
 static void label(int id,const char *value) {void *p=find(live,id);if(p)text(p,value);}
 static void show(int id,int value) {void *p=find(live,id);if(p)visible(p,value);}
 static void render(void) {

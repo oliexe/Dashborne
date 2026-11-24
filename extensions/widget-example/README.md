@@ -15,7 +15,7 @@ changes and removes it; the **Tap** button is hidden during editing.
 3. Set `WIDGET_TAB`, `WIDGET_CATEGORY` and the size mask in the widget descriptor.
 4. Replace the example's callbacks with your content and data handling.
 5. Run `sh dashborne/build.sh`, then copy the built `Dashborne` directory to the
-   card. Keep `widget-runtime` installed; the loader starts it automatically.
+   card. The widget runtime is built into Dashborne.
 
 The public interface is [dashborne_widget.h](../../dashborne/extensions/dashborne_widget.h).
 An extension registers one widget definition. The runtime allocates a persistent
@@ -92,5 +92,5 @@ extension is active. Its placement can be removed normally. With no widget
 extensions enabled, or when booting without Dashborne, the dashboard uses the
 flash layout.
 
-See the [runtime verification notes](../widget-runtime/README.md) for test coverage
+See the [runtime verification notes](../../dashborne/core/widget-runtime/README.md) for test coverage
 and remaining hardware checks.

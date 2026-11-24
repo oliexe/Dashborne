@@ -152,19 +152,17 @@ int state_save(const struct settings *state) {
 }
 int state_apply(const struct settings *state, void (*log)(const char *)) {
     if (state->count > MAX_PATCHES) return -1;
-    int core=extension_probe("extra-menu");
-    unsigned int chosen = core?1:0;
+    unsigned int chosen = 1;
     for (unsigned int i = 0; i < state->count; ++i) chosen += state->patches[i].enabled && !state->patches[i].native;
     /* A failed extension activation may return to configuration after a layout
        override was mounted. Always compose from the installed file again. */
     (void)umount2(DASHBORNE_TARGET, 2);
-    if (!chosen) { log("patches: none selected\n"); return 0; }
     unsigned int base_size = 0, loaded = 0;
     unsigned char *base = load_limit(DASHBORNE_TARGET, &base_size, LIMIT);
     struct layout_patch patches[MAX_PATCHES+1] = {{0}};
     int success = base != (void *)0;
-    if(core) {
-        patches[loaded].data=load_limit(DASHBORNE_ROOT "/extensions/extra-menu/assets/dashboard.dbp",
+    {
+        patches[loaded].data=load_limit(DASHBORNE_ROOT "/assets/extra-menu/dashboard.dbp",
                                        &patches[loaded].size,16412);
         if(!patches[loaded].data)success=0;
         ++loaded;

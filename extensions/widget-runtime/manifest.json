@@ -1,8 +1,0 @@
-{
-  "id": "widget-runtime",
-  "title": "Widget runtime",
-  "description": "Shared native widget registration and page lifecycle.",
-  "abi": 1,
-  "core": true,
-  "sources": ["catalog.c", "runtime.c", "registry.c", "views.c", "memory.c", "storage.c", "settings.c"]
-}

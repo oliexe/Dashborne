@@ -4,9 +4,9 @@ import json
 import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
-sys.path.insert(0,str(ROOT.parents[1]/'dashborne'))
+sys.path.insert(0,str(ROOT.parents[1]))
 from ui_codec import encode,decode
-spec=importlib.util.spec_from_file_location('package',ROOT.parents[1]/'dashborne/patches/package.py')
+spec=importlib.util.spec_from_file_location('package',ROOT.parents[1]/'patches/package.py')
 package=importlib.util.module_from_spec(spec);spec.loader.exec_module(package)
 def pos(x,y,w,h):return dict(left=x,top=y,width=w,height=h)
 def label(id,text,x,y,w,h,size=24,color=0xffffff):
@@ -24,7 +24,7 @@ def screen():
         rows=5,cols=1,rowSpacing=15,colSpacing=0,item=item,hasScrollbar=False,
         autoRollback=True,dragMaxDis=12,beepEnable=True,backgroundColor=0)
     root['textview__menu']=dict(id=599200,position=pos(122,270,38,186),
-        backgroundPic='../../../mnt/extsd/Dashborne/extensions/extra-menu/assets/tweaks.png',touchable=False)
+        backgroundPic='../../../mnt/extsd/Dashborne/assets/extra-menu/tweaks.png',touchable=False)
     panel=dict(id=119201,position=pos(700,20,1000,436),
                backgroundPic='dash/settings/unpair_bg.png')
     panel['textview__entry']=dict(label(599202,'Extra',30,22,940,64,32),bold=True)

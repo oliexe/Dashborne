@@ -48,8 +48,8 @@
         "height": 48
       },
       "picTab": {
-        "pic0": "../../../mnt/extsd/Dashborne/extensions/extra-menu/assets/star.png",
-        "pic1": "../../../mnt/extsd/Dashborne/extensions/extra-menu/assets/star-pressed.png"
+        "pic0": "../../../mnt/extsd/Dashborne/assets/extra-menu/star.png",
+        "pic1": "../../../mnt/extsd/Dashborne/assets/extra-menu/star-pressed.png"
       }
     }
   }

@@ -59,8 +59,7 @@ int extensions_recover(void (*logger)(const char *)) { assert(logger); return 1;
 int extensions_start(const char *const *ids, unsigned int count, void *s, void *r,
                      const char *protected_target, void (*logger)(const char *)) {
     assert(ids && s && r && protected_target && logger); ++extension_calls;
-    if (!strcmp(scenario,"extension")) { assert(count==3 && !strcmp(ids[0],"widget-runtime") && !strcmp(ids[1],"extra-menu") && !strcmp(ids[2],"native-example")); }
-    else if (settings.patches[1].native) { assert(count == 1 && !strcmp(ids[0], "native-example")); }
+    if (settings.patches[1].native) { assert(count == 1 && !strcmp(ids[0], "native-example")); }
     else assert(!count);
     if (!strcmp(scenario, "extension-failure")) return -1;
     if (!strcmp(scenario, "extension-cleanup-failure")) return -2;

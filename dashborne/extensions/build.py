@@ -29,6 +29,8 @@ def build(source=REPO / 'extensions', destination=ROOT.parent / 'build/card/Dash
     seen = set()
     for file in sorted(Path(source).glob('*/manifest.json')):
         spec = manifest(file); folder = file.parent.resolve()
+        if spec.get('core') or spec['id'] in ('extra-menu', 'widget-runtime'):
+            raise ValueError('Core services are built into Dashborne')
         if spec['id'] in seen: raise ValueError('Duplicate extension ID')
         seen.add(spec['id'])
         output = Path(destination) / spec['id']; output.mkdir(parents=True, exist_ok=True)

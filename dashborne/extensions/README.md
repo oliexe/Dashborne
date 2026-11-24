@@ -9,8 +9,8 @@ and managed resource overlays.
 Dashborne activates extensions when you launch the dashboard or let the splash
 expire, using the installed Linux system and app. Opening configuration does not
 load extension code. A newly installed user extension is off until selected in
-the patch list. Dashborne loads the Extra menu core before selected extensions;
-it has no toggle in the patch list.
+the patch list. Extra Menu and Widget Runtime are built into Dashborne and
+start before selected extensions.
 
 ## Extension directory
 
@@ -103,7 +103,7 @@ its cleanup succeeds.
 
 ## Extra menu entries
 
-Use [`register_extra`](../../extensions/extra-menu/README.md) for extension
+Use [`register_extra`](../core/extra-menu/README.md) for extension
 pages that belong outside stock Settings. The bottom-right star icon opens
 a Settings-style list. Register a title, description and callback after preparing
 your window. Closing the window returns to Extra.
@@ -113,8 +113,16 @@ checks callback ownership and removes registrations during successful cleanup or
 activation rollback. Menu tokens remain unique across reactivation. All registry
 operations run on the UI thread; registrations are activation-only. New plugins
 using these appended ABI-1 methods must check `struct_size` before accessing
-them. The bundled `extra-menu` core has `core: true` in its manifest. It loads
-first and uses a reserved slot in addition to the 64 user-extension slots.
+them. Core services have separate lifecycle slots, leaving all 64 user-extension
+slots available.
+
+## Widget runtime
+
+Use `dashborne_widget.h` to register widgets with the built-in runtime. The SDK
+resolves `dashborne_widgets_v1` from the loaded `libdashborne.so`; no runtime
+extension package is needed. Rebuild widgets made with the earlier SDK, which
+looked for `extensions/widget-runtime/libextension.so`. The installer removes
+the retired Extra Menu and Widget Runtime packages during an upgrade.
 
 ## Failure and reversal
 

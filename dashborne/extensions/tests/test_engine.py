@@ -21,6 +21,12 @@ class EngineTests(unittest.TestCase):
         self.events = self.root/'events'
         stub = self.root/'mount.c'
         stub.write_text('''#include <errno.h>
+#include "dashborne_extension.h"
+int core_events[128],core_event_count,core_fail_start,core_fail_stop;
+int core_widgets_start(const struct dashborne_host*h){if(!h->owns_callback(h,(void*)core_widgets_start))return -1;core_events[core_event_count++]=1;return core_fail_start==1?-1:0;}
+int core_extra_start(const struct dashborne_host*h){if(!h->extra_count)return -1;core_events[core_event_count++]=2;return core_fail_start==2?-1:0;}
+int core_extra_stop(void){core_events[core_event_count++]=-2;return core_fail_stop==2?-1:0;}
+int core_widgets_stop(void){core_events[core_event_count++]=-1;return core_fail_stop==1?-1:0;}
 int stub_mounts, stub_unmounts, stub_fail_mount, stub_fail_unmount;
 int dbx_mount(const char*a,const char*b,const char*c,unsigned long flags,const void*d) {
  (void)a;(void)b;(void)c;(void)d;++stub_mounts;
@@ -31,7 +37,7 @@ int dbx_umount(const char*a,int b) {(void)a;(void)b;++stub_unmounts;
 ''')
         output = self.root/'engine.so'
         command = ['cc','-std=c11','-shared','-fPIC','-Wall','-Wextra','-Werror',
-                   '-DDBX_HOST_TEST', '-Dmount=dbx_mount','-Dumount2=dbx_umount',
+                   '-I',str(ROOT),'-DDBX_HOST_TEST', '-Dmount=dbx_mount','-Dumount2=dbx_umount',
                    '-DDBX_ROOT='+json.dumps(str(self.card)), '-DDBX_RES='+json.dumps(str(self.res))]
         if sys.platform == 'darwin': command += ['-D__errno_location=__error']
         subprocess.run(command+[str(ROOT/'engine.c'),str(stub),'-o',str(output)],check=True)
@@ -107,6 +113,36 @@ DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *GETTER(void) {
         return v.value
 
     def log(self): return self.events.read_text().splitlines() if self.events.exists() else []
+
+    def core_log(self):
+        return list((ctypes.c_int*128).in_dll(self.lib,'core_events'))[:self.value('core_event_count')]
+
+    def test_builtin_services_without_extension_files(self):
+        self.assertEqual(self.start(),0)
+        self.assertEqual(self.core_log(),[1,2])
+        self.assertEqual(self.lib.extensions_stop(),1)
+        self.assertEqual(self.core_log(),[1,2,-2,-1])
+        for id in ('extra-menu','widget-runtime'):
+            self.plugin(id)
+            self.assertEqual(self.lib.extension_probe(id.encode()),0)
+            self.assertEqual(self.start(id),-1)
+
+    def test_core_start_failure_rolls_back_and_can_retry(self):
+        self.value('core_fail_start',2)
+        self.plugin('one')
+        self.assertEqual(self.start('one'),-1)
+        self.assertEqual(self.core_log(),[1,2,-2,-1])
+        self.assertEqual(self.log(),[])
+        self.value('core_fail_start',0)
+        self.assertEqual(self.start('one'),1)
+
+    def test_core_cleanup_failure_prevents_restart(self):
+        self.assertEqual(self.start(),0)
+        self.value('core_fail_stop',2)
+        self.assertEqual(self.lib.extensions_stop(),0)
+        self.assertEqual(self.core_log(),[1,2,-2])
+        self.assertEqual(self.start(),-2)
+        self.value('core_fail_stop',0)
 
     def test_activation_order_reverse_cleanup_and_reactivation(self):
         self.plugin('one');self.plugin('two')

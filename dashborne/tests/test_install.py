@@ -9,6 +9,22 @@ spec=importlib.util.spec_from_file_location('loader_install',ROOT/'install.py')
 install=importlib.util.module_from_spec(spec);spec.loader.exec_module(install)
 
 class InstallTests(unittest.TestCase):
+    def test_core_migration_preserves_user_extensions_and_preferences(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            card=Path(tmp)
+            install.stage(card)
+            settings=b'format=1\nadb.enabled=0\nwidgets.source.530=my-widget\nvehicle-widget.layout.bytes=2\nvehicle-widget.layout.0=7b7d\n'
+            (card/'dashborne.conf').write_bytes(settings)
+            for old in install.RETIRED_CORE:
+                folder=card/old;folder.mkdir(parents=True)
+                (folder/'libextension.so').write_bytes(b'old core')
+            user=card/'Dashborne/extensions/my-widget';user.mkdir()
+            (user/'libextension.so').write_bytes(b'user widget')
+            install.stage(card)
+            self.assertEqual((card/'dashborne.conf').read_bytes(),settings)
+            self.assertEqual((user/'libextension.so').read_bytes(),b'user widget')
+            self.assertTrue(all(not (card/old).exists() for old in install.RETIRED_CORE))
+
     def test_migrate_preserve_choices_and_restore_exact_config(self):
         with tempfile.TemporaryDirectory() as tmp:
             card=Path(tmp)
@@ -57,7 +73,9 @@ class InstallTests(unittest.TestCase):
             self.assertEqual(active,expected)
             self.assertEqual(json.loads((card/install.BACKUP).read_bytes()),install.DEFAULT_STARTUP)
             self.assertTrue((card/'Dashborne/ui/loader.ftu').is_file())
-            self.assertTrue((card/'Dashborne/extensions/extra-menu/libextension.so').is_file())
+            self.assertTrue((card/'Dashborne/assets/extra-menu/menu.ftu').is_file())
+            self.assertFalse((card/'Dashborne/extensions/extra-menu').exists())
+            self.assertFalse((card/'Dashborne/extensions/widget-runtime').exists())
             self.assertEqual(install.configuration.parse((card/'dashborne.conf').read_bytes())['adb.enabled'],'0')
             original=(card/install.BACKUP).read_bytes()
             install.stage(card)

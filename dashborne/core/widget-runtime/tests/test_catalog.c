@@ -18,7 +18,7 @@ void config_clear(void){}
 int main(void) {
     const struct dashborne_host core={0},a={0},b={0},car={0};
     struct dashborne_widget w={.abi_version=1,.struct_size=sizeof(w),.id="one",.title="One",.description="First",.sizes=255,.tab=2,.category=1};
-    assert(!activate(&core));
+    assert(!core_widgets_start(&core));
     assert(!register_widget(&a,&w));unsigned int first=providers[0].source;assert(first==FIRST_SOURCE+1);
     assert(register_widget(&b,&w)==-1);
     struct dashborne_widget other=w;other.id="two";assert(!register_widget(&b,&other));unsigned int second=providers[1].source;assert(first!=second);
@@ -35,6 +35,6 @@ int main(void) {
     w.category=0;w.sizes=256;assert(register_widget(&a,&w)==-1);w.sizes=0;assert(register_widget(&a,&w)==-1);w.sizes=255;
     w.id="../escape";assert(register_widget(&a,&w)==-1);w.id="new";write_fail=1;assert(register_widget(&a,&w)==-1);write_fail=0;
     bind_fail=1;assert(register_widget(&a,&w)==-1);bind_fail=0;
-    assert(!deactivate());
+    assert(!core_widgets_stop());
     puts("Widget catalog: stable IDs across ordering/disable, legacy car, duplicate ownership, 25 categories, invalid metadata and failures passed");
 }

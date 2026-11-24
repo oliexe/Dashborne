@@ -95,8 +95,10 @@ See [configuration and operation](dashborne/README.md).
 
 ## Extensions
 
-- [Extra menu](extensions/extra-menu): the core star button opens a stock-style
-  **Tweaks** menu where extensions can register pages.
+Dashborne includes the [Extra menu](dashborne/core/extra-menu) and
+[widget runtime](dashborne/core/widget-runtime). Extensions use these built-in
+services to add pages to **Tweaks** or widgets to the stock picker.
+
 - [Contrast](extensions/contrast): display contrast and luminance controls in stock Settings.
 - [Tesla UI](extensions/tesla-ui): a fixed Model S style instrument view in Extra,
   with live readings, energy history and navigation trip details.

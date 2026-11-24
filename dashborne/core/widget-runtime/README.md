@@ -1,8 +1,8 @@
 # Widget runtime
 
-The loader starts this core extension before user extensions. It owns the shared
-picker registration, card layout and custom widget instances. Without a registered
-widget, it installs no hooks.
+The widget runtime is linked into `libdashborne.so` and starts before user
+extensions. It owns picker registration, card layouts and custom widget
+instances. Without a registered widget, it installs no hooks.
 
 Each custom instance is attached directly to a stock page container and occupies
 cells through the stock grid. Its content moves and clips with the page. Custom
@@ -15,8 +15,8 @@ conflicting hook or failed restoration prevents unloading. Layout reads and
 writes are redirected to RAM, with saves stored in `dashborne.conf`; teardown
 loads the flash layout before restoring its write path.
 
-Start with [widget-example](../widget-example), or see
-[3D Vehicle Widget](../vehicle-widget) for a shared image cache and custom drawing.
+Start with [widget-example](../../../extensions/widget-example), or see
+[3D Vehicle Widget](../../../extensions/vehicle-widget) for a shared image cache and custom drawing.
 
 ## Verification
 
@@ -32,12 +32,13 @@ cover:
 - Hook conflicts, memory-protection failures and cache-flush failures.
 - Car resizing, bounded shared image cache, Preview/Stop and unavailable telemetry.
 
-Run `sh extensions/widget-runtime/test.sh`, `sh extensions/vehicle-widget/test.sh`
+Run `sh dashborne/core/widget-runtime/test.sh`, `sh extensions/vehicle-widget/test.sh`
 and `sh test.sh`. The optional `DASHBORNE_WIDGET_DEVICE_TEST` build runs
 `tests/device_probe.h` against native page objects; it does not save the temporary
 placements. Normal release builds exclude that probe.
 
-The hardware probe passed on app 6.11.2:
+The hardware probe passed on app 6.11.2 with both frameworks linked into
+`libdashborne.so` and their old extension directories removed:
 
 - All eight sizes matched the native grid dimensions and control positions.
 - Native button lookup and edit-mode action visibility passed at each size.

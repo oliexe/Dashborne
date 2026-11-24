@@ -1,5 +1,5 @@
 #include "storage.h"
-#include "../../dashborne/config.h"
+#include "../../config.h"
 extern int open(const char *,int,...),close(int),read(int,void *,unsigned int),write(int,const void *,unsigned int),unlink(const char *),fsync(int),rename(const char *,const char *);
 extern int snprintf(char *,__SIZE_TYPE__,const char *,...);
 /* Hex chunks preserve JSON whitespace and avoid config escaping ambiguities. */

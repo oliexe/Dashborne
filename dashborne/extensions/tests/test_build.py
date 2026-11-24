@@ -37,6 +37,14 @@ class SharedAssetsTests(unittest.TestCase):
         self.assertEqual(asset.read_bytes(), b'fixture')
         self.assertFalse(asset.is_symlink())
 
+    def test_core_services_cannot_be_built_as_plugins(self):
+        for id in ('extra-menu', 'widget-runtime'):
+            self.manifest['id'] = id
+            with self.assertRaisesRegex(ValueError, 'built into Dashborne'): self.build()
+        self.manifest['id'] = 'consumer'
+        self.manifest['core'] = True
+        with self.assertRaisesRegex(ValueError, 'built into Dashborne'): self.build()
+
     def test_missing_and_escaping_paths_are_rejected(self):
         for name in ('missing', '../manifest.json', '/tmp', 'motion/../../outside'):
             with self.subTest(name=name):

@@ -1,3 +1,4 @@
+#include "../services.h"
 #include "window.h"
 typedef __SIZE_TYPE__ usize;
 typedef __UINTPTR_TYPE__ uintptr;
@@ -38,7 +39,7 @@ static int map(void) {
         }
     fclose(f);return found?0:-1;
 }
-static int activate(const struct dashborne_host *api) {
+int core_extra_start(const struct dashborne_host *api) {
     if(!api || api->abi_version!=DASHBORNE_EXTENSION_ABI || api->struct_size<sizeof(*api) || host)return -1;
     host=api;
     if(!api->extra_count || !api->extra_entry || !api->open_extra || !api->register_activity ||
@@ -55,7 +56,7 @@ static int activate(const struct dashborne_host *api) {
     if(mprotect(page,4096,protection))return -1;
     api->log(api,"extra-menu: dashboard entry ready");return 0;
 }
-static int deactivate(void) {
+int core_extra_stop(void) {
     if(extra_window_cleanup())return -1;
     if(installed) {
         if(table[4]!=(void *)clicked && table[4]!=saved)return -1;
@@ -64,8 +65,4 @@ static int deactivate(void) {
         if(mprotect(page,4096,protection))return -1;
     }
     installed=0;host=0;table=0;page=0;return 0;
-}
-DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *dashborne_extension_v1(void) {
-    static const struct dashborne_extension extension={DASHBORNE_EXTENSION_ABI,sizeof(extension),"extra-menu",activate,deactivate};
-    return &extension;
 }

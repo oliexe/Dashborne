@@ -32,7 +32,7 @@ class StateTests(unittest.TestCase):
         cls.temp = tempfile.TemporaryDirectory()
         cls.root = Path(cls.temp.name)
         stub = cls.root/'mount.c'
-        stub.write_text('int core_available; int extension_probe(const char*id){return id[0]==110 || (core_available && id[0]==101);}\nint mount(const char*a,const char*b,const char*c,unsigned long d,const void*e){(void)a;(void)b;(void)c;(void)d;(void)e;return 0;}\nint umount2(const char*a,int b){(void)a;(void)b;return 0;}\n')
+        stub.write_text('int extension_probe(const char*id){return id[0]==110;}\nint mount(const char*a,const char*b,const char*c,unsigned long d,const void*e){(void)a;(void)b;(void)c;(void)d;(void)e;return 0;}\nint umount2(const char*a,int b){(void)a;(void)b;return 0;}\n')
         output = cls.root/'state.so'
         # Keep test mounts separate from libc symbols on ELF hosts, where
         # Python's already-loaded libc can otherwise override these stubs.
@@ -53,7 +53,6 @@ class StateTests(unittest.TestCase):
     def tearDownClass(cls): cls.temp.cleanup()
 
     def setUp(self):
-        ctypes.c_int.in_dll(self.lib,"core_available").value=0
         self.card = self.root/'card'
         if self.card.exists(): shutil.rmtree(self.card)
         (self.card/'patches').mkdir(parents=True)
@@ -65,6 +64,9 @@ class StateTests(unittest.TestCase):
         (self.card/'patches/one.dbp').write_bytes(patcher.compile_patch(p))
         p['key']='textview__900002';p['control']['id']=59002;p['control']['text']='SECOND'
         (self.card/'patches/two.dbp').write_bytes(patcher.compile_patch(p))
+        p['key']='textview__900003';p['control']['id']=59999;p['control']['text']='EXTRA'
+        core=self.card/'assets/extra-menu';core.mkdir(parents=True)
+        (core/'dashboard.dbp').write_bytes(patcher.compile_patch(p))
         (self.card/'patches/catalog.tsv').write_text('one\tFirst patch\tA label\ntwo\tSecond patch\tAnother label\n')
 
     def load(self):
@@ -77,10 +79,11 @@ class StateTests(unittest.TestCase):
         s.wifi_adb=1;s.patches[0].enabled=1;s.patches[1].enabled=1
         self.assertEqual(self.lib.state_save(ctypes.byref(s)),1)
         s=self.load();self.assertEqual(s.wifi_adb,1);self.assertEqual(s.patches[1].enabled,1)
-        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),2)
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),3)
         result=codec.decode((self.card/'generated.ftu').read_bytes())
         self.assertEqual(result.pop('textview__900001')['text'],'DASHBORNE')
         self.assertEqual(result.pop('textview__900002')['text'],'SECOND')
+        self.assertEqual(result.pop('textview__900003')['text'],'EXTRA')
         self.assertEqual(result,self.original)
         self.assertEqual((self.root/'base.ftu').read_bytes(),self.base)
 
@@ -97,8 +100,8 @@ class StateTests(unittest.TestCase):
         (self.card/'settings.conf').write_text('patch.native=1\n')
         s=self.load();self.assertEqual(s.count,1)
         self.assertTrue(s.patches[0].native and s.patches[0].compatible and s.patches[0].enabled)
-        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),0)
-        self.assertFalse((self.card/'generated.ftu').exists())
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),1)
+        self.assertTrue((self.card/'generated.ftu').exists())
 
     def test_scalar_and_additive_settings_batch_and_collision(self):
         author=load_module('patch_author',ROOT/'patches/author.py')
@@ -107,7 +110,7 @@ class StateTests(unittest.TestCase):
         (self.card/'patches/catalog.tsv').write_text('one\tBadge\tExample\nscalar\tScalar\tExample\n')
         s=self.load()
         for i in range(s.count):s.patches[i].enabled=1
-        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),2)
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),3)
         changed=codec.decode((self.card/'generated.ftu').read_bytes())
         self.assertEqual(changed['textview__1']['id'],50002)
         self.assertEqual(changed['textview__900001']['text'],'DASHBORNE')
@@ -117,21 +120,19 @@ class StateTests(unittest.TestCase):
         self.assertFalse((self.card/'generated.ftu').exists())
 
     def test_core_button_is_composed_without_a_user_toggle(self):
-        ctypes.c_int.in_dll(self.lib,"core_available").value=1
-        core=self.card/'extensions/extra-menu/assets';core.mkdir(parents=True)
-        (core/'dashboard.dbp').write_bytes((self.card/'patches/one.dbp').read_bytes())
+        core=self.card/'assets/extra-menu'
         s=self.load();self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),1)
-        self.assertIn('textview__900001',codec.decode((self.card/'generated.ftu').read_bytes()))
+        self.assertIn('textview__900003',codec.decode((self.card/'generated.ftu').read_bytes()))
         s.patches[1].enabled=1
         self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),2)
         result=codec.decode((self.card/'generated.ftu').read_bytes())
-        self.assertIn('textview__900001',result);self.assertIn('textview__900002',result)
+        self.assertIn('textview__900003',result);self.assertIn('textview__900002',result)
         (core/'dashboard.dbp').unlink()
         self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),-1)
 
-    def test_unselected_does_not_generate_overlay(self):
-        s=self.load();self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),0)
-        self.assertFalse((self.card/'generated.ftu').exists())
+    def test_no_user_patches_still_adds_core_menu(self):
+        s=self.load();self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),1)
+        self.assertTrue((self.card/'generated.ftu').exists())
 
     def test_malformed_catalog_and_settings(self):
         (self.card/'patches/catalog.tsv').write_text('../escape\tBad\tBad\none\tFirst\tOK\none\tDuplicate\tIgnored\ninvalid line\n')

@@ -1,5 +1,6 @@
 #include "engine.h"
 #include "dashborne_extension.h"
+#include "../core/services.h"
 typedef __SIZE_TYPE__ usize;
 extern int open(const char *, int, ...), read(int, void *, unsigned int);
 extern int write(int, const void *, unsigned int), close(int), fsync(int), unlink(const char *);
@@ -38,6 +39,13 @@ static void (*log_line)(const char *);
 static int activating, poisoned;
 static char startup_activity[96];
 static const struct dashborne_host *startup_owner;
+/* Built-in services share ownership and rollback with plugins, but have no
+   manifest, dlopen handle or extension-directory dependency. */
+static const struct dashborne_extension core_services[] = {
+    {DASHBORNE_EXTENSION_ABI,sizeof(struct dashborne_extension),"widget-runtime",core_widgets_start,core_widgets_stop},
+    {DASHBORNE_EXTENSION_ABI,sizeof(struct dashborne_extension),"extra-menu",core_extra_start,core_extra_stop}
+};
+#define CORE_COUNT (sizeof(core_services)/sizeof(core_services[0]))
 static unsigned int length(const char *s) {
     unsigned int n = 0;
     while (s[n])
@@ -260,7 +268,7 @@ const char *extensions_activity(const char *official_activity) {
     return *startup_activity ? startup_activity : official_activity;
 }
 static int library_path(const char *id, char *out) {
-    if (!valid_id(id))
+    if (!valid_id(id) || equal(id,"extra-menu") || equal(id,"widget-runtime"))
         return 0;
     unsigned int at = length(DBX_ROOT "/extensions/");
     if (!copy(out, DBX_ROOT "/extensions/", PATH_SIZE))
@@ -322,38 +330,46 @@ int extensions_start(const char *const *ids, unsigned int count, void *official,
     protected_file = protected_target;
     if (poisoned)
         return -2;
-    if (loaded_count || count > MAX_EXTENSIONS || (count && !ids))
+    if (loaded_count || count > MAX_EXTENSIONS-CORE_COUNT || (count && !ids))
         return -1;
-    for (unsigned int i = 0; i < count; ++i) {
-        char path[PATH_SIZE];
-        if (!library_path(ids[i], path) || !extension_probe(ids[i]))
-            goto failure;
-        for (unsigned int j = 0; j < i; ++j)
-            if (equal(ids[i], ids[j]))
-                goto failure;
+    for (unsigned int i = 0; i < count+CORE_COUNT; ++i) {
         struct loaded_extension *e = &loaded[loaded_count++];
         *e = (struct loaded_extension){0};
-        char directory[PATH_SIZE], resolved[4096];
-        copy(directory, path, PATH_SIZE);
-        directory[length(directory) - length("/libextension.so")] = 0;
-        if (!realpath(directory, resolved) || !copy(e->directory, resolved, sizeof(e->directory)))
-            goto failure;
-        e->library = dlopen(path, 2);
-        if (!e->library) {
-            const char *reason=dlerror();
-            event("extensions: could not load ");event(ids[i]);event(": ");
-            event(reason ? reason : "no dynamic loader error");event("\n");
-            goto failure;
+        if(i<CORE_COUNT) {
+            e->descriptor=&core_services[i];
+            copy(e->directory,DBX_ROOT,sizeof(e->directory));
+        } else {
+            unsigned int user_index=i-CORE_COUNT;
+            const char *id=ids[user_index];
+            char path[PATH_SIZE];
+            if (!library_path(id, path) || !extension_probe(id))
+                goto failure;
+            for (unsigned int j = 0; j < user_index; ++j)
+                if (equal(id, ids[j]))
+                    goto failure;
+            char directory[PATH_SIZE], resolved[4096];
+            copy(directory, path, PATH_SIZE);
+            directory[length(directory) - length("/libextension.so")] = 0;
+            if (!realpath(directory, resolved) || !copy(e->directory, resolved, sizeof(e->directory)))
+                goto failure;
+            e->library = dlopen(path, 2);
+            if (!e->library) {
+                const char *reason=dlerror();
+                event("extensions: could not load ");event(id);event(": ");
+                event(reason ? reason : "no dynamic loader error");event("\n");
+                goto failure;
+            }
+            const struct dashborne_extension *(*get)(void) = (void *)0;
+            *(void **)(&get) = dlsym(e->library, "dashborne_extension_v1");
+            if (!get)
+                goto failure;
+            e->descriptor = get();
+            const struct dashborne_extension *d = e->descriptor;
+            if (!d || d->abi_version != DASHBORNE_EXTENSION_ABI || d->struct_size < sizeof(*d) ||
+                !d->id || !equal(d->id, id) || !d->activate || !d->deactivate)
+                goto failure;
         }
-        const struct dashborne_extension *(*get)(void) = (void *)0;
-        *(void **)(&get) = dlsym(e->library, "dashborne_extension_v1");
-        if (!get)
-            goto failure;
-        e->descriptor = get();
-        const struct dashborne_extension *d = e->descriptor;
-        if (!d || d->abi_version != DASHBORNE_EXTENSION_ABI || d->struct_size < sizeof(*d) ||
-            !d->id || !equal(d->id, ids[i]) || !d->activate || !d->deactivate)
-            goto failure;
+        const struct dashborne_extension *d=e->descriptor;
         e->host = (struct dashborne_host){DASHBORNE_EXTENSION_ABI,
                                           sizeof(e->host),
                                           e->directory,
@@ -371,11 +387,11 @@ int extensions_start(const char *const *ids, unsigned int count, void *official,
         int rc = d->activate(&e->host);
         activating = 0;
         if (rc || poisoned) {
-            event("extensions: activation rejected by ");event(ids[i]);event("\n");
+            event("extensions: activation rejected by ");event(d->id);event("\n");
             goto failure;
         }
-        event("extensions: activated ");
-        event(ids[i]);
+        event(i<CORE_COUNT?"core: started ":"extensions: activated ");
+        event(d->id);
         event("\n");
     }
     return (int)count;

@@ -35,12 +35,12 @@ struct dashborne_widgets {
     void (*text)(void *control, const char *);
     void (*invalidate)(struct dashborne_widget_view *);
 };
-/* The loader owns the runtime. This temporary dlopen reference is released
+/* The runtime is built into Dashborne. This temporary dlopen reference is released
    immediately; never use the API after your extension has deactivated. */
 static inline const struct dashborne_widgets *dashborne_widget_api(void) {
     extern void *dlopen(const char *,int),*dlsym(void *,const char *);
     extern int dlclose(void *);
-    void *library=dlopen("/mnt/extsd/Dashborne/extensions/widget-runtime/libextension.so",2|4);
+    void *library=dlopen("/mnt/extsd/Dashborne/lib/libdashborne.so",2|4);
     if(!library)return (void *)0;
     const struct dashborne_widgets *(*get)(void)=(void *)0;
     *(void **)(&get)=dlsym(library,"dashborne_widgets_v1");

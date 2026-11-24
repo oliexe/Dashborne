@@ -19,7 +19,7 @@ Use **Preview** to cycle sample states and **Stop** to return to live readings.
 Preview is hidden while editing. All car placements share the same preview and
 image cache.
 
-Layouts are stored on the card through the [widget runtime](../widget-runtime).
+Layouts are stored on the card through the [widget runtime](../../dashborne/core/widget-runtime).
 Existing 3D Vehicle placements retain their source ID. This adapter is guarded
 for app 6.11.2 and its inspected UI runtime.
 
@@ -52,7 +52,7 @@ networking policy.
 
 ```sh
 sh extensions/vehicle-widget/test.sh
-sh extensions/widget-runtime/test.sh
+sh dashborne/core/widget-runtime/test.sh
 sh dashborne/build.sh
 sh test.sh
 ```

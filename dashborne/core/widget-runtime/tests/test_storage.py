@@ -19,7 +19,7 @@ class LayoutStorageTests(unittest.TestCase):
             binary = root/'test'
             subprocess.run(['clang','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',
                 f'-DCONFIG_CARD="{root}"',f'-DLAYOUT_STOCK="{stock}"',f'-DLAYOUT_RAM="{ram}"',
-                '-I',str(ROOT),str(runner),str(ROOT/'storage.c'),str(ROOT/'settings.c'),'-o',str(binary)],check=True)
+                '-I',str(ROOT),str(runner),str(ROOT/'storage.c'),str(ROOT.parents[1]/'config.c'),'-o',str(binary)],check=True)
             def run(action, success=True):
                 result = subprocess.run([str(binary),action],capture_output=True,env={**os.environ,'UBSAN_OPTIONS':'halt_on_error=1'})
                 self.assertEqual(result.returncode,0 if success else 1,result.stderr.decode())

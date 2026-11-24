@@ -25,6 +25,7 @@ DEFAULT_STARTUP = {
     'screensaverTimeOut': -1, 'startupTouchCalib': False, 'zkdebug': False,
 }
 SAVED = ('dashborne.conf', 'EasyUI.cfg', BACKUP, 'Dashborne/settings.conf', 'Dashborne/wifi.conf', 'adb-enabler/wifi.conf')
+RETIRED_CORE = ('Dashborne/extensions/extra-menu', 'Dashborne/extensions/widget-runtime')
 
 
 def stage(card, wifi_config=None, configure=False, restore=False, build=None):
@@ -50,6 +51,11 @@ def stage(card, wifi_config=None, configure=False, restore=False, build=None):
     library = (build / 'Dashborne/lib/libdashborne.so').read_bytes()
     if len(library) < 52 or library[:6] != b'\x7fELF\x01\x01' or library[18:20] != b'\x28\x00':
         raise ValueError('Build the ARM loader first')
+    for name in ('menu.ftu', 'dashboard.dbp', 'star.png', 'star-pressed.png', 'tweaks.png'):
+        if not (build / 'Dashborne/assets/extra-menu' / name).is_file():
+            raise ValueError('Core menu assets are missing from the build')
+    if any((build / legacy).exists() for legacy in RETIRED_CORE):
+        raise ValueError('Rebuild Dashborne before migrating the core services')
     changed = []
     if config.get('startupLibPath') != STARTUP:
         atomic_write(card / BACKUP, raw); changed.append(BACKUP)
@@ -64,6 +70,10 @@ def stage(card, wifi_config=None, configure=False, restore=False, build=None):
         atomic_write(card/'dashborne.conf', unified); changed.append('dashborne.conf')
     for legacy in configuration.LEGACY:
         (card/legacy).unlink(missing_ok=True)
+    for legacy in RETIRED_CORE:
+        folder = card / legacy
+        if folder.is_symlink(): folder.unlink()
+        elif folder.is_dir(): shutil.rmtree(folder)
     if configure:
         atomic_write(card / 'Dashborne/config.once', b''); changed.append('Dashborne/config.once')
     config['startupLibPath'] = STARTUP
@@ -103,6 +113,8 @@ def deploy(device, adb, wifi_config=None, configure=False, restore=False, previe
             # Root configuration is verified before retiring the old active files.
             for legacy in configuration.LEGACY:
                 shell('rm -f '+shlex.quote('/mnt/extsd/'+legacy))
+            for legacy in RETIRED_CORE:
+                shell('rm -rf '+shlex.quote('/mnt/extsd/'+legacy))
         if preview:
             before = shell('if [ -f /mnt/extsd/Dashborne/loader.log ]; then cat /mnt/extsd/Dashborne/loader.log; fi').count(b'dashborne-selected')
             upload(original, '/mnt/extsd/Dashborne/preview-previous.cfg')

@@ -5,6 +5,9 @@ tracked separately in their source history.
 
 ## Unreleased
 
+- Extra Menu and Widget Runtime are built into Dashborne, with automatic removal
+  of their old extension packages during upgrades.
+
 - Shared widget registration API, native size/category support and card layout ownership.
 
 - The extension builder can package shared source assets into independent modules.
