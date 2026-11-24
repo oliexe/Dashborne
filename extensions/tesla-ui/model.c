@@ -11,9 +11,11 @@ void cluster_update(struct cluster *c,const struct readings *r,unsigned int seco
         c->mode=WAITING;c->count=0;c->sampled=0;
         for(int i=0;i<HISTORY;++i)c->history[i]=UNKNOWN;
         d->speed=d->limit=d->battery=d->range=d->temperature=d->gear=UNKNOWN;
-        d->power_valid=d->nav_valid=d->left=d->right=0;d->body_known=d->body_open=0;return;
+        d->power_valid=d->nav_valid=d->left=d->right=0;d->body_known=d->body_open=0;
+        d->blind_known=d->blind_active=d->blind_urgent=0;return;
     }
     d->body_known &= BODY_ALL;d->body_open &= d->body_known;
+    d->blind_known &= SIDES_ALL;d->blind_active &= d->blind_known;d->blind_urgent &= d->blind_active;
     d->speed=bounded(r->speed,0,400);d->limit=bounded(r->limit,1,300);
     d->battery=bounded(r->battery,0,100);d->range=bounded(r->range,0,1500);
     d->temperature=bounded(r->temperature,r->fahrenheit?-148:-100,r->fahrenheit?176:80);

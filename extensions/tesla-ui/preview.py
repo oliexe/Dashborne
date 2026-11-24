@@ -2,6 +2,7 @@
 import copy
 import json
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from PIL import Image,ImageDraw,ImageFont
@@ -44,8 +45,14 @@ if __name__=='__main__':
     with tempfile.TemporaryDirectory() as temp:
         binary=str(Path(temp)/'fixtures')
         subprocess.run(['clang','-std=c11','-fno-builtin','-I'+str(ROOT.parents[1]/'dashborne/extensions'),
-                        str(ROOT/'tests/test_window.c'),str(ROOT/'model.c'),str(ROOT/'graph.c'),'-o',binary],check=True)
-        snapshots=subprocess.check_output([binary,'--preview'],text=True).splitlines()
+                        str(ROOT/'tests/test_window.c'),str(ROOT/'model.c'),str(ROOT/'graph.c'),str(ROOT/'road.c'),'-o',binary],check=True)
+        motion='--motion' in sys.argv
+        snapshots=subprocess.check_output([binary,'--motion' if motion else '--preview'],text=True).splitlines()
+    if motion:
+        frames=[render(json.loads(row)) for row in snapshots]
+        path=OUT/'road-motion.webp'
+        frames[0].save(path,save_all=True,append_images=frames[1:],duration=32,loop=0,quality=85)
+        print(path);sys.exit(0)
     for row in snapshots:
         snapshot=json.loads(row);path=OUT/(snapshot['name']+'.png');render(snapshot).save(path);print(path)
         (OUT/(snapshot['name']+'.json')).write_text(json.dumps(snapshot,indent=2))

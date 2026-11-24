@@ -1,6 +1,7 @@
 #include "window.h"
 #include "source.h"
 #include "graph.h"
+#include "road.h"
 extern void *calloc(__SIZE_TYPE__,__SIZE_TYPE__);
 extern void free(void *);
 extern int strcmp(const char *,const char *);
@@ -29,6 +30,11 @@ struct control_cache {
     int shown,image_kind;
 };
 static struct control_cache primary[30],fills[GRAPH_WIDTH],traces[GRAPH_WIDTH],means[35];
+static struct control_cache road_controls[ROAD_CONTROLS];
+static struct road_motion road_motion;
+static char road_images[2][160];
+static int road_drawn,road_visible,road_zones[2];
+static float road_phase_drawn;
 static char labels[30][100],images[30][160];
 static struct graph_runs runs;
 static int active_fills,active_traces;
@@ -53,6 +59,7 @@ static struct control_cache *control(int id) {
     else if(id>=GRAPH_FILL_ID && id<GRAPH_FILL_ID+GRAPH_WIDTH)c=&fills[id-GRAPH_FILL_ID];
     else if(id>=GRAPH_TRACE_ID && id<GRAPH_TRACE_ID+GRAPH_WIDTH)c=&traces[id-GRAPH_TRACE_ID];
     else if(id>=602000 && id<602035)c=&means[id-602000];
+    else if(id>=ROAD_ID && id<ROAD_ID+ROAD_CONTROLS)c=&road_controls[id-ROAD_ID];
     if(c && !(c->known&1)) {c->pointer=find(live,id);c->known|=1;++perf.lookups;}
     return c && c->pointer?c:0;
 }
@@ -80,7 +87,7 @@ static void tint(int id,unsigned int rgb) {
 }
 static void asset(int id,const char *path) {
     struct control_cache *c=control(id);if(!c)return;
-    char *old=images[id-599300];
+    char *old=id==ROAD_ID+2 || id==ROAD_ID+3?road_images[id-ROAD_ID-2]:images[id-599300];
     if(!(c->known&32) || strcmp(old,path)) {
         picture(c->pointer,path);snprintf(old,sizeof(images[0]),"%s",path);c->known|=32;++perf.pictures;++perf.writes;
     }
@@ -99,6 +106,33 @@ static void paint_power(unsigned long long now) {
     int width=(int)(negative?-value:value);
     bar(599323,negative?1090-width:1090,431,width,3,negative?0x66ba6b:0xd9dce0,width>0);
     if(value==power_motion.target)power_motion.active=0;
+}
+static void paint_road(unsigned long long now) {
+    int on=state.mode==DRIVING;
+    road_step(&road_motion,&state,now);
+    if(!road_drawn || on!=road_visible || road_motion.phase!=road_phase_drawn) {
+        show(ROAD_ID,on);show(ROAD_ID+1,on);
+        for(int i=0;i<ROAD_MARKS;++i) {
+            int id=ROAD_ID+4+i;
+            if(on) {
+                struct road_mark m=road_mark(road_motion.phase,i);
+                place(id,(struct rectangle){m.x,m.y,m.width,m.height});
+            }
+            show(id,on);
+        }
+        road_drawn=1;road_visible=on;road_phase_drawn=road_motion.phase;
+    }
+    for(int side=0;side<2;++side) {
+        enum road_zone zone=road_zone(&state,side?SIDE_RIGHT:SIDE_LEFT);
+        if(road_zones[side]==(int)zone)continue;
+        int id=ROAD_ID+2+side;
+        if(zone!=ZONE_OFF) {
+            const char *names[]={"","turn","blind","alert"};char path[160];
+            snprintf(path,sizeof(path),ASSETS "road-%s-%s.png",side?"right":"left",names[zone]);asset(id,path);
+        }
+        show(id,zone!=ZONE_OFF);
+        road_zones[side]=(int)zone;
+    }
 }
 static void graph_paint(void) {
     graph_runs(state.history,&runs);
@@ -150,6 +184,7 @@ static void vehicle_body(const struct readings *d,int driving,int waiting) {
         rendered_body=view_key;
     }
     show(599306,!driving);show(599307,driving);
+    place(599308,driving?(struct rectangle){745,390,500,30}:(struct rectangle){745,365,500,38});
     if(waiting)label(599308,d->demo?"Vehicle demo mode":"Waiting for vehicle data");
     else if(mask<0)label(599308,"Door status unavailable");
     else if(mask) {
@@ -179,6 +214,7 @@ static void render(unsigned long long now,int immediate) {
     label(599309,waiting?"—":driving?"—":"P");
     label(599313,driving?(d->mph?"MPH":"KM/H"):state.mode==CHARGING?"CHARGING":waiting?"":"PARK");
     vehicle_body(d,driving,waiting);
+    paint_road(now);
     show(599314,driving && d->limit!=UNKNOWN);
     if(driving && d->limit!=UNKNOWN)snprintf(line,sizeof(line),"%d",d->limit);else line[0]=0;
     label(599315,line);
@@ -263,6 +299,9 @@ static void created(void *s) {
     for(int i=0;i<30;++i)primary[i]=(struct control_cache){0};
     for(int i=0;i<GRAPH_WIDTH;++i)fills[i]=traces[i]=(struct control_cache){0};
     for(int i=0;i<35;++i)means[i]=(struct control_cache){0};
+    for(int i=0;i<ROAD_CONTROLS;++i)road_controls[i]=(struct control_cache){0};
+    road_motion=(struct road_motion){0};
+    road_drawn=0;road_zones[0]=road_zones[1]=-1;
     active_fills=active_traces=0;
     perf=(__typeof__(perf)){0};power_motion=(__typeof__(power_motion)){0};
     cluster_reset(&state);rendered_speed=-2;rendered_body=-2;history_drawn=0;
@@ -284,7 +323,9 @@ static void resumed(void *s) {
     paused_state=0;perf.last_tick=0;
     unregister_timer(s,TIMER);register_timer(s,TIMER,FRAME_MS);
 }
-static void paused(void *s) {paused_state=1;focus_back(0);unregister_timer(s,TIMER);report();}
+static void paused(void *s) {
+    paused_state=1;focus_back(0);road_motion=(struct road_motion){0};unregister_timer(s,TIMER);report();
+}
 static int timer(void *s,int id) {
     (void)s;
     if(id!=TIMER || closing || paused_state || !live)return 1;
@@ -300,7 +341,10 @@ static int timer(void *s,int id) {
         render(now,0);
         /* Keep the 100 ms sample phase, but skip missed work after a stall. */
         next_sample=now && now>=next_sample && now-next_sample<SAMPLE_US?next_sample+SAMPLE_US:now+SAMPLE_US;
-    } else if(power_motion.active)paint_power(now);
+    } else {
+        if(power_motion.active)paint_power(now);
+        if(state.mode==DRIVING)paint_road(now);
+    }
     unsigned long long end=source_microseconds();
     unsigned int work=end>=now?(unsigned int)(end-now):0;
     ++perf.ticks;perf.work_us+=work;

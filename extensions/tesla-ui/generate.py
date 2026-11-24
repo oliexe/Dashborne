@@ -28,6 +28,14 @@ def screen():
         s[f'textview__graph_mean_{i:02}']=dict(id=602000+i,position=pos(185+i*12,262,6,1),
             backgroundColor=0x85817a,visible=False,touchable=False)
     s['textview__nav']=label(599304,'',185,395,490,26,21)
+    # Alphabetical control order keeps the road, markings and side zones behind the car.
+    s['textview__car_00_road']=dict(picture(603000,'road',680,55,600,360),visible=False)
+    for i in range(12):
+        s[f'textview__car_01_mark_{i:02}']=dict(picture(603004+i,'road-dash-'+('left' if i<6 else 'right'),
+            980,100,3,5),visible=False)
+    s['textview__car_02_fog']=dict(picture(603001,'road-fog',680,55,600,360),visible=False)
+    for i,side in enumerate(('left','right')):
+        s['textview__car_03_zone_'+side]=dict(picture(603002+i,'road-'+side+'-turn',710 if i==0 else 1038,158,212,189),visible=False)
     s['textview__car_park']=picture(599306,'park',720,103,500,300)
     s['textview__car_drive']=dict(picture(599307,'drive',865,125,230,260),visible=False)
     s['textview__state']=label(599308,'Connecting to vehicle',745,365,500,38,23,0x92969c,37)
@@ -57,7 +65,9 @@ def screen():
 def assets():
     from PIL import Image,ImageDraw,ImageFont
     import resvg_py
+    from road_assets import generate
     out=ROOT/'assets';out.mkdir(exist_ok=True)
+    generate(out)
     font=ImageFont.truetype(str(ROOT/'design/Inter.ttf'),126)
     font.set_variation_by_axes([28,400])
     for n in '0123456789':

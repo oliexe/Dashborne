@@ -23,8 +23,8 @@ The lower power meter uses +400/−100 kW and appears while driving. Both displa
 clip at their bounds; the numeric average retains its value.
 
 Navigation shows remaining distance, travel time and estimated arrival charge
-when the stock data source supplies them. Maps and traffic/lane visualization
-are replaced by the energy panel and pre-rendered Model 3 Highland views. These
+when the stock data source supplies them. The energy panel and an illustrative
+road surround the pre-rendered Model 3 Highland views. These
 images have poses for all combinations of the four doors, frunk and trunk.
 Open/closed flags select fixed hinge angles; the images do not represent measured
 opening angles. Turn signals use the existing arrows.
@@ -33,6 +33,26 @@ The body-state renderer is ready locally, but the live adapter does not yet read
 those six panel states. Until their mapping is verified over ADB, the view shows
 **Door status unavailable** with the neutral car image. Disconnects clear body
 state. Headlights, brake lights, locks and charge-port state are not mapped yet.
+
+## Road scene
+
+The perspective road appears in Drive, Reverse and Neutral. Markings move with
+reported speed, including conversion from mph, and flow backward in Reverse.
+They stop at zero or unavailable speed and in Neutral, where the direction is
+unknown. Park, charging and disconnection hide the road. Timer stalls do not
+cause a catch-up jump.
+
+The existing turn-signal readings light the corresponding road edge green.
+Known blind-spot occupancy produces an amber side zone and warning icon; an
+active same-side turn signal or an urgent blind-spot flag makes it red. Left and
+right availability are separate, and disconnects clear both. Road geometry is
+illustrative: it does not represent detected lanes, steering angle or nearby
+vehicle positions.
+
+**Blind-spot input is not mapped yet.** The renderer and fixtures cover these
+states, but the live adapter leaves them unavailable until their fields and
+availability checks are verified over ADB. Turn signals do not imply blind-spot
+occupancy. Only speed, gear and turn signals currently drive the live road scene.
 
 ## Data and lifecycle
 
@@ -68,6 +88,11 @@ adjacent identical columns without changing its pixels: a flat nonzero trace
 needs two visible controls, compared with 828 separate columns. Steep, varying
 traces can still use the full pool; unused controls stay hidden.
 
+Road animation moves at most 12 small marking controls per tick. Its textures
+stay loaded; the frame loop changes positions without swapping images. Warning
+textures are cropped to their side zones and change only with warning state.
+A stationary scene produces no repeated native updates.
+
 On Back or pause, the extension log records callback average/max duration,
 callbacks exceeding 16,667 microseconds, scheduling gaps over 25 ms, source-read
 time and setter/image-change counts. `startup_us` covers control-cache preparation
@@ -88,6 +113,7 @@ The normal Dashborne build includes the generated layout and assets. To regenera
 uv run --with pillow --with resvg-py==0.5.0 extensions/tesla-ui/generate.py --assets
 sh extensions/tesla-ui/test.sh
 uv run --with pillow extensions/tesla-ui/preview.py
+uv run --with pillow extensions/tesla-ui/preview.py --motion
 sh extensions/tesla-ui/benchmark.sh
 ```
 
@@ -110,11 +136,15 @@ Previews in `dashborne/build/tesla-ui-previews/` use test fixtures passed throug
 the native window renderer. They cover Drive, Park, Charging, regeneration and
 disconnection, open panels and unknown body state. Preview body text uses Inter;
 on the DASH, supporting labels use the stock font. Large speed numerals use the bundled Inter glyph images on both.
+Road previews cover turn signals, hazards, amber occupancy and red warnings.
+`--motion` produces `road-motion.webp` from a synthetic sequence; its blind-spot
+values come only from the test fixture.
 
 Tests cover units, signed power, invalid values, connection loss, history gaps,
 state transitions, unknown panel states, graph interpolation and gaps, bounds,
 pixel-equivalent graph merging, animation deadlines, stalled callbacks and
-timer cleanup. A steady 10-second fixture checks 625 timer callbacks, 100 data
+timer cleanup, speed-driven road motion, reverse flow and blind-spot availability.
+A stationary 10-second fixture checks 625 timer callbacks, 100 data
 reads and zero native setters or lookups. The benchmark measures the host C
 update path with fake telemetry and native setters; it excludes image decoding
 and native painting, so its numbers are not device frame times. The ARM package is built;
@@ -127,3 +157,4 @@ installation and visual checks on the DASH are pending.
 - [Inter](https://github.com/google/fonts/tree/main/ofl/inter): numeral typeface, distributed under the [SIL Open Font License](assets/Inter-LICENSE.txt).
 - [Model 3 Highland mesh and render credits](assets/Model3-CREDITS.md): RBLXSupercars, CC BY 4.0.
 - [Model S energy graph photograph](https://www.platinumautohaus.com/2016-tesla-model-s-90d-c-13038.htm): amber trace, shaded area and average-line styling.
+- [Enhance blind-spot display behavior](https://www.enhauto.com/blogs/all/update-4-8-1): yellow occupancy indication and red warning with a turn signal or proximity alert. This public description does not establish the installed DASH's data layout.

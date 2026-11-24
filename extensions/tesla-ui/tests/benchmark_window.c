@@ -16,7 +16,7 @@ static int compare(const void *a,const void *b) {
 }
 static void benchmark(const char *name,int scenario) {
     struct dashborne_host host={0};api=&host;
-    fixture=(struct readings){.connected=1,.gear=4,.speed=72,.limit=80,.battery=68,.range=312,
+    fixture=(struct readings){.connected=1,.gear=4,.speed=0,.limit=80,.battery=68,.range=312,
         .temperature=21,.body_known=BODY_ALL,.power_valid=1,.power_kw=34};
     seconds=100;subsecond=0;control_count=0;memset(controls,0,sizeof(controls));
     void *s=create();created(s);
@@ -46,5 +46,5 @@ static void benchmark(const char *name,int scenario) {
 int main(void) {
     char *args[]={"window"};window_regressions(1,args);
     puts("Host CPU timings with fake telemetry/native UI; not device frame times.");
-    benchmark("steady",0);benchmark("changing speed/power",1);benchmark("dense graph rebuild",2);
+    benchmark("stationary",0);benchmark("changing speed/power/road",1);benchmark("dense graph rebuild",2);
 }

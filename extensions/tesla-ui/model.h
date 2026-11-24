@@ -7,6 +7,7 @@ enum body_panel {
     BODY_ALL=63
 };
 enum cluster_mode { WAITING, PARKED, DRIVING, CHARGING };
+enum vehicle_side {SIDE_LEFT=1,SIDE_RIGHT=2,SIDES_ALL=3};
 /* Values are already in the stock user's units, except power (always kW). */
 struct readings {
     int connected, demo, speed, limit, battery, range, temperature, gear, charging;
@@ -15,6 +16,7 @@ struct readings {
     int power_valid, nav_valid, left, right;
     /* Unknown is not closed: a panel is trustworthy only when its known bit is set. */
     unsigned int body_known, body_open;
+    unsigned int blind_known, blind_active, blind_urgent;
     char clock[16];
 };
 struct cluster {

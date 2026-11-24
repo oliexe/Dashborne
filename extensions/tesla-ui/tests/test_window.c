@@ -45,7 +45,7 @@ static void closing_fake(void *c,const char *name) {assert(c==ctx() && !strcmp(n
 static void reg(void *s,int id,int ms) {assert(s==live && id==TIMER && ms==16);registered=1;}
 static void unreg(void *s,int id) {(void)s;assert(id==TIMER);registered=0;}
 static void performance_checks(void *s) {
-    fixture.connected=1;fixture.gear=4;fixture.power_valid=1;fixture.power_kw=34;fixture.speed=72;
+    fixture.connected=1;fixture.gear=4;fixture.power_valid=1;fixture.power_kw=34;fixture.speed=0;
     seconds=100;subsecond=0;
     for(int i=0;i<HISTORY;++i)state.history[i]=340;
     state.last_second=seconds;state.count=HISTORY;state.sampled=1;history_drawn=0;
@@ -57,8 +57,16 @@ static void performance_checks(void *s) {
        no native mutations or lookups for an unchanged, warmed-up view. */
     assert(reads-before_reads==100);
     assert(writes==before_writes && pictures==before_pictures && lookups==before_lookups);
+    fixture.speed=72;render(source_microseconds(),1);before_writes=writes;before_pictures=pictures;
     fixture.speed=73;render(source_microseconds(),1);
     assert(writes-before_writes==1 && pictures-before_pictures==1);
+
+    seconds=150;subsecond=0;render(source_microseconds(),1);next_sample=source_microseconds()+SAMPLE_US;
+    before_writes=writes;before_pictures=pictures;before_lookups=lookups;before_reads=reads;
+    float previous_phase=road_motion.phase;
+    for(int i=1;i<=6;++i) {subsecond=(unsigned long long)i*16000;timer(s,TIMER);}
+    assert(road_motion.phase!=previous_phase && writes>before_writes && writes-before_writes<=ROAD_MARKS*6);
+    assert(pictures==before_pictures && lookups==before_lookups && reads==before_reads);
 
     seconds=200;subsecond=0;fixture.power_kw=0;render(source_microseconds(),1);
     next_sample=source_microseconds()+SAMPLE_US;
@@ -76,6 +84,8 @@ static void performance_checks(void *s) {
     fixture.connected=0;subsecond=312000;timer(s,TIMER);
     assert(!power_motion.active && !((struct control *)lookup(s,599323))->shown);
     assert(state.mode==WAITING && !active_fills && !active_traces);
+    assert(!((struct control *)lookup(s,ROAD_ID))->shown);
+    for(int i=0;i<ROAD_MARKS;++i)assert(!((struct control *)lookup(s,ROAD_ID+4+i))->shown);
 
     /* A delayed event samples once and skips missed callbacks; no catch-up loop. */
     before_reads=reads;seconds+=120;timer(s,TIMER);assert(reads==before_reads+1);
@@ -103,7 +113,7 @@ static void dump(const char *name) {
     puts("]}");
 }
 int main(int argc,char **argv) {
-    (void)argv;struct dashborne_host h={.log=log_fake};api=&h;find=lookup;text=set_text;picture=set_pic;
+    int previews=argc>1 && !strcmp(argv[1],"--preview");struct dashborne_host h={.log=log_fake};api=&h;find=lookup;text=set_text;picture=set_pic;
     visible=set_visible;position=set_rect;color=set_color;id_of=get_id;context=ctx;
     open_activity=opening;close_activity=closing_fake;ctor=noop;dtor=noop;base_created=noop;
     register_timer=reg;unregister_timer=unreg;
@@ -128,38 +138,73 @@ int main(int argc,char **argv) {
     assert(((struct control *)lookup(s,599309))->shown==0);
     assert(((struct control *)lookup(s,599310))->shown==1);
     assert(((struct control *)lookup(s,599312))->shown==0);
-    if(argc>1)dump("drive");
+    if(previews)dump("drive");
+    assert(((struct control *)lookup(s,ROAD_ID))->shown);
+    assert(!((struct control *)lookup(s,ROAD_ID+2))->shown);
+    fixture.left=1;render(source_microseconds(),1);
+    assert(strstr(((struct control *)lookup(s,ROAD_ID+2))->image,"road-left-turn.png"));
+    if(previews)dump("turn-left");
+    fixture.left=0;fixture.blind_known=SIDES_ALL;fixture.blind_active=SIDE_LEFT;
+    render(source_microseconds(),1);
+    assert(strstr(((struct control *)lookup(s,ROAD_ID+2))->image,"road-left-blind.png"));
+    if(previews)dump("blind-left");
+    fixture.left=1;render(source_microseconds(),1);
+    assert(strstr(((struct control *)lookup(s,ROAD_ID+2))->image,"road-left-alert.png"));
+    if(previews)dump("blind-left-turn");
+    fixture.left=0;fixture.blind_active=fixture.blind_urgent=SIDE_RIGHT;
+    render(source_microseconds(),1);
+    assert(!((struct control *)lookup(s,ROAD_ID+2))->shown);
+    assert(strstr(((struct control *)lookup(s,ROAD_ID+3))->image,"road-right-alert.png"));
+    if(previews)dump("blind-right-alert");
+    fixture.blind_known=fixture.blind_active=fixture.blind_urgent=0;
+    fixture.left=fixture.right=1;render(source_microseconds(),1);
+    if(previews)dump("hazards");
+    fixture.left=fixture.right=0;render(source_microseconds(),1);
+    assert(!((struct control *)lookup(s,ROAD_ID+2))->shown && !((struct control *)lookup(s,ROAD_ID+3))->shown);
+    if(argc>1 && !strcmp(argv[1],"--motion")) {
+        /* Preview-only sequence: none of these blind-spot values feed the adapter. */
+        for(int frame=0;frame<90;++frame) {
+            subsecond=(unsigned long long)(frame+1)*32000;
+            fixture.blind_known=SIDES_ALL;
+            fixture.blind_active=frame>=30 && frame<75?SIDE_LEFT:0;
+            fixture.left=frame>=50 && (frame/15)%2;
+            timer(s,TIMER);dump("motion");
+        }
+        fixture.blind_known=fixture.blind_active=0;fixture.left=0;subsecond=0;
+        render(source_microseconds(),1);
+    }
     assert(cluster_window_input(CLUSTER_NEXT,1) && navigation_focus);
     assert(((struct control *)lookup(s,599326))->shown);
-    if(argc>1)dump("navigation-focus");
+    if(previews)dump("navigation-focus");
     int prior_writes=writes;
     assert(cluster_window_input(CLUSTER_PREVIOUS,1) && writes==prior_writes);
     assert(!cluster_window_input(CLUSTER_SELECT,0) && !navigation_focus);
     fixture.gear=1;fixture.nav_valid=0;render(source_microseconds(),1);assert(state.mode==PARKED);
-    if(argc>1)dump("park");
+    assert(!((struct control *)lookup(s,ROAD_ID))->shown);
+    if(previews)dump("park");
     fixture.body_open=FRONT_RIGHT;render(source_microseconds(),1);
     assert(strstr(((struct control *)lookup(s,599306))->image,"park-04.png"));
     assert(!strcmp(((struct control *)lookup(s,599308))->value,"Front right door open"));
-    if(argc>1)dump("door-open");
+    if(previews)dump("door-open");
     fixture.body_open=BODY_ALL;render(source_microseconds(),1);
     assert(strstr(((struct control *)lookup(s,599306))->image,"park-3f.png"));
-    if(argc>1)dump("all-open");
+    if(previews)dump("all-open");
     fixture.gear=4;render(source_microseconds(),1);
     assert(((struct control *)lookup(s,599307))->shown);
     assert(strstr(((struct control *)lookup(s,599307))->image,"drive-3f.png"));
-    if(argc>1)dump("drive-open");
+    if(previews)dump("drive-open");
     fixture.gear=1;fixture.body_known=0;render(source_microseconds(),1);
     assert(strstr(((struct control *)lookup(s,599306))->image,"/park.png"));
     assert(!strcmp(((struct control *)lookup(s,599308))->value,"Door status unavailable"));
-    if(argc>1)dump("body-unknown");
+    if(previews)dump("body-unknown");
     fixture.body_known=BODY_ALL;fixture.body_open=0;
     fixture.charging=1;fixture.power_kw=11;render(source_microseconds(),1);assert(state.mode==CHARGING);
-    if(argc>1)dump("charge");
+    if(previews)dump("charge");
     fixture.gear=4;fixture.charging=0;fixture.power_kw=-28;render(source_microseconds(),1);
     assert(((struct control *)lookup(s,599323))->color==0x66ba6b);
-    if(argc>1)dump("regen");
+    if(previews)dump("regen");
     fixture.connected=0;render(source_microseconds(),1);assert(state.mode==WAITING && state.count==0);
-    if(argc>1)dump("disconnected");
+    if(previews)dump("disconnected");
     performance_checks(s);
     assert(cluster_window_input(CLUSTER_NEXT,1));
     paused(s);int before=reads;timer(s,TIMER);assert(reads==before && !registered && !navigation_focus);
