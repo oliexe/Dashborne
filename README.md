@@ -118,7 +118,7 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 
 See the [extension development guide](dashborne/extensions/README.md) to build your own.
 
-## Hardware
+## Hardware Exploration
 
 The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
 [FCC ID 2BUSZ-S3XYDASH](https://fccid.io/2BUSZ-S3XYDASH).
