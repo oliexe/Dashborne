@@ -118,52 +118,6 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 
 See the [extension development guide](dashborne/extensions/README.md) to build your own.
 
-## Hardware Exploration
-
-The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
-[FCC ID 2BUSZ-S3XYDASH](https://fccid.io/2BUSZ-S3XYDASH).
-
-| Component | What we know | Source |
-| --- | --- | --- |
-| Processor | Allwinner T113 family; the submitted manual specifies a dual-core T113-S at 1.2 GHz. | [Internal photos, p. 2][photos]; [manual, p. 3][manual] |
-| Display | 9.6-inch IPS touchscreen, 1920 × 480. | [Manual, p. 3][manual] |
-| Wireless | Realtek RTL8733BS Wi-Fi/Bluetooth, plus a separate BLE module. | [Chipset declaration][chipsets]; [internal photos][photos] |
-| Storage | Kingston-branded eMMC; capacity not yet established. | [Internal photos, p. 2][photos] |
-| Power | USB-C. | [Enhance product FAQ](https://www.enhauto.com/pages/dash) |
-| Expansion | microSD mounted at `/mnt/extsd`; application loading from FAT32 verified on our unit. | [On-device research](docs/research.md) |
-| Software platform | Linux 5.4.61 with ARMv7 hard-float userspace and ZKSWE/FlyThings UI framework. | [On-device research](docs/research.md) |
-
-Other aftermarket Tesla clusters have similar specifications:
-
-| Product | Published similarities |
-| --- | --- |
-| [Yeslak T9](https://www.yeslak.com/products/9-6-carplay-instrument-cluster-for-tesla-model-3-y-ly) | T113-S dual-core 1.2 GHz, Linux, 9.6-inch 1920 × 480 IPS display, 258 × 75 × 15 mm and 323 g—all match the DASH's submitted [manual, p. 3][manual]. |
-| [TESLASY T9 Gen 2](https://www.teslasy.com/products/model-3-y-model-3-highland-t9-9-6-inch-gen-2-carplay-instrument-cluster-head-up-touch-display) | 9.6-inch Linux cluster with CarPlay, Android Auto, OTA updates and magnetic mounting; the listing does not identify its processor. |
-| [TESERY 9.6-inch cluster](https://www.tesery.com/products/9-6-inch-instrument-cluster-dashboard-display-for-tesla-model-3-y) | Linux, 1920 × 480 IPS display, CarPlay and Android Auto; the listing does not identify its processor. |
-
-Our working hypothesis is that the S3XY DASH is a slightly modified and rebranded
-[Yeslak T9](https://www.yeslak.com/products/9-6-carplay-instrument-cluster-for-tesla-model-3-y-ly)
-or a similar device.
-
-Enhance's submitted [manual][manual] reproduces the 24-page
-[T9 manual linked by Yeslak](https://drive.google.com/file/d/1kAx3nM93lCkuczWnp6HKOUSXhaLoSg5Z/view),
-including its specifications, wiring diagrams, UI illustrations and installation
-photos, with "S3XY Dash" added to the cover and an extra FCC compliance page.
-
-[photos]: https://fccid.io/2BUSZ-S3XYDASH/Internal-Photos/Internal-photos-9104326.pdf
-[manual]: https://fccid.io/2BUSZ-S3XYDASH/User-Manual/User-manual-9104334.pdf
-[chipsets]: https://fccid.io/2BUSZ-S3XYDASH/Attestation-Statements/Kaspersky-Statement-9104348.pdf
-
-## ADB Debugging
-
-Dashborne includes a Wi-Fi ADB enabler that gives you root access to the DASH's
-Linux system. You can read firmware and system files, make changes on the fly,
-debug applications, and reverse-engineer the device's software.
-
-To enable it, open Dashborne's boot menu, select **ADB**, and turn on
-**Enable ADB**. Connect from your computer using the IP address and port shown
-on the screen.
-
 ## Development
 
 ```text
@@ -201,3 +155,55 @@ The workflow publishes the ZIP and its SHA-256 checksum after the tests pass.
 
 See the [extension SDK](dashborne/extensions/README.md),
 [layout patches](dashborne/patches/README.md), and [platform research](docs/research.md).
+
+# Device Exploration
+
+## Hardware
+
+The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
+[FCC ID 2BUSZ-S3XYDASH](https://fccid.io/2BUSZ-S3XYDASH).
+
+| Component | What we know | Source |
+| --- | --- | --- |
+| Processor | Allwinner T113 family; the submitted manual specifies a dual-core T113-S at 1.2 GHz. | [Internal photos, p. 2][photos]; [manual, p. 3][manual] |
+| Display | 9.6-inch IPS touchscreen, 1920 × 480. | [Manual, p. 3][manual] |
+| Wireless | Realtek RTL8733BS Wi-Fi/Bluetooth, plus a separate BLE module. | [Chipset declaration][chipsets]; [internal photos][photos] |
+| Storage | Kingston-branded eMMC; capacity not yet established. | [Internal photos, p. 2][photos] |
+| Power | USB-C. | [Enhance product FAQ](https://www.enhauto.com/pages/dash) |
+| Expansion | microSD mounted at `/mnt/extsd`; application loading from FAT32 verified on our unit. | [On-device research](docs/research.md) |
+
+Other aftermarket Tesla clusters have similar specifications:
+
+| Product | Published similarities |
+| --- | --- |
+| [Yeslak T9](https://www.yeslak.com/products/9-6-carplay-instrument-cluster-for-tesla-model-3-y-ly) | T113-S dual-core 1.2 GHz, Linux, 9.6-inch 1920 × 480 IPS display, 258 × 75 × 15 mm and 323 g—all match the DASH's submitted [manual, p. 3][manual]. |
+| [TESLASY T9 Gen 2](https://www.teslasy.com/products/model-3-y-model-3-highland-t9-9-6-inch-gen-2-carplay-instrument-cluster-head-up-touch-display) | 9.6-inch Linux cluster with CarPlay, Android Auto, OTA updates and magnetic mounting; the listing does not identify its processor. |
+| [TESERY 9.6-inch cluster](https://www.tesery.com/products/9-6-inch-instrument-cluster-dashboard-display-for-tesla-model-3-y) | Linux, 1920 × 480 IPS display, CarPlay and Android Auto; the listing does not identify its processor. |
+
+Our working hypothesis is that the S3XY DASH is a slightly modified and rebranded
+[Yeslak T9](https://www.yeslak.com/products/9-6-carplay-instrument-cluster-for-tesla-model-3-y-ly)
+or a similar device.
+
+Enhance's submitted [manual][manual] reproduces the 24-page
+[T9 manual linked by Yeslak](https://drive.google.com/file/d/1kAx3nM93lCkuczWnp6HKOUSXhaLoSg5Z/view),
+including its specifications, wiring diagrams, UI illustrations and installation
+photos, with "S3XY Dash" added to the cover and an extra FCC compliance page.
+
+## Software
+
+The DASH runs Linux 5.4.61 with ARMv7 hard-float userspace and the
+ZKSWE/FlyThings UI framework. See the [on-device research](docs/research.md).
+
+### ADB Debugging
+
+Dashborne includes a Wi-Fi ADB enabler that gives you root access to the DASH's
+Linux system. You can read firmware and system files, make changes on the fly,
+debug applications, and reverse-engineer the device's software.
+
+To enable it, open Dashborne's boot menu, select **ADB**, and turn on
+**Enable ADB**. Connect from your computer using the IP address and port shown
+on the screen.
+
+[photos]: https://fccid.io/2BUSZ-S3XYDASH/Internal-Photos/Internal-photos-9104326.pdf
+[manual]: https://fccid.io/2BUSZ-S3XYDASH/User-Manual/User-manual-9104334.pdf
+[chipsets]: https://fccid.io/2BUSZ-S3XYDASH/Attestation-Statements/Kaspersky-Statement-9104348.pdf
