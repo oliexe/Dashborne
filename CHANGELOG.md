@@ -5,6 +5,9 @@ tracked separately in their source history.
 
 ## Unreleased
 
+- Custom widgets show size-specific picker previews, with optional artwork from
+  extensions and a default preview for older widgets.
+
 - Extra Menu uses a transparent Dashborne icon that appears on touch and hides
   after four seconds of inactivity.
 

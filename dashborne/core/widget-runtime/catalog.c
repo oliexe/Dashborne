@@ -37,7 +37,7 @@ static unsigned int identity(const char *id) {
 }
 static int register_widget(const struct dashborne_host *h,const struct dashborne_widget *w) {
     static const unsigned int categories[]={4,12,9};
-    if(!runtime_host || runtime_live() || !h || !w || w->abi_version!=1 || w->struct_size<sizeof(*w) ||
+    if(!runtime_host || runtime_live() || !h || !w || w->abi_version!=1 || w->struct_size<DASHBORNE_WIDGET_V1_SIZE ||
        !valid_id(w->id) || !w->title || !*w->title || strlen(w->title)>63 || !w->description ||
        strlen(w->description)>127 || !w->sizes || (w->sizes&~DBW_ALL_SIZES) || w->tab>2 || w->category>=categories[w->tab])return -1;
     int slot=-1;

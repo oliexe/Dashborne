@@ -54,3 +54,4 @@ if __name__ == '__main__':
     (card / 'ui').mkdir(parents=True, exist_ok=True)
     shutil.copyfile(ROOT / 'assets/icon.png', card / 'ui/icon.png')
     shutil.copytree(ROOT / 'core/extra-menu/assets', card / 'assets/extra-menu', dirs_exist_ok=True)
+    shutil.copytree(ROOT / 'core/widget-runtime/assets', card / 'assets/widget-runtime', dirs_exist_ok=True)

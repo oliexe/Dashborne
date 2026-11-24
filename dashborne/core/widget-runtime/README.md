@@ -17,6 +17,13 @@ loads the flash layout before restoring its write path.
 
 Start with [widget-example](../../../extensions/widget-example) to add a custom widget.
 
+The picker accepts an optional PNG for each supported size through
+`preview_images`. Images keep their aspect ratio and sit above the native
+caption in all three tabs. Missing artwork falls back to the core's size
+previews; older ABI 1 descriptors remain supported. Picker rows clear custom
+artwork before being reused for stock widgets. Previews do not start widget
+instances or their update callbacks.
+
 ## Verification
 
 The size mapping, category lists, descriptor layout, page containers and native
@@ -25,6 +32,7 @@ cover:
 
 - All eight sizes in all 25 categories, plus invalid metadata and unavailable space.
 - Stock picker delegation, replacement rollback and reopening a custom placement.
+- Preview bounds, stock/custom row recycling, missing images and legacy descriptors.
 - Two providers with stable IDs across registration order and enable/disable.
 - Three page parents, pooled view reassignment, edit-mode action gating and pause.
 - Card-layout round trips, malformed configuration, failed writes and cleanup order.

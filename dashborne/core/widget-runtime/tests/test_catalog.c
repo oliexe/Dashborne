@@ -31,6 +31,8 @@ int main(void) {
     assert(!unregister_widget(&a) && !unregister_widget(&b));
     const unsigned int counts[]={4,12,9};
     for(unsigned int t=0;t<3;++t)for(unsigned int c=0;c<counts[t];++c){w.tab=t;w.category=c;assert(!register_widget(&a,&w));assert(!unregister_widget(&a));}
+    w.struct_size=DASHBORNE_WIDGET_V1_SIZE;assert(!register_widget(&a,&w));assert(!unregister_widget(&a));
+    w.struct_size=DASHBORNE_WIDGET_V1_SIZE-1;assert(register_widget(&a,&w)==-1);w.struct_size=sizeof(w);
     w.tab=3;assert(register_widget(&a,&w)==-1);w.tab=0;w.category=4;assert(register_widget(&a,&w)==-1);
     w.category=0;w.sizes=256;assert(register_widget(&a,&w)==-1);w.sizes=0;assert(register_widget(&a,&w)==-1);w.sizes=255;
     w.id="../escape";assert(register_widget(&a,&w)==-1);w.id="new";write_fail=1;assert(register_widget(&a,&w)==-1);write_fail=0;

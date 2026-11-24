@@ -30,9 +30,15 @@ static void destroy(struct dashborne_widget_view *view) {view->user=0;}
 static int activate(const struct dashborne_host *api) {
     host=api;widgets=dashborne_widget_api();if(!widgets)return -1;
     static const struct dashborne_widget widget={
-        DASHBORNE_WIDGET_ABI,sizeof(widget),WIDGET_ID,WIDGET_TITLE,
-        "A responsive example with independent state for each placement.",
-        DBW_ALL_SIZES,WIDGET_TAB,WIDGET_CATEGORY,create,update,0,click,destroy,0
+        .abi_version=DASHBORNE_WIDGET_ABI,.struct_size=sizeof(widget),
+        .id=WIDGET_ID,.title=WIDGET_TITLE,
+        .description="A responsive example with independent state for each placement.",
+        .sizes=DBW_ALL_SIZES,.tab=WIDGET_TAB,.category=WIDGET_CATEGORY,
+        .create=create,.update=update,.click=click,.destroy=destroy,
+#define PREVIEW(size) "../../../mnt/extsd/Dashborne/extensions/" WIDGET_ID "/assets/preview-" size ".png"
+        .preview_images={PREVIEW("1x1"),PREVIEW("2x1"),PREVIEW("1x2"),PREVIEW("2x2"),
+                         PREVIEW("3x2"),PREVIEW("4x2"),PREVIEW("5x2"),PREVIEW("6x2")}
+#undef PREVIEW
     };
     return widgets->register_widget(api,&widget);
 }

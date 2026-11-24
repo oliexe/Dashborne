@@ -27,7 +27,14 @@ struct dashborne_widget {
     /* Dashboard pause: release caches or stop animation; create is not repeated
        on resume. update resumes when the dashboard is active again. */
     void (*suspend)(struct dashborne_widget_view *);
+    /* Optional static PNG previews, indexed by dashborne_widget_size. Use the
+       widget's aspect ratio; the picker fits each image without stretching.
+       Missing entries/files use the core's size preview. Paths and strings
+       must remain valid until unregister_widget. No live callbacks run here. */
+    const char *preview_images[DBW_SIZE_COUNT];
 };
+/* ABI 1 descriptors built before picker previews remain supported. */
+#define DASHBORNE_WIDGET_V1_SIZE __builtin_offsetof(struct dashborne_widget,preview_images)
 struct dashborne_widgets {
     unsigned int abi_version, struct_size;
     int (*register_widget)(const struct dashborne_host *, const struct dashborne_widget *);

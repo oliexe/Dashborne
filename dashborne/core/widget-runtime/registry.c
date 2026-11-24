@@ -5,6 +5,7 @@ typedef __SIZE_TYPE__ usize;
 typedef __UINTPTR_TYPE__ uintptr;
 extern int snprintf(char *,usize,const char *,...),strcmp(const char *,const char *);
 extern void *memcpy(void *,const void *,usize);
+extern int access(const char *,int);
 struct image_info {const char *name;void *base;const char *symbol;void *address;};
 extern int dladdr(const void *,struct image_info *);
 static const struct dashborne_host *api;
@@ -21,6 +22,7 @@ static void **caller;
 static void (*original_click[3])(void *,int,int),(*original_data[3])(void *,void *,int);
 static int (*original_count[3])(void *);
 static void (*set_position)(void *,const void *),(*set_picture)(void *,int,const char *);
+static void (*set_icon_position)(void *,const void *);
 static int (*get_id)(const void *);
 struct rect {int x,y,w,h;};
 static void (*picker_resume)(void *);
@@ -108,7 +110,7 @@ int registry_device_probe(void *control) {
     for(int i=0;i<PROVIDERS;++i)if(providers[i].host && providers[i].source!=FIRST_SOURCE){provider=&providers[i];break;}
     const struct dashborne_widget *saved_widget=provider?provider->widget:0;
     struct dashborne_widget definition={0};
-    if(saved_widget){definition=*saved_widget;definition.sizes=DBW_ALL_SIZES;provider->widget=&definition;}
+    if(saved_widget){memcpy(&definition,saved_widget,saved_widget->struct_size<sizeof(definition)?saved_widget->struct_size:sizeof(definition));definition.sizes=DBW_ALL_SIZES;provider->widget=&definition;}
     else ok=0;
     for(int t=0;ok && t<3;++t)for(int c=0;ok && c<counts[t];++c) {
         *tab=t;category[t]=c;definition.tab=(unsigned int)t;definition.category=(unsigned int)c;
@@ -144,11 +146,37 @@ static int candidate(struct layout *out,int size) {
        cell.x<0 || cell.y<0 || cell.x+g->columns>6 || cell.y+g->rows>2)return 0;
     *out=(struct layout){.type=g->type,.x=cell.x,.y=cell.y,.id=65535};return 1;
 }
+static const char *preview_picture(const struct dashborne_widget *w,int size) {
+    static const char *fallback[]={
+        "../../../mnt/extsd/Dashborne/assets/widget-runtime/preview-1x1.png",
+        "../../../mnt/extsd/Dashborne/assets/widget-runtime/preview-2x1.png",
+        "../../../mnt/extsd/Dashborne/assets/widget-runtime/preview-1x2.png",
+        "../../../mnt/extsd/Dashborne/assets/widget-runtime/preview-2x2.png",
+        "../../../mnt/extsd/Dashborne/assets/widget-runtime/preview-3x2.png",
+        "../../../mnt/extsd/Dashborne/assets/widget-runtime/preview-4x2.png",
+        "../../../mnt/extsd/Dashborne/assets/widget-runtime/preview-5x2.png",
+        "../../../mnt/extsd/Dashborne/assets/widget-runtime/preview-6x2.png"};
+    if(w->struct_size>=__builtin_offsetof(struct dashborne_widget,preview_images)+(size+1)*sizeof(char *)) {
+        const char *path=w->preview_images[size];
+        if(path && *path && !access(path,4))return path;
+    }
+    return fallback[size];
+}
+static struct rect preview_bounds(int tab,int size) {
+    const struct widget_geometry *g=&widget_sizes[size];
+    int width=tab==2?480:218,height=tab==2?312:132;
+    int w=width,h=w*g->height/g->width;
+    if(h>height){h=height;w=h*g->width/g->height;}
+    return (struct rect){(tab==2?15:16)+(width-w)/2,8+(height-h)/2,w,h};
+}
 static void item_data(void *list,void *item,int row) {
     int t=list_tab(list),size=0;if(t<0 || row<0)return;
     const struct widget_provider *p=row_provider(t,row,&size);
     /* Populate native styling and scroll arrows using a valid stock row. */
     void *label=find_sub(item,t==0?24001:t==1?24007:24002);
+    /* List items are recycled across stock/custom rows and categories. Remove
+       our picture before stock repopulates the item, including on other tabs. */
+    if(label)set_picture(label,0,"");
     if(t==2 && label)set_text(label,"");
     original_data[t](list,item,p?0:row);
     if(!p)return;
@@ -160,7 +188,11 @@ static void item_data(void *list,void *item,int row) {
         void *value=find_sub(item,24005),*unit=find_sub(item,24006);
         if(value)set_text(value,"");if(unit)set_text(unit,"");
     } else if(t==1) {void *icon=find_sub(item,24017);if(icon)set_text(icon,"");}
-    else if(label) {set_picture(label,0,"");}
+    if(label) {
+        struct rect bounds=preview_bounds(t,size);
+        set_icon_position(label,&bounds);
+        set_picture(label,0,preview_picture(p->widget,size));
+    }
 }
 static void item_click(void *list,int row,int child) {
     int t=list_tab(list),size=0;if(t<0 || row<0)return;
@@ -230,6 +262,7 @@ int registry_bind(const struct dashborne_host *h) {
     APP(loader,"_ZN9WdgLoader11getInstanceEv");APP(loader_load,"_ZN9WdgLoader4loadEv");
     UI(set_position,"_ZN6ZKBase11setPositionERK14LayoutPosition");
     UI(get_id,"_ZNK6ZKBase5getIDEv");UI(set_picture,"_ZN8ZKButton18setButtonStatusPicEiPKc");
+    UI(set_icon_position,"_ZN8ZKButton15setIconPositionERK14LayoutPosition");
     UI(json_write,"_ZN10JsonHelper13writeJsonFileEPKcRKN4Json5ValueE");
     UI(find_sub,"_ZNK10ZKListView10ZKListItem15findSubItemByIDEi");UI(set_text,"_ZN10ZKTextView7setTextEPKc");
 #undef APP

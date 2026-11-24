@@ -1,7 +1,11 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#define access test_access
 #include "../registry.c"
+#undef access
+static const char *readable;
+int test_access(const char *p,int m){assert(m==4);return readable && !strcmp(p,readable)?0:-1;}
 struct widget_provider providers[PROVIDERS];
 const struct widget_geometry widget_sizes[8]={{1,1,0,250,224},{2,1,2,510,224},{1,2,4,250,458},{2,2,5,510,458},{3,2,13,770,458},{4,2,14,1030,458},{5,2,15,1290,458},{6,2,16,1550,458}};
 static unsigned char image[0x35a000],editor[80],grid[80],state[64],custom[80],old[80];
@@ -10,7 +14,8 @@ static int expected_stock=1;
 static int categories[3],can_fit=1,added,removed,closed,delegated,fail_add,test_save_result,save_calls,ram_calls;
 static unsigned short custom_source=0x212,stock_source=0x201;
 static struct layout last;
-static char caption[160];
+static char caption[160],picture_path[512];
+static struct rect icon_bounds;
 static void assign_pointer(void *p,void *v){memcpy(p,&v,sizeof(v));}
 static void widget(unsigned char *p,int type,unsigned short id,unsigned short *source) {
     memset(p,0,80);memcpy(p+36,&type,4);memcpy(p+48,&id,2);
@@ -29,7 +34,8 @@ static int stock_total(void *l){(void)l;return expected_stock;}
 static int list_id(const void *l){return 80002+(int)(__INTPTR_TYPE__)l;}
 static void *sub(const void *p,int id){return id==24002 || id==24001 || id==24007?(void *)p:0;}
 static void label(void *p,const char *s){assert(p==(void *)2);snprintf(caption,sizeof(caption),"%s",s);}
-static void picture(void *p,int i,const char *s){assert(p==(void *)2 && i==0 && !*s);}
+static void picture(void *p,int i,const char *s){assert(p==(void *)2 && i==0);snprintf(picture_path,sizeof(picture_path),"%s",s);}
+static void icon_position(void *p,const void *r){assert(p==(void *)2);icon_bounds=*(const struct rect *)r;}
 static void position(void *p,const void *r){(void)p;assert(((const struct rect *)r)->w==1030);}
 static void log_message(const struct dashborne_host *h,const char *m){(void)h;assert(strstr(m,"widgets:"));}
 static int write_json(const char *p,const void *j){assert(j==(void *)3);if(!strcmp(p,WIDGET_LAYOUT_RAM))++ram_calls;return 1;}
@@ -48,11 +54,11 @@ static void reset(void) {
 }
 int main(void) {
     const struct dashborne_host host={.log=log_message};api=&host;base=image;
-    struct dashborne_widget definition={.title="Example",.description="Test",.sizes=255};
+    struct dashborne_widget definition={.struct_size=sizeof(definition),.title="Example",.description="Test",.sizes=255};
     providers[0]=(struct widget_provider){&host,&definition,custom_source};
     category=categories;intent=state;caller=&edit_pointer;
     assign_pointer(editor+48,grid);book=get_book;active_grid=get_grid;widgets=get_widgets;nearest=free_cell;
-    add_widget=add;remove_widget=remove_entry;close_editor=close_edit;find_sub=sub;set_text=label;set_picture=picture;set_position=position;get_id=list_id;
+    add_widget=add;remove_widget=remove_entry;close_editor=close_edit;find_sub=sub;set_text=label;set_picture=picture;set_position=position;set_icon_position=icon_position;get_id=list_id;
     for(int i=0;i<3;++i){original_click[i]=stock_click;original_data[i]=stock_data;original_count[i]=stock_total;}
     uintptr stock[17][18];for(int t=0;t<17;++t)for(int i=0;i<18;++i)stock[t][i]=(uintptr)(t*100+i);
     prepare_catalog(&stock[0][0],(void *)5);
@@ -71,6 +77,19 @@ int main(void) {
         for(int s=0;s<8;++s) {
             reset();int actual=-1;assert(row_provider(t,expected_stock+s,&actual)==&providers[0] && actual==s);
             item_data(list,(void *)2,expected_stock+s);assert(strstr(caption,"Example"));
+            assert(strstr(picture_path,"widget-runtime/preview-"));
+            assert(icon_bounds.w>0 && icon_bounds.h>0 && icon_bounds.x>=0 && icon_bounds.y>=0);
+            assert(icon_bounds.x+icon_bounds.w<=(t==2?510:250) && icon_bounds.y+icon_bounds.h<=(t==2?352:147));
+            int error=icon_bounds.w*widget_sizes[s].height-icon_bounds.h*widget_sizes[s].width;
+            assert(error<widget_sizes[s].height+widget_sizes[s].width && error>-widget_sizes[s].height-widget_sizes[s].width);
+            readable="/preview.png";definition.preview_images[s]=readable;
+            item_data(list,(void *)2,expected_stock+s);assert(!strcmp(picture_path,readable));
+            readable=0;item_data(list,(void *)2,expected_stock+s);assert(strstr(picture_path,"widget-runtime/preview-"));
+            definition.preview_images[s]=0;
+            item_data(list,(void *)2,0);assert(!*picture_path);
+            definition.struct_size=DASHBORNE_WIDGET_V1_SIZE;
+            item_data(list,(void *)2,expected_stock+s);assert(strstr(picture_path,"widget-runtime/preview-"));
+            definition.struct_size=sizeof(definition);
             item_click(list,expected_stock+s,0);assert(added==1 && closed==1 && last.type==widget_sizes[s].type && registry_source(custom)==custom_source);
             reset();can_fit=0;item_click(list,expected_stock+s,0);assert(!added && !removed);
         }
@@ -86,6 +105,11 @@ int main(void) {
     test_save_result=-1;assert(!write_layout(WIDGET_LAYOUT_RAM,(void *)3));
     persistence_busy=1;int before=ram_calls;assert(!write_layout(WIDGET_LAYOUT_RAM,(void *)3) && ram_calls==before);
     registry_publish(custom_source,0);assert(!strcmp((char *)catalog[18][0],"Unavailable widget"));
+    /* An actual short allocation catches accidental reads beyond the old ABI. */
+    union {void *align;unsigned char bytes[DASHBORNE_WIDGET_V1_SIZE];} legacy;
+    definition.struct_size=DASHBORNE_WIDGET_V1_SIZE;
+    memcpy(legacy.bytes,&definition,sizeof(legacy.bytes));
+    assert(strstr(preview_picture((const struct dashborne_widget *)legacy.bytes,DBW_6X2),"preview-6x2.png"));
     loader=get_loader;loader_load=reload;path_edits=13;registered=1;edit_count=20;
     assert(!registry_cleanup() && !registered && !api && restore_count==22);
     puts("Widget picker: 25 categories × 8 sizes, bounds, stock delegation, replacement rollback, re-edit, card-only persistence and cleanup passed");

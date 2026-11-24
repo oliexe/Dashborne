@@ -43,6 +43,21 @@ The dashboard grid has six columns and two rows. Use `view->width` and
 `view->height` when laying out content. The default canvas is inset 12 pixels on
 each side, starts at y=54, and has height `view->height - 108`.
 
+## Picker previews
+
+Set `preview_images[size]` in the widget descriptor to a PNG on the card. For
+example, `preview_images[DBW_1X1]` can point to
+`../../../mnt/extsd/Dashborne/extensions/my-widget/assets/preview-1x1.png`.
+Use the widget's aspect ratio; Dashborne fits the image above its title and size
+without stretching it. The same previews work in Stats, Actions and Special.
+
+The example includes artwork for all eight sizes. Regenerate it with
+`uv run --with resvg-py==0.5.0 python tools/widget_previews.py` and replace it with
+your widget's appearance when copying the example. Files under `assets` are
+packaged automatically. Missing images and older ABI 1 widgets use the core's
+size previews. The picker does not create live widget instances or run their
+data and drawing callbacks.
+
 ## Picker categories
 
 Choose any row below. Category numbers are local to their tab, not global IDs.

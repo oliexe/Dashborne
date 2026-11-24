@@ -26,6 +26,10 @@ class ReleaseTests(unittest.TestCase):
                 self.assertIsNone(zipped.testzip())
                 zipped.extractall(package)
             bundles=package/'card/Dashborne/extensions'
+            for size in ('1x1','2x1','1x2','2x2','3x2','4x2','5x2','6x2'):
+                for folder in (package/'card/Dashborne/assets/widget-runtime',
+                               bundles/'widget-example/assets'):
+                    self.assertTrue((folder/f'preview-{size}.png').read_bytes().startswith(b'\x89PNG\r\n\x1a\n'))
             self.assertEqual({p.name for p in bundles.iterdir()}, {'widget-example','screen-mirroring'})
             self.assertEqual(list((package/'card/Dashborne/patches').glob('*.dbp')), [])
             config = release.install.configuration.parse((package / 'card/dashborne.conf').read_bytes())
