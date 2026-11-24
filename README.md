@@ -85,10 +85,14 @@ Power off and remove the card to boot the original dashboard without Dashborne.
 
 ## Boot menu
 
-- Patches: enable individual tweaks and extensions.
-- ADB: opt-in Wi-Fi debugging with connection status and address.
+With a Dashborne microSD card inserted, the S3XY DASH shows the Dashborne boot
+screen at startup. **Tap the screen within three seconds** to enter the boot menu;
+otherwise, Dashborne continues to the official dashboard with your selected extensions.
+
+- Patches: enable or disable tweaks and extensions on your microSD card.
+- ADB: enable root access over Wi-Fi, with connection status and address.
 - Loader: browse and launch compatible apps from microSD, with optional autolaunch.
-- Device: software versions, serials and system information.
+- Device: view hardware details, software versions, serials and system information.
 
 Dashborne saves preferences in the card-root `dashborne.conf`.
 See [configuration and operation](dashborne/README.md).
