@@ -124,6 +124,16 @@ The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
 [manual]: https://fccid.io/2BUSZ-S3XYDASH/User-Manual/User-manual-9104334.pdf
 [chipsets]: https://fccid.io/2BUSZ-S3XYDASH/Attestation-Statements/Kaspersky-Statement-9104348.pdf
 
+## ADB Debugging
+
+Dashborne includes a Wi-Fi ADB enabler that gives you root access to the DASH's
+Linux system. You can read firmware and system files, make changes on the fly,
+debug applications, and reverse-engineer the device's software.
+
+To enable it, open Dashborne's boot menu, select **ADB**, and turn on
+**Enable ADB**. Connect from your computer using the IP address and port shown
+on the screen.
+
 ## Development
 
 ```text
