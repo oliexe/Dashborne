@@ -118,6 +118,16 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 
 See the [extension development guide](dashborne/extensions/README.md) to build your own.
 
+## ADB Debugging
+
+Dashborne includes a Wi-Fi ADB enabler that gives you root access to the DASH's
+Linux system. You can read firmware and system files, make changes on the fly,
+debug applications, and reverse-engineer the device's software.
+
+To enable it, open Dashborne's boot menu, select **ADB**, and turn on
+**Enable ADB**. Connect from your computer using the IP address and port shown
+on the screen.
+
 ## Development
 
 ```text
@@ -193,16 +203,6 @@ photos, with "S3XY Dash" added to the cover and an extra FCC compliance page.
 
 The DASH runs Linux 5.4.61 with ARMv7 hard-float userspace and the
 ZKSWE/FlyThings UI framework. See the [on-device research](docs/research.md).
-
-### ADB Debugging
-
-Dashborne includes a Wi-Fi ADB enabler that gives you root access to the DASH's
-Linux system. You can read firmware and system files, make changes on the fly,
-debug applications, and reverse-engineer the device's software.
-
-To enable it, open Dashborne's boot menu, select **ADB**, and turn on
-**Enable ADB**. Connect from your computer using the IP address and port shown
-on the screen.
 
 [photos]: https://fccid.io/2BUSZ-S3XYDASH/Internal-Photos/Internal-photos-9104326.pdf
 [manual]: https://fccid.io/2BUSZ-S3XYDASH/User-Manual/User-manual-9104334.pdf
