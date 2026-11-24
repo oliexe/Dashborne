@@ -82,20 +82,17 @@ int tm_layers(const struct tm_scene *s,struct tm_layer out[TM_LAYERS]) {
         add(out,&n,"door_left_front",s->panels[TM_FL],279,146,187,162);
         add(out,&n,"front_hood",s->panels[TM_FRUNK],54,139,220,136);
     }
-    if(s->data.connected && s->angle==48) {
-        if(s->data.left)add(out,&n,"back_left_light",-1,176,377,35,13);
-        if(s->data.right)add(out,&n,"back_right_light",-1,311,377,35,13);
-    }
     return n;
 }
 int tm_lamps(const struct tm_scene *s,struct tm_lamp out[4]) {
-    if(!s->data.connected || (s->angle!=0 && s->angle!=24))return 0;
-    int n=0,on=s->data.lights_known && (s->data.low_beam || s->data.high_beam);
+    if(!s->data.connected || (s->angle!=0 && s->angle!=24 && s->angle!=48))return 0;
+    int n=0,on=s->angle!=48 && s->data.lights_known && (s->data.low_beam || s->data.high_beam);
     unsigned int white=s->data.high_beam?0xf4f8ffu:0xcddcecu;
-    /* Small lamp highlights follow the two stationary camera endpoints. */
+    /* Small lamp highlights follow the stationary camera views. */
     const int park[2][4]={{176,273,230,258},{38,253,62,264}};
     const int overhead[2][4]={{211,117,217,99},{315,117,308,99}};
-    const int (*points)[4]=s->angle?overhead:park;
+    const int rear[2][4]={{188,332,205,335},{331,332,318,337}};
+    const int (*points)[4]=s->angle==48?rear:s->angle?overhead:park;
     for(int side=0;side<2;++side) {
         int blink=side?s->data.right:s->data.left;
         if(on || blink)out[n++]=(struct tm_lamp){points[side][0],points[side][1],points[side][2],points[side][3],blink?0xffa52du:white};

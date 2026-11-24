@@ -49,4 +49,6 @@ pause, and requests updates at most 40 times per second while visible.
 Run `sh extensions/tesla-model/test.sh` for the state-machine, parser, telemetry
 and lifecycle tests. They cover all panel combinations, gear changes during
 animation, missing images, model cycling, page reuse and bounded cache cleanup.
-Touch gestures and live vehicle-state changes still require a device test.
+A timed test on the DASH captured panel animations, Drive/Reverse views, lights
+and color changes, then restored configuration without changing the saved layout.
+Touch gestures and live vehicle-state changes still need a hands-on check.

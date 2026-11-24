@@ -118,7 +118,7 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 
 - [Widget Example](extensions/widget-example): boilerplate for adding widgets to any stock picker category.
 - [Tesla Model Widget](extensions/tesla-model): a 2×2 animated car-state widget with tap-to-change
-  model variants. Requires a separately installed model pack; hardware testing is pending.
+  model variants. Requires a separately installed model pack.
 - [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
   viewer with aspect controls; Back restores CarPlay/Android Auto.
 

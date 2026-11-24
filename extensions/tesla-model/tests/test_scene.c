@@ -33,9 +33,8 @@ int main(void) {
         for(int i=0;i<count;++i)assert(layers[i].w>0&&layers[i].h>0&&layers[i].frame>=-1&&layers[i].frame<25);
     }
     r.gear=TM_DRIVE;r.open=0;r.left=r.right=1;r.lights_known=r.high_beam=1;
-    s=(struct tm_scene){0};tm_step(&s,&r,now);int count=tm_layers(&s,layers);assert(count==5);
-    assert(!strcmp(layers[count-2].name,"back_left_light"));
-    struct tm_lamp lamps[4];assert(tm_lamps(&s,lamps)==0);
+    s=(struct tm_scene){0};tm_step(&s,&r,now);int count=tm_layers(&s,layers);assert(count==3);
+    struct tm_lamp lamps[4];assert(tm_lamps(&s,lamps)==2&&lamps[0].y0==332);
     s.angle=0;assert(tm_lamps(&s,lamps)==2&&lamps[0].color==0xffa52d);
     s.data.left=s.data.right=0;assert(tm_lamps(&s,lamps)==2&&lamps[0].color==0xf4f8ff);
     s.data.lights_known=0;assert(!tm_lamps(&s,lamps));
