@@ -1,0 +1,7 @@
+{
+  "id": "tesla-model",
+  "title": "Tesla Model Widget",
+  "description": "A 2×2 animated vehicle widget. Tap to cycle through installed models and colors.",
+  "abi": 1,
+  "sources": ["extension.c", "scene.c", "data.c", "pack.c"]
+}
