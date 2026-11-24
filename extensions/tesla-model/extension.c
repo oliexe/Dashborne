@@ -6,7 +6,9 @@ typedef __SIZE_TYPE__ usize;
 extern int snprintf(char *,usize,const char *,...);
 extern int strcmp(const char *,const char *);
 extern void *memset(void *,int,usize);
-#define CACHE_SIZE 12
+#define MODEL_CACHE_SIZE 12
+#define ROAD_CACHE_SIZE 20
+#define CACHE_SIZE (MODEL_CACHE_SIZE+ROAD_CACHE_SIZE)
 struct rect {int x,y,w,h;};
 struct bitmap {
     union {double align;unsigned char bytes[32];} object;
@@ -41,8 +43,12 @@ static struct bitmap *get_image(int variant,const struct tm_layer *layer) {
     char name[64];
     if(layer->frame<0)snprintf(name,sizeof(name),"%s.png",layer->name);
     else snprintf(name,sizeof(name),"%s%d.png",layer->name,layer->frame);
-    int slot=0;
-    for(int i=0;i<CACHE_SIZE;++i) {
+    /* Keep the complete road loop separate: evicting a 20-frame sequence
+       through a 12-slot LRU forced a PNG decode on every lap. */
+    int road=!strcmp(layer->name,"road") && layer->frame>=0 && layer->frame<ROAD_CACHE_SIZE;
+    int first=road?MODEL_CACHE_SIZE+layer->frame:0;
+    int end=road?first+1:MODEL_CACHE_SIZE,slot=first;
+    for(int i=first;i<end;++i) {
         struct bitmap *b=&cache[i];
         if(b->constructed && b->variant==variant && !strcmp(b->name,name)){b->age=++age;return b->loaded?b:0;}
         if(!b->constructed || b->age<cache[slot].age)slot=i;
@@ -78,10 +84,10 @@ static int create(struct dashborne_widget_view *v) {
 static void update(struct dashborne_widget_view *v,unsigned long long now) {
     struct state *s=v->user;if(!s || !v->visible)return;
     if(s->next && now<s->next && s->next-now<100000)return;
-    /* Keep a deadline rather than adding 25 ms to each late callback. The
-       stock 16 ms timer would otherwise turn a 40 Hz animation into 31 Hz. */
-    if(!s->next || now<s->next || now-s->next>100000)s->next=now+25000;
-    else s->next+=((now-s->next)/25000+1)*25000;
+    /* Follow the stock timer's 16 ms cadence. Advance from elapsed time so
+       late callbacks do not create catch-up draws or a 16/32 ms beat. */
+    if(!s->next || now<s->next || now-s->next>100000)s->next=now+16000;
+    else s->next+=((now-s->next)/16000+1)*16000;
     struct tm_reading r;tm_data_read(&r);
     if(tm_step(&s->scene,&r,now))widgets->invalidate(v);
 }
@@ -95,10 +101,12 @@ static void clear_placeholder(struct dashborne_widget_view *v,void *surface) {
     int cw=v->width-24,ch=v->height-24,side=88;
     if(side>cw)side=cw;if(side>ch)side=ch;
     int x=(cw-side)/2,y=(ch-side)/2;
-    for(int row=0;row<side;++row) {
+    for(int row=0;row<side;) {
         unsigned int gray=light?240u:(unsigned int)(31-(19*(y+row+12)+v->height/2)/v->height);
+        int end=row+1;
+        while(end<side && (light || (unsigned int)(31-(19*(y+end+12)+v->height/2)/v->height)==gray))++end;
         brush(surface,0xff000000u|gray*0x010101u);
-        fill_box(surface,x,y+row,side,1);
+        fill_box(surface,x,y+row,side,end-row);row=end;
     }
 }
 static void draw(struct dashborne_widget_view *v,void *surface) {

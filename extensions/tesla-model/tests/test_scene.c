@@ -9,7 +9,7 @@ static void advance(struct tm_scene *s,struct tm_reading *r,int ticks) {
 int main(void) {
     struct tm_scene s={0};struct tm_reading r={.connected=1,.gear=TM_PARK,.known=63};
     assert(tm_step(&s,&r,now));assert(s.angle==0);
-    assert(!tm_step(&s,&r,now+1));
+    assert(!tm_step(&s,&r,++now));
     r.gear=TM_DRIVE;r.speed=30;advance(&s,&r,24);assert(s.angle==24);
     advance(&s,&r,24);assert(s.angle==48);
     int old=s.road;advance(&s,&r,1);advance(&s,&r,1);assert(s.road!=old);
@@ -101,5 +101,32 @@ int main(void) {
         r.gear=TM_DRIVE;advance(&s,&r,100);assert(s.shift);
         r.connected=0;tm_step(&s,&r,now);assert(!s.shift);
     }
+    /* Advance smooth zoom on every 16 ms callback, with no 25 ms staircase. */
+    s=(struct tm_scene){0};r=(struct tm_reading){.connected=1,.known=63,.gear=TM_DRIVE};
+    tm_step(&s,&r,1000000);r.speed=10;
+    int previous=s.approach.value;
+    for(unsigned long long t=1016000;t<=1400000;t+=16000) {
+        tm_step(&s,&r,t);assert(s.approach.value<previous);previous=s.approach.value;
+    }
+    assert(!s.approach.value);
+    /* Elapsed time, not callback count, determines the geometric pose. */
+    regular=jitter=(struct tm_scene){0};r.speed=0;
+    tm_step(&regular,&r,2000000);tm_step(&jitter,&r,2000000);r.speed=10;
+    for(unsigned long long t=2016000;t<=2192000;t+=16000)tm_step(&regular,&r,t);
+    for(unsigned long long t=2048000;t<=2192000;t+=48000)tm_step(&jitter,&r,t);
+    assert(regular.approach.value==jitter.approach.value);
+    /* The arrow eases into each turn instead of reversing at full speed. */
+    s=(struct tm_scene){0};r.speed=0;tm_step(&s,&r,3000000);
+    tm_layers(&s,layers);int y0=layers[2].y;
+    tm_step(&s,&r,3050000);tm_layers(&s,layers);assert(y0-layers[2].y<=2);
+    tm_step(&s,&r,3300000);tm_step(&s,&r,3350000);tm_layers(&s,layers);int ym=layers[2].y;
+    tm_step(&s,&r,3400000);tm_layers(&s,layers);assert(ym-layers[2].y>=9);
+    /* Crossing the overhead/close-up seam keeps the same image and center. */
+    s=(struct tm_scene){.angle=24,.camera={.value=24*1024}};
+    count=tm_layers(&s,layers);assert(count==1&&!strcmp(layers[0].name,"n_road")&&layers[0].frame==0);
+    struct tm_layer overhead=layers[0];s.approach.value=1;
+    assert(tm_layers(&s,layers)==1&&layers[0].x==overhead.x&&layers[0].y==overhead.y&&layers[0].w==overhead.w&&layers[0].h==overhead.h);
+    s.approach.value=0;s.camera.value=24*1024+512;
+    tm_layers(&s,layers);assert(layers[0].frame==0&&layers[0].w>overhead.w&&layers[0].y<overhead.y);
     puts("Tesla Model: transitions, reversals, all panel masks, disconnect and pause passed");
 }

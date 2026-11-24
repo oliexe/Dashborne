@@ -1,7 +1,9 @@
 #include "scene.h"
 #define FRAME 1024
 static int shift_offset(unsigned int phase) {
-    return (int)((phase<=700000?phase:1400000-phase)*95/700000);
+    unsigned int leg=phase<=700000?phase:1400000-phase;
+    long long t=(long long)leg*FRAME/700000;
+    return (int)((95*t*t*(3*FRAME-2*t)+FRAME*FRAME*FRAME/2)/(FRAME*FRAME*FRAME));
 }
 static int shift_direction(const struct tm_scene *s,const struct tm_reading *r) {
     if(!r->connected || r->speed || r->open)return 0;
@@ -60,22 +62,21 @@ int tm_step(struct tm_scene *s,const struct tm_reading *input,unsigned long long
     }
     unsigned long long dt=now>=s->tick?now-s->tick:0;
     if(now<s->tick || dt>250000){s->tick=now;s->road_clock=now;dt=0;}
-    int steps=(int)(dt/25000);
-    if(steps) {
-        s->tick+=(unsigned long long)steps*25000;
-        int old=s->angle;
+    if(dt) {
+        s->tick=now;
+        int old=s->angle,old_camera=s->camera.value;
         /* Finish closing panels before rotating away from the parked body. */
         int still_open=0;for(int p=0;p<TM_PANEL_COUNT;++p)still_open|=s->panels[p];
-        s->angle=animate(&s->camera,s->approach.value?24:still_open?0:target,(unsigned int)steps*25000,25000);
-        changed|=old!=s->angle;
+        s->angle=animate(&s->camera,s->approach.value?24:still_open?0:target,(unsigned int)dt,25000);
+        changed|=old!=s->angle || ((s->camera.value>24*FRAME || old_camera>24*FRAME) && old_camera!=s->camera.value);
         int closeup=r.connected&&!r.speed&&!r.open&&!still_open&&s->camera.value==24*FRAME?
             (r.gear==TM_DRIVE?16:r.gear==TM_REVERSE?-16:0):0;
-        old=s->approach.value;animate(&s->approach,closeup,(unsigned int)steps*25000,25000);
+        old=s->approach.value;animate(&s->approach,closeup,(unsigned int)dt,25000);
         changed|=old!=s->approach.value;
         for(int p=0;p<TM_PANEL_COUNT;++p) {
             old=s->panels[p];
             int goal=(r.open>>p&1)?15:0;
-            if(!s->angle)s->panels[p]=animate(&s->panel_motion[p],goal,(unsigned int)steps*25000,30000);
+            if(!s->angle)s->panels[p]=animate(&s->panel_motion[p],goal,(unsigned int)dt,30000);
             changed|=old!=s->panels[p];
         }
     }
@@ -94,9 +95,9 @@ int tm_step(struct tm_scene *s,const struct tm_reading *input,unsigned long long
     } else s->road_clock=now;
     int shift=shift_direction(s,&r);
     if(shift!=s->shift){s->shift=shift;s->shift_phase=0;changed=1;}
-    else if(shift && steps) {
+    else if(shift && dt) {
         int before=shift_offset(s->shift_phase);
-        s->shift_phase=(s->shift_phase+(unsigned int)steps*25000)%1400000;
+        s->shift_phase=(s->shift_phase+(unsigned int)dt)%1400000;
         changed|=before!=shift_offset(s->shift_phase);
     }
     if(s->data.gear!=r.gear || s->data.speed!=r.speed || s->data.open!=r.open)changed=1;
@@ -114,7 +115,8 @@ int tm_layers(const struct tm_scene *s,struct tm_layer out[TM_LAYERS]) {
         int amount=s->approach.value,forward=amount>0;if(amount<0)amount=-amount;
         int w=145+65*amount/(16*FRAME),h=350+160*amount/(16*FRAME);
         int y=75+((forward?286:-280)-75)*amount/(16*FRAME);
-        add(out,&n,"n_road",0,255-w/2,y,w,h);
+        int center=264-9*amount/(16*FRAME);
+        add(out,&n,"n_road",0,center-w/2,y,w,h);
         if(s->shift) {
             int offset=shift_offset(s->shift_phase);
             add(out,&n,forward?"forward_gears_rectangle":"back_gears_rectangle",-1,145,forward?57:95,220,313);
@@ -128,15 +130,17 @@ int tm_layers(const struct tm_scene *s,struct tm_layer out[TM_LAYERS]) {
     if(s->data.connected && s->angle==48 && !s->shift && s->data.lights_known && (s->data.low_beam || s->data.high_beam))
         add(out,&n,s->data.high_beam?"distance_light":"dipped_light",-1,140,16,237,180);
     if(s->angle>0) {
-        if(s->angle<=24)add(out,&n,"P_N",s->angle,14,68,482,322);
+        if(s->angle<24)add(out,&n,"P_N",s->angle,14,68,482,322);
+        else if(s->angle==24 && s->camera.value<=24*FRAME)add(out,&n,"n_road",0,192,75,145,350);
         else {
             /* The second sequence continues the same overhead camera. Its
                source has a different canvas, matched here at the seam. */
-            int f=s->angle-24,w=145+f*3,h=350+f*7;
+            int f=s->angle-24,progress=s->camera.value-24*FRAME;
+            int w=145+progress*3/FRAME,h=350+progress*7/FRAME;
             /* Reframe the rear view toward the tile's center, leaving room
                for the road ahead instead of crowding the bottom edge. */
-            int lift=(f*60+12)/24;
-            add(out,&n,"n_road",f,264-w/2,75-f*4-lift,w,h);
+            int lift=(progress*60+12*FRAME)/(24*FRAME);
+            add(out,&n,"n_road",f,264-w/2,75-progress*4/FRAME-lift,w,h);
         }
     } else if(!parts)add(out,&n,"P_N",0,14,68,482,322);
     else {
@@ -157,7 +161,7 @@ int tm_lamps(const struct tm_scene *s,struct tm_lamp out[4]) {
     if(s->approach.value) {
         int amount=s->approach.value,forward=amount>0;if(amount<0)amount=-amount;
         int w=145+65*amount/(16*FRAME),h=350+160*amount/(16*FRAME);
-        int x=255-w/2,y=75+((forward?286:-280)-75)*amount/(16*FRAME),n=0;
+        int x=264-9*amount/(16*FRAME)-w/2,y=75+((forward?286:-280)-75)*amount/(16*FRAME),n=0;
         const int points[4][4]={{21,28,27,16},{128,28,122,16},{27,292,36,299},{122,292,113,299}};
         for(int i=0;i<4;++i) {
             int blink=i%2?s->data.right:s->data.left;

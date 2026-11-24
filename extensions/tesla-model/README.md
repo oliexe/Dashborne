@@ -40,8 +40,10 @@ Commander disconnects. Opening a panel brings the camera
 back to the parked view, where each door, frunk and trunk animates independently.
 Camera and panel motion ease into and out of each transition. Changing gear
 mid-turn reverses from the current pose; the camera waits for panels to close
-before leaving the parked view. Road motion pauses during camera transitions
-to avoid decoding two animation sequences at once.
+before leaving the parked view. Arrow motion eases at both ends of its loop;
+zoom and translation use elapsed time between display callbacks. Road motion
+pauses during camera transitions to avoid decoding two animation sequences at
+once.
 
 The adapter reads the stock application's Commander state without changing its
 subscriptions. It uses the previously verified connection, gear, door and turn
@@ -58,10 +60,13 @@ cannot reveal a rectangle over the car.
 
 `scene.c` handles animation and layer placement without UI dependencies.
 `data.c` reads vehicle state; `extension.c` connects the scene to native widget
-controls. The renderer shares a 12-image cache across placements, releases it on
-pause, and schedules state updates at 40 Hz while visible. It keeps its update
-deadline across late native timer callbacks rather than accumulating delay;
-actual rendering speed depends on the number of layers and image loads.
+controls. The renderer shares 12 model-image slots and 20 dedicated road-frame
+slots across placements, releasing both on pause. Keeping the complete road loop
+in memory avoids repeated PNG loads after the first lap. Visible widgets update
+on the native 16 ms cadence; delayed callbacks advance elapsed time without
+replaying missed frames. Zoom geometry remains continuous between sprite frames,
+and the overhead view shares the close-up's image and position to avoid a jump.
+Actual frame rate still depends on the sprite sequence and image-loading cost.
 
 Run `sh extensions/tesla-model/test.sh` for the state-machine, parser, telemetry
 and lifecycle tests. They cover all panel combinations, gear changes during

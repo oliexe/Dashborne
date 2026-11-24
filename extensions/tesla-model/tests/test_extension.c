@@ -25,7 +25,7 @@ static int fills,lamp_boxes,backing_rows;
 static unsigned int theme_words[140],last_brush;
 static const void *theme_config(void){return theme_words;}
 static void brush_color(void *p,unsigned int color){(void)p;last_brush=color;assert((color>>24)==255 && (color&0xffffff));}
-static void clipped_box(void *p,int x,int y,int w,int h){(void)p;assert(x>=0&&y>=0&&x+w<=486&&y+h<=434);if(w==3&&h==3)++lamp_boxes;else{assert(w==88&&h==1&&x==199&&y>=173&&y<261);++backing_rows;}}
+static void clipped_box(void *p,int x,int y,int w,int h){(void)p;assert(x>=0&&y>=0&&x+w<=486&&y+h<=434);if(w==3&&h==3)++lamp_boxes;else{assert(w==88&&h>0&&x==199&&y>=173&&y+h<=261);backing_rows+=h;}}
 static void fill(void *b,void *p,int x,int y,int w,int h){(void)b;(void)p;(void)x;(void)y;assert(w>0&&h>0);++fills;}
 int main(void) {
     struct dashborne_host api={.extension_directory="/tmp/test",.log=log_message};host=&api;
@@ -44,11 +44,10 @@ int main(void) {
     for(int n=0;n<50;++n)click(&a);assert(states[0].variant==1);
     update(&a,1000000);int reads=read_count;update(&a,1000001);assert(read_count==reads);
     int previous_opacity_calls=opacity_calls;update(&a,1025000);assert(opacity_calls==previous_opacity_calls);reads=read_count;
-    /* A 16 ms native timer must retain the 25 ms deadline instead of drifting
-       to one update every 32 ms. A late callback does not replay missed ticks. */
+    /* Each 16 ms native timer callback advances the animation. A late callback does not replay missed ticks. */
     states[0].next=0;update(&a,4000000);int cadence_reads=read_count;
     for(unsigned long long t=4016000;t<=6000000;t+=16000)update(&a,t);
-    assert(read_count-cadence_reads==80);
+    assert(read_count-cadence_reads==125);
     cadence_reads=read_count;update(&a,9000000);assert(read_count==cadence_reads+1);
     states[0].next=0;reads=read_count;
     a.visible=0;update(&a,2000000);assert(read_count==reads);a.visible=1;
@@ -56,7 +55,13 @@ int main(void) {
         struct tm_layer l={.name="P_N",.frame=frame};
         assert(get_image(variant,&l));int before=loads;assert(get_image(variant,&l));assert(loads==before);
     }
-    assert(peak==CACHE_SIZE&&live==CACHE_SIZE);
+    assert(peak==MODEL_CACHE_SIZE&&live==MODEL_CACHE_SIZE);
+    for(int frame=0;frame<20;++frame){struct tm_layer road={.name="road",.frame=frame};assert(get_image(0,&road));}
+    int road_loads=loads;
+    for(int lap=0;lap<3;++lap)for(int frame=0;frame<20;++frame) {
+        struct tm_layer road={.name="road",.frame=frame};assert(get_image(0,&road));
+    }
+    assert(loads==road_loads&&peak==CACHE_SIZE&&live==CACHE_SIZE);
     draw(&a,(void *)1);assert(fills>0&&!lamp_boxes&&backing_rows==88);
     active_theme=theme_config;theme_words[0x20c/4]=0x101010;
     draw(&a,(void *)1);assert(last_brush==0xfff0f0f0&&backing_rows==176);
