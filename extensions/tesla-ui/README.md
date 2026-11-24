@@ -5,7 +5,7 @@ dark layout. Enable **Tesla UI** in Dashborne's Patches page, continue booting,
 then open **Star → Tesla UI → Open**. The lower-right arrow returns to Extra.
 
 Speed sits to the right of the vehicle graphic. Range, temperature, gear and
-time occupy the bottom row. Park and charging use a larger vehicle illustration;
+time occupy the bottom row. Park and charging use a larger Model 3 Highland render;
 Drive, Reverse and Neutral use the rear view. The layout has no customization
 controls.
 
@@ -17,8 +17,8 @@ clip at their bounds; the numeric power reading retains its value.
 
 Navigation shows remaining distance, travel time and estimated arrival charge
 when the stock data source supplies them. Maps and traffic/lane visualization
-are replaced by the energy panel and original vehicle illustrations. The car
-illustrations do not indicate doors, lights or nearby objects.
+are replaced by the energy panel and pre-rendered Model 3 Highland views. These
+images do not indicate doors, lights or nearby objects.
 
 ## Data and lifecycle
 
@@ -49,6 +49,17 @@ sh extensions/tesla-ui/test.sh
 uv run --with pillow extensions/tesla-ui/preview.py
 ```
 
+The car images are rendered from a 3D mesh in Blender; they are not regenerated
+by `generate.py`. Download the [credited GLB](assets/Model3-CREDITS.md), then run
+from the repository root (Blender 5.2.3):
+
+```sh
+blender -b --python extensions/tesla-ui/render_vehicle.py -- /path/to/2024_tesla_model_3.glb
+```
+
+The renderer verifies the source hash and produces both transparent PNGs at the
+widget dimensions. The regular DASH build uses these images without a 3D runtime.
+
 Previews in `dashborne/build/tesla-ui-previews/` use test fixtures passed through
 the native window renderer. They cover Drive, Park, Charging, regeneration and
 disconnection. Preview body text uses Inter; on the DASH, supporting labels use
@@ -63,3 +74,4 @@ ARM package is built; installation and visual checks on the DASH are pending.
 - [Model S instrument panel, Tesla Owner's Manual](https://www.tesla.com/ownersmanual/models/en_us/GUID-29A7E205-A689-41D1-B69C-3AE821CB70E7.html): layout, Park/Drive behavior and power-meter direction.
 - [Model S cluster photograph](https://imagecdn.zigwheels.ae/large/gallery/interior/95/1805/tesla-model-s-tachometer-469850.jpg): dark-theme spacing and speed placement.
 - [Inter](https://github.com/google/fonts/tree/main/ofl/inter): numeral typeface, distributed under the [SIL Open Font License](assets/Inter-LICENSE.txt).
+- [Model 3 Highland mesh and render credits](assets/Model3-CREDITS.md): RBLXSupercars, CC BY 4.0.

@@ -56,7 +56,7 @@ def assets():
         image=Image.new('RGBA',(76,148));draw=ImageDraw.Draw(image)
         draw.text((38,74),n,font=font,fill='#eeeeef',anchor='mm',stroke_width=0)
         image.save(out/f'digit-{n}.png')
-    for name in ('park','drive','battery','limit','left','right','back','back-pressed'):
+    for name in ('battery','limit','left','right','back','back-pressed'):
         (out/f'{name}.png').write_bytes(resvg_py.svg_to_bytes(svg_string=(ROOT/'design'/f'{name}.svg').read_text()))
 if __name__=='__main__':
     if '--assets' in sys.argv:assets()
