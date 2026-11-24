@@ -97,7 +97,7 @@ otherwise, Dashborne continues to the official dashboard with your selected exte
 ![Dashborne boot menu on the S3XY DASH, showing the Patches page](docs/images/boot-menu.png)
 
 - Patches: enable or disable tweaks and extensions on your microSD card.
-- ADB: enable root access over Wi-Fi, with connection status and address.
+- ADB: enable root access over Wi-Fi, useful for development and modding the device.
 - Loader: browse and launch compatible apps from microSD, with optional autolaunch.
 - Device: view hardware details, software versions, serials and system information.
 
