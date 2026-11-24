@@ -45,7 +45,7 @@ Interface reference: [Allwinner display ioctl definitions](https://github.com/Ha
 sh extensions/contrast/test.sh
 DASHBORNE_CC=/opt/homebrew/opt/llvm/bin/clang \
 DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld \
-sh app/dashborne/build.sh
+sh dashborne/build.sh
 ```
 
 Tests cover the packaged panel, control bounds, delegated settings callbacks,

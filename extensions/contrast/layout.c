@@ -1,2 +1,2 @@
 /* Reuse Dashborne's guarded FTU patch implementation. */
-#include "../../app/injector/patch.c"
+#include "../../dashborne/patches/patch.c"

@@ -1,0 +1,61 @@
+"""Cross-build source extensions and package their own assets for the SD loader."""
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+
+ROOT = Path(__file__).resolve().parent
+REPO = ROOT.parents[1]
+
+
+def manifest(path):
+    data = json.loads(Path(path).read_text())
+    if not re.fullmatch(r'[a-z0-9_-]{1,31}', data['id']) or data.get('abi') != 1:
+        raise ValueError('Unsupported extension ID or ABI')
+    for key, limit in [('title', 63), ('description', 127)]:
+        text = data[key]
+        if not text or len(text.encode()) > limit or any(c in text for c in '\t\r\n\0'):
+            raise ValueError('Invalid extension label')
+    return data
+
+
+def build(source=REPO / 'extensions', destination=ROOT.parent / 'build/card/Dashborne/extensions'):
+    clang = os.environ.get('DASHBORNE_CC', 'clang')
+    linker = os.environ.get('DASHBORNE_LD', 'ld.lld')
+    destination = Path(destination)
+    if destination.exists(): shutil.rmtree(destination)
+    seen = set()
+    for file in sorted(Path(source).glob('*/manifest.json')):
+        spec = manifest(file); folder = file.parent.resolve()
+        if spec['id'] in seen: raise ValueError('Duplicate extension ID')
+        seen.add(spec['id'])
+        output = Path(destination) / spec['id']; output.mkdir(parents=True, exist_ok=True)
+        objects = ROOT / 'build' / spec['id']; objects.mkdir(parents=True, exist_ok=True)
+        compiled = []
+        sources = spec.get('sources', ['extension.c'])
+        if not sources: raise ValueError('An extension needs source files')
+        for i, name in enumerate(sources):
+            source_file = (folder / name).resolve()
+            if not source_file.is_relative_to(folder) or source_file.suffix != '.c':
+                raise ValueError('The bundled builder accepts extension-local C sources')
+            obj = objects / f'{i}.o'
+            subprocess.run([clang, '--target=armv7-linux-gnueabihf', '-march=armv7-a',
+                            '-mfpu=vfpv3-d16', '-mfloat-abi=hard', '-marm', '-fPIC',
+                            '-ffreestanding', '-fno-stack-protector', '-fno-builtin',
+                            '-fvisibility=hidden', '-Os', '-Wall', '-Wextra', '-Werror',
+                            '-I', str(ROOT), '-c', str(source_file), '-o', str(obj)], check=True)
+            compiled.append(str(obj))
+        subprocess.run([linker, '-shared', '-z', 'noexecstack', '-soname', 'libextension.so',
+                        *compiled, '-o', str(output / 'libextension.so')], check=True)
+        for asset in sorted((folder / 'assets').rglob('*')):
+            if asset.is_file():
+                if not asset.resolve().is_relative_to(folder): raise ValueError('Asset escapes extension')
+                target = output / asset.relative_to(folder); target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(asset, target)
+        (output / 'manifest.json').write_text(json.dumps(spec, indent=2) + '\n')
+
+
+if __name__ == '__main__':
+    build()

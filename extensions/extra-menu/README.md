@@ -52,10 +52,10 @@ in reverse order. These changes last for the Dashborne session.
 uv run --with resvg-py==0.5.0 python extensions/extra-menu/icons.py
 python3 extensions/extra-menu/generate.py
 sh extensions/extra-menu/test.sh
-sh app/extensions/test.sh
-sh app/dashborne/test.sh
+sh dashborne/extensions/test.sh
+sh dashborne/test.sh
 DASHBORNE_CC=/opt/homebrew/opt/llvm/bin/clang \
-DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld sh app/dashborne/build.sh
+DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld sh dashborne/build.sh
 ```
 
 Host tests cover empty and 64-entry menus, selection and return, duplicate opens,

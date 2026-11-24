@@ -80,10 +80,10 @@ uv run --with resvg-py==0.5.0 python extensions/screen-mirroring/icons.py
 python3 extensions/screen-mirroring/generate.py
 sh extensions/screen-mirroring/test.sh
 sh extensions/contrast/test.sh
-sh app/extensions/test.sh
-sh app/dashborne/test.sh
+sh dashborne/extensions/test.sh
+sh dashborne/test.sh
 DASHBORNE_CC=/opt/homebrew/opt/llvm/bin/clang \
-DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld sh app/dashborne/build.sh
+DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld sh dashborne/build.sh
 ```
 
 Host tests cover guarded instruction changes and rollback, stale video,

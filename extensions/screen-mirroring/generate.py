@@ -2,8 +2,8 @@
 import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
-sys.path.insert(0,str(ROOT.parents[1]/'app/dashboard'))
-from layout import encode,decode
+sys.path.insert(0,str(ROOT.parents[1]/'dashborne'))
+from ui_codec import encode,decode
 
 def pos(x,y,w,h):return dict(left=x,top=y,width=w,height=h)
 def label(id,text,x,y,w,h,size=24):

@@ -8,7 +8,7 @@ clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined tests/test_mem
 clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined tests/test_session.c session.c -o "$output/session"
 "$output/session"
 for test in window; do
-  clang -std=c11 -Wall -Wextra -Werror -fno-builtin -fsanitize=address,undefined -I../../app/extensions "tests/test_$test.c" -o "$output/$test"
+  clang -std=c11 -Wall -Wextra -Werror -fno-builtin -fsanitize=address,undefined -I../../dashborne/extensions "tests/test_$test.c" -o "$output/$test"
   "$output/$test"
 done
 python3 tests/test_layout.py

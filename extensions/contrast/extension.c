@@ -1,6 +1,6 @@
 #include "dashborne_extension.h"
 #include "display.h"
-#include "../../app/injector/patch.h"
+#include "../../dashborne/patches/patch.h"
 typedef __SIZE_TYPE__ usize;
 typedef __UINTPTR_TYPE__ uintptr;
 extern void *malloc(usize);

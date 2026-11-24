@@ -1,11 +1,46 @@
 # Dashborne
 
-A microSD patch loader for the S3XY DASH's official app.
+A microSD boot menu and temporary extension loader for the S3XY DASH's official UI.
 
-Dashborne loads the installed official UI and applies separate patches for visual
-changes and extensions. The existing Linux, drivers and app remain the foundation.
-Patches are applied from microSD; powering off, removing the card and booting
-again returns to the installed dashboard. See the [patch injector](app/injector/README.md).
+## Install
+
+With Dashborne already built, run these steps from the repository root:
+
+1. Prepare a microSD card with an **MBR partition table and a FAT32 partition**.
+   Our tested setup uses an 8 GB FAT32 partition. Formatting erases the card.
+2. Mount the card and run:
+   ```sh
+   python3 dashborne/install.py --card /Volumes/CARD
+   ```
+   Replace `/Volumes/CARD` with its mount path. The installer copies
+   **`dashborne/build/card/Dashborne/`** to the card root and creates **`EasyUI.cfg`**
+   and **`dashborne.conf`**. On upgrades it preserves your settings and startup backup.
+3. Eject the card, insert it into the powered-off DASH, then power on.
+   **Tap the splash within three seconds** to configure Dashborne; otherwise it
+   continues to the official dashboard with your selected tweaks.
+
+For developer Wi-Fi, edit `wifi.ssid` and `wifi.password` in the card-root
+`dashborne.conf`, then enable ADB in the boot menu. ADB is off by default.
+Power off and remove the card to boot the original dashboard without Dashborne.
+
+## Boot menu
+
+- **Patches:** enable individual tweaks and extensions.
+- **ADB:** opt-in Wi-Fi debugging with connection status and address.
+- **Loader:** browse and launch compatible apps from microSD, with optional autolaunch.
+- **Device:** software versions, serials and system information.
+
+All preferences live in the card-root `dashborne.conf`.
+See [configuration and operation](dashborne/README.md).
+
+## Extensions
+
+- [Extra menu](extensions/extra-menu): the core star button opens a stock-style
+  **Tweaks** menu where extensions can register pages.
+- [Contrast](extensions/contrast): display contrast and luminance controls in stock Settings.
+- [Screen Mirroring](extensions/screen-mirroring): a dedicated iPhone mirroring
+  window with aspect controls; Back restores CarPlay/Android Auto.
+- [Dashborne badge](dashborne/patches/definitions/badge.json): an optional dashboard label.
 
 ## Hardware
 
@@ -26,95 +61,32 @@ The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
 [manual]: https://fccid.io/2BUSZ-S3XYDASH/User-Manual/User-manual-9104334.pdf
 [chipsets]: https://fccid.io/2BUSZ-S3XYDASH/Attestation-Statements/Kaspersky-Statement-9104348.pdf
 
-## Loading from microSD
-
-The DASH boots its installed Linux system from eMMC. Its UI service starts
-`/bin/zkgui`; a FAT32 microSD card mounted at `/mnt/extsd` supplies `EasyUI.cfg`,
-which selects Dashborne through `startupLibPath`. Our tested card uses an MBR
-with an 8 GB FAT32 partition.
-
-Dashborne shows a small centered icon and **Tap screen to enter configuration**.
-Tap within three seconds to open configuration. Otherwise, it applies the
-selected patches and opens the installed official dashboard.
-
-Configuration has **Patches**, **ADB**, **Loader**, and **Device** categories in a left sidebar. The
-patches panel has a scrollable list with individual toggles; the ADB panel has
-developer-only access (off by default) with a live status/address. **Continue booting** remains available below the panels. Settings are saved
-on the card and remain selected on the next boot.
+## Development
 
 ```text
-EasyUI.cfg
-Dashborne/lib/libdashborne.so
-Dashborne/ui/loader.ftu
-Dashborne/ui/icon.png
-Dashborne/patches/catalog.tsv
-Dashborne/patches/*.dbp
-dashborne.conf
+dashborne/             Boot menu, configuration, ADB, Loader and Device
+  extensions/          Native extension engine and SDK
+  patches/             Layout patch engine, compiler and definitions
+extensions/            Bundled extensions
+docs/                  Platform and SD loading research
 ```
 
-The **Loader** category browses the microSD and starts compatible native DASH
-apps for one session, or automatically after the splash when **Autolaunch** is enabled. See [loading an app](app/dashborne/README.md#load-an-app-from-microsd)
-for the app format and resource paths.
+Build with Python 3.10+, Clang and LLD; host tests also need a C compiler and zlib.
+From the repository root:
 
-All Dashborne preferences live in **`dashborne.conf`** at the card root: Wi-Fi,
-ADB, enabled tweaks and Loader autolaunch. Existing settings migrate automatically.
-See the [configuration format](app/dashborne/README.md#configuration-file).
+```sh
+sh dashborne/build.sh
+sh test.sh
+```
 
-The [Dashborne installer](app/dashborne/README.md) builds this card layout, saves
-the previous startup configuration and selects the loader. It preserves display
-and touch rotation, fonts and the installed `/res/ui/` resource root. Power off
-before removing the card; booting without it starts the installed official app.
-The patched resource is generated on the card and mounted temporarily, leaving
-the installed resource unchanged.
+On macOS with Homebrew LLVM/LLD, select the cross-build tools explicitly:
 
-See the [on-device findings](docs/research.md) and
-[FlyThings SD startup documentation](https://developer.flythings.cn/zh-hans/start_from_sdcard.html).
+```sh
+DASHBORNE_CC=/opt/homebrew/opt/llvm/bin/clang \
+DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld \
+sh dashborne/build.sh
+```
 
-## Progress
-
-Development now focuses on patching the official app. The first injector applies
-a version-matched, additive layout patch and forwards the original app callbacks.
-Its initial patch adds a small Dashborne label; generated resources stay on the
-card and override individual files through temporary mounts.
-The unified Dashborne loader is installed as the card's startup app. Its splash
-and automatic handoff to the official dashboard with the badge have been verified
-on hardware. Earlier reboot tests restored the installed layout byte-for-byte.
-
-The earlier Tesla-inspired [simulated cluster](app/dashboard/README.md) remains
-available as a prototype. Its display and touch controls were verified on the DASH.
-
-Wi-Fi ADB is verified on hardware, including a root shell, file transfers,
-screen capture and remote UI updates in configuration. It currently becomes
-unreachable after the official dashboard starts. Dashborne stops managing Wi-Fi
-at handoff so the official app controls its hotspot. Dashborne incorporates the
-configuration and Wi-Fi ADB controls; the earlier ADB Enabler remains available
-as a development fallback.
-
-- [Dashborne: setup, configuration and patch selection](app/dashborne/README.md)
-- [Official UI development copy](docs/official-ui.md)
-- [Patch injector: build, preview and restore](app/injector/README.md)
-- [Research](docs/research.md)
-- [Roadmap](docs/roadmap.md)
-- [Dashboard: build and test](app/dashboard/README.md)
-- [ADB Enabler: setup and development loader](app/adb-enabler/README.md)
-
-## Extension development
-
-Dashborne supports versioned layout patches and native ARM extensions selected
-from configuration. Extensions can add UI and behavior, replace theme resources,
-or register a custom startup activity while using the installed official app.
-See the [extension SDK](app/extensions/README.md) and the
-[lifecycle example](extensions/lifecycle-example).
-
-The core [Extra menu](extensions/extra-menu) adds a button at the bottom right
-of the dashboard. Enabled extensions can register pages there without adding
-categories to stock Settings.
-
-The [Contrast plugin](extensions/contrast) adds an entry to the official Settings
-menu with temporary display contrast and luminance controls.
-
-The experimental [Enable Screen Mirroring plugin](extensions/screen-mirroring)
-adds a dedicated Screen Mirroring window to Extra. Opening it
-switches to AirPlay; Back returns to Extra and restores CarPlay/Android Auto.
-An Aspect button cycles between full width, landscape and portrait proportions
-without restarting the mirroring connection.
+The build packages Dashborne and the bundled extensions into `dashborne/build/card/`.
+See the [extension SDK](dashborne/extensions/README.md),
+[layout patches](dashborne/patches/README.md), and [platform research](docs/research.md).

@@ -1,7 +1,0 @@
-{
-  "id": "lifecycle-example",
-  "title": "Extension SDK example",
-  "description": "Exercises native activation and cleanup; writes lifecycle events to the log",
-  "abi": 1,
-  "sources": ["extension.c"]
-}

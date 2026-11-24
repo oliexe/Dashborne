@@ -4,9 +4,9 @@ import json
 import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
-sys.path.insert(0,str(ROOT.parents[1]/'app/dashboard'))
-from layout import encode,decode
-spec=importlib.util.spec_from_file_location('package',ROOT.parents[1]/'app/injector/package.py')
+sys.path.insert(0,str(ROOT.parents[1]/'dashborne'))
+from ui_codec import encode,decode
+spec=importlib.util.spec_from_file_location('package',ROOT.parents[1]/'dashborne/patches/package.py')
 package=importlib.util.module_from_spec(spec);spec.loader.exec_module(package)
 def pos(x,y,w,h):return dict(left=x,top=y,width=w,height=h)
 def label(id,text,x,y,w,h,size=24,color=0xffffff):

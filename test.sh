@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")"
+sh dashborne/patches/test.sh
+sh dashborne/extensions/test.sh
+sh dashborne/test.sh
+for extension in extensions/*; do
+    if [ -f "$extension/test.sh" ]; then sh "$extension/test.sh"; fi
+done
