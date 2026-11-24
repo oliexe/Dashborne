@@ -1,7 +1,6 @@
 # Platform research
 
-These findings describe the tested S3XY DASH and the inspected 6.11.2/6.11.4
-application resources. Hardware specifications and public sources are in the
+We tested one S3XY DASH and inspected its 6.11.2/6.11.4 application resources. Hardware specifications and public sources are in the
 [main README](../README.md#hardware).
 
 ## Loading from microSD
@@ -9,17 +8,18 @@ application resources. Hardware specifications and public sources are in the
 The DASH boots its installed Linux system from eMMC. The UI service starts
 `/bin/zkgui`; a card-root `EasyUI.cfg` selects the application shared library
 through `startupLibPath`. A 512 GB microSD with an MBR and an 8 GB FAT32 partition
-mounted at `/mnt/extsd` and successfully loaded Dashborne. This is application
-loading on the existing OS; SD kernel boot has not been established.
+mounted at `/mnt/extsd` and loaded Dashborne on the installed OS. We have not
+established whether the DASH can boot a kernel from SD.
 
 Dashborne selects `/mnt/extsd/Dashborne/lib/libdashborne.so`, retains `/res/ui/`
-as the runtime resource root, and depends on the installed `/res/lib/libzkgui.so`.
-The startup library exports `onEasyUIInit(context)`, `onStartupApp(context)` and
-`onEasyUIDeinit(context)`. The startup callback returns an activity name. These
-contracts agree with the [FlyThings project documentation](https://docs.flythings.cn/zh-hans/project_structure.html).
+as the runtime resource root, and depends on the installed
+`/res/lib/libzkgui.so`. The startup library exports `onEasyUIInit(context)`,
+`onStartupApp(context)` and `onEasyUIDeinit(context)`. The startup callback
+returns an activity name. These contracts agree with the [FlyThings project
+documentation](https://docs.flythings.cn/zh-hans/project_structure.html).
 
-The three-second splash, tap-to-configuration, display/touch controls and handoff
-to the patched official dashboard were confirmed on hardware. Loading does not
+On the device, we confirmed the three-second splash, tap-to-configuration,
+display/touch controls and handoff to the patched official dashboard. Loading does not
 require `zkdebug` to be enabled. Powering off and removing the card returns to the
 installed dashboard. See [installation](../README.md#install).
 
@@ -43,22 +43,22 @@ kernel or bootloader is unnecessary for loading extensions into the installed UI
 The downloaded 6.11.4 package and installed 6.11.2 app contain the same
 `dash1act.ftu`: 19,739 bytes, SHA-256
 `23c4185111b23a29c11f67ee4820eeb77c110c59a4f7213e079ac641344b69f2`.
-Compatibility is checked against the actual installed resource, not inferred
-from the displayed version.
+Dashborne checks compatibility against the installed resource fingerprint.
 
 Layout patches generate a modified resource on microSD and bind-mount it over
-the original for the session. Reboot checks confirmed the installed layout's
-original bytes. The native engine provides lifecycle callbacks, symbol access,
-custom activities and journaled read-only overlays. Hardware tests verified ARM
-extension loading, overlay cleanup and stale-mount recovery without changing the
-original resource. See the [extension SDK](../dashborne/extensions/README.md).
+the original for the session. After rebooting, we checked that the installed
+layout matched its original bytes. The native engine provides lifecycle
+callbacks, symbol access, custom activities and journaled read-only overlays.
+Hardware tests verified ARM extension loading, overlay cleanup and stale-mount
+recovery without changing the original resource. See the [extension
+SDK](../dashborne/extensions/README.md).
 
 ## Developer access
 
-Wi-Fi ADB on TCP 5555 is verified, including a root shell, byte-checked transfers,
-framebuffer captures through `/res/bin/fbgrab`, and remote UI deployment by
-restarting the `zkswe` service. The configuration toggle's disable/re-enable cycle
-was confirmed on hardware. The tested Wi-Fi driver lacks some additional wireless
+Through Wi-Fi ADB on TCP 5555, we obtained a root shell, compared uploaded and
+downloaded files, captured the framebuffer with `/res/bin/fbgrab`, and deployed
+UI updates by restarting `zkswe`. Disabling and re-enabling ADB in configuration
+restored the connection. The tested Wi-Fi driver lacks some additional wireless
 ioctls, so the status can report limited Wi-Fi verification.
 
 Dashborne manages developer Wi-Fi only while configuration is open. The official
@@ -67,9 +67,9 @@ station-mode ADB session. Dashborne stops reconnect attempts at handoff and leav
 network ownership to the official app.
 
 USB tests found `/sys/class/udc/4100000.udc-controller`, `/res/bin/setusbconfig`
-and `/bin/adbd`. A ConfigFS/FunctionFS gadget reached the bound state, but the Mac
-never enumerated the expected ADB device. Controller availability does not prove
-that the populated connector has data pins routed; USB debugging remains unverified.
+and `/bin/adbd`. A ConfigFS/FunctionFS gadget reached the bound state, but the
+Mac did not enumerate the expected ADB device. We have not confirmed data-pin
+routing to the populated connector or a working USB debugging connection.
 
 ## References
 
@@ -77,4 +77,5 @@ that the populated connector has data pins routed; USB debugging remains unverif
 - [ZKSWE/FlyThings platform vendor](https://github.com/zkswe)
 - [Linux ConfigFS USB gadgets](https://docs.kernel.org/usb/gadget_configfs.html)
 - [Independent ZKSWE format research](https://github.com/atomicstack/tc002-customisation)
-  covers another device and is useful format background, not DASH hardware evidence.
+  documents the format on another device. Its hardware findings do not establish
+  DASH specifications.

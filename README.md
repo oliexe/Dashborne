@@ -4,17 +4,17 @@ A microSD boot menu and temporary extension loader for the S3XY DASH's official 
 
 ## Install
 
-With Dashborne already built, run these steps from the repository root:
+After building Dashborne, install it from the repository root:
 
 1. Prepare a microSD card with an **MBR partition table and a FAT32 partition**.
-   Our tested setup uses an 8 GB FAT32 partition. Formatting erases the card.
+   We tested an 8 GB FAT32 partition. Formatting erases the card.
 2. Mount the card and run:
    ```sh
    python3 dashborne/install.py --card /Volumes/CARD
    ```
    Replace `/Volumes/CARD` with its mount path. The installer copies
    **`dashborne/build/card/Dashborne/`** to the card root and creates **`EasyUI.cfg`**
-   and **`dashborne.conf`**. On upgrades it preserves your settings and startup backup.
+   and **`dashborne.conf`**. Upgrades keep your settings and startup backup.
 3. Eject the card, insert it into the powered-off DASH, then power on.
    **Tap the splash within three seconds** to configure Dashborne; otherwise it
    continues to the official dashboard with your selected tweaks.
@@ -25,12 +25,12 @@ Power off and remove the card to boot the original dashboard without Dashborne.
 
 ## Boot menu
 
-- **Patches:** enable individual tweaks and extensions.
-- **ADB:** opt-in Wi-Fi debugging with connection status and address.
-- **Loader:** browse and launch compatible apps from microSD, with optional autolaunch.
-- **Device:** software versions, serials and system information.
+- Patches: enable individual tweaks and extensions.
+- ADB: opt-in Wi-Fi debugging with connection status and address.
+- Loader: browse and launch compatible apps from microSD, with optional autolaunch.
+- Device: software versions, serials and system information.
 
-All preferences live in the card-root `dashborne.conf`.
+Dashborne saves preferences in the card-root `dashborne.conf`.
 See [configuration and operation](dashborne/README.md).
 
 ## Extensions
@@ -79,7 +79,7 @@ sh dashborne/build.sh
 sh test.sh
 ```
 
-On macOS with Homebrew LLVM/LLD, select the cross-build tools explicitly:
+For Homebrew LLVM/LLD on macOS:
 
 ```sh
 DASHBORNE_CC=/opt/homebrew/opt/llvm/bin/clang \

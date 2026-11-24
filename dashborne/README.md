@@ -5,40 +5,38 @@ loader for the official S3XY DASH UI.
 
 ## Startup
 
-The centered icon is followed by **Tap screen to enter configuration**. The
-countdown is three seconds. Tapping anywhere on the splash cancels it and opens
+The splash shows a centered icon and **Tap screen to enter configuration**
+for three seconds. Tapping anywhere on the splash cancels it and opens
 configuration; there is no further timeout while configuring. Otherwise,
 Dashborne applies the selected patches and opens the official startup activity
 from the installed app in flash.
 
-Configuration uses a black background with a category sidebar on the left and
-the selected content on the right. **Patches** opens by default; **ADB** contains
-the developer connection controls. Switching sections preserves selections and
-the list position. The footer places the development version from `VERSION` and the repository
-URL beneath the Dashborne branding, leaving room for five patch rows at a time.
+Choose a category from the left sidebar to open its page. **Patches** opens by
+default. Switching pages keeps your selections and list position. The footer
+shows the version from `VERSION` and the repository URL beneath the logo.
 
 Configuration includes:
 
-- **ADB / Enable ADB:** developer opt-in, off by default; enable/disable TCP
+- ADB / Enable ADB: developer opt-in, off by default; enable/disable TCP
   ADB. The page uses aligned rows for the switch, live status, IP address with
   port, and configured developer Wi-Fi name. Address and network fields clear
   when ADB is disabled.
-- **Patches:** swipe the native list to browse up to 64 entries. Tap a row to
+- Patches: swipe the native list to browse up to 64 entries. Tap a row to
   toggle its patch; each row has a title, description and switch. Incompatible
   patches have a disabled switch. Selections save immediately, and the header
   shows how many patches are enabled.
-- **Loader:** browse microSD folders, select an app, and tap **Load app**.
+- Loader: browse microSD folders, select an app, and tap **Load app**.
   **Up** navigates to the parent folder and **Refresh** rescans the current folder.
-- **Device:** a scrollable table of software versions, device identifiers, board
+- Device: a scrollable table of software versions, device identifiers, board
   details, memory, uptime, display mode and storage serials/capacities. Values are
   read when the page opens; **Refresh** updates the snapshot. Missing values show
   **Unavailable**, and unrecognized dashboard binaries are identified as such.
-- **Continue booting:** save selections, apply the patches, open the official UI.
+- Continue booting: save selections, apply the patches, open the official UI.
 
 ## Configuration file
 
-All persistent Dashborne settings live in **`/mnt/extsd/dashborne.conf`**, at the
-microSD root. The boot menu and installer use this same file.
+The boot menu and installer save persistent settings in
+`/mnt/extsd/dashborne.conf` at the microSD root.
 
 ```ini
 format=1
@@ -53,15 +51,16 @@ loader.app=
 ```
 
 Keys are namespaced and booleans are `0` or `1`. Values are literal text after
-`=`; do not add quotes or escapes. Spaces, `#`, `=` and backslashes inside a value
-are preserved. Comments occupy their own lines, starting with `#` or `;`.
-Wi-Fi supports 1–32 SSID bytes and 8–63 passphrase bytes. ADB is off by default.
+`=`; do not add quotes or escapes. The parser preserves spaces, `#`, `=` and
+backslashes inside values. Comments occupy their own lines, starting with `#` or
+`;`. Wi-Fi supports 1–32 SSID bytes and 8–63 passphrase bytes. ADB is off by
+default.
 
-Unknown keys, comments and selections for absent tweaks survive menu saves,
-so future settings can use the same file. A save writes and syncs a temporary
-file before replacing the original. Invalid syntax, duplicate keys, unsupported
-formats and oversized files are rejected without overwriting the file. An unreadable
-configuration keeps the boot menu open with ADB and autolaunch disabled.
+Saving keeps unknown keys, comments and selections for absent tweaks. The writer
+syncs a temporary file before replacing the original. It rejects invalid syntax,
+duplicate keys, unsupported formats and oversized files without overwriting them.
+If Dashborne cannot read the configuration, it keeps the boot menu open with ADB
+and autolaunch disabled.
 
 On first use, Dashborne imports `Dashborne/settings.conf` and
 `Dashborne/wifi.conf` if the root file is absent. The installer and runtime retire
@@ -71,8 +70,8 @@ when no Dashborne Wi-Fi file exists; it never enables developer access by itself
 The installer's `--wifi-config` JSON option updates `wifi.ssid` and `wifi.password`
 without replacing other preferences.
 
-`EasyUI.cfg` remains the stock runtime's startup selector. One-use launch/recovery
-markers are temporary control state, not a second preferences file.
+`EasyUI.cfg` remains the stock runtime's startup selector. Launch/recovery
+markers hold one-use control state.
 
 ## Load an app from microSD
 
@@ -87,7 +86,7 @@ is a different interface and belongs in **Patches**. Standalone Linux executable
 shell scripts, and Android APKs are not supported by this launcher.
 
 To start an app automatically, select it and enable **Autolaunch** in Loader.
-The chosen path and switch are saved in `dashborne.conf`. Disable the switch to
+Dashborne saves the chosen path and switch in `dashborne.conf`. Disable the switch to
 resume the official dashboard at boot. To choose a different automatic app,
 disable Autolaunch, select the new app, and enable it again.
 
@@ -96,7 +95,7 @@ an automatic launch. **Continue booting** follows the saved autolaunch choice;
 **Load app** starts the current selection once without changing that choice.
 Missing/unsupported apps and failed handoffs return to configuration. If an app
 crashes and the UI service restarts, the return marker prevents an immediate
-retry loop. Autolaunch is tried again on the next power cycle.
+retry loop. Dashborne retries autolaunch on the next power cycle.
 
 Keep the app's resources and dependencies on the card in the paths expected by
 that app. The runtime resource root remains `/res/ui/`; apps can reference their
@@ -104,7 +103,7 @@ own SD layouts with `../../../mnt/extsd/...`.
 Loading an app does not apply the selected dashboard patches.
 
 The loader validates the selected ELF, then writes a one-use request in `/tmp`
-and restarts only the UI service. The new process consumes the request **before**
+and restarts only the UI service. The new process consumes the request before
 loading the library, delegates initialization/startup/shutdown to that app, and
 keeps its module resident. A failed load returns to Loader. If the UI service
 restarts after the app exits or crashes, the consumed request brings it back to
@@ -116,30 +115,32 @@ selection; the saved autolaunch preference still applies to the next boot.
 
 ## ADB connection handling
 
-Enable ADB manages a developer connection only inside configuration. The controller
-confirms the previous TCP daemon has stopped, validates Wi-Fi settings in `dashborne.conf`, requests station
-mode when needed, waits for association, then starts ADB. A healthy existing
-connection to the configured SSID can be reused. The toggle remains your saved
-choice; the status below it reports the actual progress or failure.
+Enable ADB manages a developer connection only inside configuration. The
+controller confirms the previous TCP daemon has stopped, validates Wi-Fi
+settings in `dashborne.conf`, requests station mode when needed, waits for
+association, then starts ADB. It reuses a healthy connection to the configured
+SSID. The toggle shows your saved choice; the status reports connection progress
+or failure.
 
-An address is shown only when the station interface is up, the vendor reports a
-connection, the driver association/SSID checks pass, and the daemon has a TCP 5555
-listener on that address or a wildcard address. Drivers that explicitly do not
-support the additional wireless checks show **limited Wi-Fi verification**.
-**ADB listening** verifies the device's local state, not reachability from the
-Mac: router isolation, routing and driver faults can still block the connection.
+The controller shows an address only when the station interface is up, the
+vendor reports a connection, the driver association/SSID checks pass, and the
+daemon has a TCP 5555 listener on that address or a wildcard address. If the
+driver reports that it lacks the additional wireless checks, the page shows
+**limited Wi-Fi verification**. **ADB listening** confirms a local listener.
+Router isolation, routing or driver faults can still prevent the Mac from
+connecting.
 
-The controller clears stale displayed addresses, retries failed Wi-Fi connections
-and missing ADB listeners up to three times, and reports a failure rather than
-retrying forever. Toggle off/on to retry after correcting the cause. Disabling
-cancels connection retries, stops TCP ADB, and reports **Disabled** only after the
-service confirms it stopped. Stop failures remain visible. An ADB daemon using a
-different transport is left alone and identified in the status.
+The controller clears stale displayed addresses, retries failed Wi-Fi
+connections and missing ADB listeners up to three times, then reports a failure.
+Toggle off/on to retry after correcting the cause. Disabling cancels connection
+retries, stops TCP ADB, and reports **Disabled** only after the service confirms
+it stopped. Stop failures remain visible. For an ADB daemon using another
+transport, the controller reports that transport and leaves the daemon running.
 
 If saving an enabled selection fails, ADB stays off. A disable request takes
-effect even if saving fails, with the card-write error shown. Pending work is
-cancelled on dashboard handoff or loader shutdown; the official app then owns
-networking. No further reconnect or daemon restart requests are issued by Dashborne.
+effect even if saving fails, with the card-write error shown. Dashborne cancels
+pending work at dashboard handoff or loader shutdown, then leaves networking to
+the official app. It stops issuing reconnect and daemon restart requests.
 
 ## Build and install
 
@@ -159,14 +160,15 @@ python3 dashborne/install.py --card /Volumes/CARD --wifi-config /path/to/wifi.js
 
 The installer sets `startupLibPath` to
 `/mnt/extsd/Dashborne/lib/libdashborne.so`, preserves existing configuration
-fields (or creates the tested DASH defaults for a fresh card), and saves the previous selection in `Dashborne/previous.cfg`. Reinstalling
-preserves saved patch choices and Wi-Fi settings. Uploads are read back and
-compared before activation.
+fields (or creates the tested DASH defaults for a fresh card), and saves the
+previous selection in `Dashborne/previous.cfg`. Reinstalling keeps patch choices
+and Wi-Fi settings. For ADB uploads, the installer reads files back and compares
+them before activation.
 
-Use `--configure` to open configuration once, bypassing the splash. A manually
-created `Dashborne/config.once` file has the same effect and is consumed on start.
-Development previews use `--preview` with an automatic four-minute reboot to the
-previous startup selection; `--keep` retains the preview as the normal startup.
+Use `--configure` to open configuration once, bypassing the splash. You can also
+create `Dashborne/config.once`; Dashborne consumes it on startup. Development
+previews use `--preview` with an automatic four-minute reboot to the previous
+startup selection; `--keep` retains the preview as the normal startup.
 
 ## Patch files
 
@@ -182,20 +184,21 @@ behavior, and override theme resources. They activate only when launching the
 dashboard; installing one leaves it disabled until selected. The build rejects
 duplicate IDs and additive control IDs/keys.
 
-The loader checks each patch against the installed layout. Incompatible or
-missing patches cannot be selected. Selected compatible layout edits are combined,
-validated again for conflicts, and applied to the device's own layout. The result is generated
-as `Dashborne/generated.ftu` and bind-mounted over the original resource. An
-application failure remains in configuration with an error rather than launching
-with a partially built patch set. Selecting no layout patches skips that layout override. Enabled native extensions
-then activate as a group; a failure rolls them back and remains in configuration.
-The engine tracks its resource mounts for cleanup and recovery after UI restarts.
+The loader disables incompatible or missing patches in the list. At launch, it
+combines selected edits, checks for conflicts and applies them to the installed
+layout. It writes `Dashborne/generated.ftu` on the card and bind-mounts it over
+the original resource. With no layout patches selected, it skips this override.
+
+Next, the engine activates enabled native extensions as a group. A patch failure
+keeps configuration open with an error; an extension failure also rolls back
+activation. The engine records resource mounts for cleanup and recovery after
+UI restarts.
 
 ## Reversal
 
-Power off, remove the microSD, then boot to return to the installed official app.
-A reboot clears temporary mounts; with Dashborne's card inserted, the selected
-patches are applied again. The loader also clears its previous layout override
+Power off, remove the microSD, then boot to return to the installed official
+app. A reboot clears temporary mounts; Dashborne reapplies selected patches if
+its card is still inserted. The loader also clears its previous layout override
 when reloaded so configuration starts from the installed base resource.
 
 To restore the SD startup selection that preceded Dashborne and reboot:
@@ -204,9 +207,9 @@ To restore the SD startup selection that preceded Dashborne and reboot:
 python3 dashborne/install.py --device DEVICE_IP:5555 --restore
 ```
 
-The same `--restore` option works on a mounted card while the DASH is off. Official
-app preferences under `/data` are managed by the vendor app; restoring the loader
-selection does not reset those preferences.
+The same `--restore` option works on a mounted card while the DASH is off. The
+vendor app manages its preferences under `/data`; restoring the loader selection
+does not reset those preferences.
 
 ## Development checks
 
@@ -215,20 +218,20 @@ touch controls, Loader handoffs and autolaunch, Device inventory, configuration
 migration/preservation, patch composition, extension lifecycle and the bundled
 extensions. Native checks use AddressSanitizer and UndefinedBehaviorSanitizer.
 ADB checks include delayed/failed service operations and 10,000 deterministic
-fault/toggle events. Hardware observations are recorded in [research](../docs/research.md).
+fault/toggle events. See [research](../docs/research.md) for hardware observations.
 
 ## Device information
 
 The Device page reads OS properties, `/proc`, `/sys`, and selected app settings.
-The official dashboard version is identified by the complete installed library's
-size and CRC32 (currently 6.11.2 and 6.11.4); it is never inferred from a downloaded
-update or a selected patch. The hardware ID comes from the installed runtime's
-read-only device-ID API. The DASH serial uses the same prefix, UUID word sum and
-production date formatting as stock Settings. Component firmware fields use bounded snapshots of the
-recognized app's reported values, and remain unavailable before it has received
-them. Production stamp is the app's stored `proddate` value. Board vendor is the
-OS image's reported board vendor, which is distinct from the product brand.
+It identifies the official dashboard version by the installed library's size and
+CRC32, with fingerprints for 6.11.2 and 6.11.4. The hardware ID comes from the
+installed runtime's read-only device-ID API. The DASH serial uses the same
+prefix, UUID word sum and production date formatting as stock Settings.
+Component firmware fields use bounded snapshots of values received by the
+recognized app. They remain unavailable until those values arrive. Production
+stamp is the app's stored `proddate` value. Board vendor is the OS image's
+reported board vendor, which is distinct from the product brand.
 
-Memory values reflect Linux-usable RAM. Storage capacity is the whole medium,
-not the mounted partition's free space. Panel mode is the kernel's physical mode
-before the UI's rotation. The inventory does not change device configuration.
+Memory values reflect Linux-usable RAM. Storage capacity reports the size of the
+whole medium. Panel mode is the kernel's physical mode before the UI's rotation.
+The inventory does not change device configuration.
