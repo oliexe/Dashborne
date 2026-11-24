@@ -28,7 +28,8 @@ SAVED = ('dashborne.conf', 'EasyUI.cfg', BACKUP, 'Dashborne/settings.conf', 'Das
 RETIRED_CORE = ('Dashborne/extensions/extra-menu', 'Dashborne/extensions/widget-runtime')
 RETIRED_PACKAGES = RETIRED_CORE + ('Dashborne/extensions/tesla-ui',
                                  'Dashborne/extensions/vehicle-widget',
-                                 'Dashborne/extensions/contrast')
+                                 'Dashborne/extensions/contrast',
+                                 'Dashborne/extensions/lifecycle-example')
 RETIRED_FILES = ('Dashborne/patches/dashborne-badge.dbp',)
 
 
