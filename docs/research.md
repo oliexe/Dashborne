@@ -35,10 +35,10 @@ installed dashboard. See [installation](../README.md#install).
   supplies activity factories, controls and event dispatch. Native adapters check
   runtime fingerprints and relevant ABI details before use.
 
-## Temporary patches
+## Temporary extensions
 
 Dashborne checks compatibility against the installed resource fingerprint before
-applying patches.
+applying layout patches.
 
 Layout patches generate a modified resource on microSD and bind-mount it over
 the original for the session. After rebooting, we checked that the installed

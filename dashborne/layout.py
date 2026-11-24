@@ -52,7 +52,7 @@ def screen():
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
     config['textview__5'] = label(50013, 'DASHBORNE', 242, 416, 340, 30, 23, 0xf1f2f4)
     config['textview__6'] = label(50014, f'v{VERSION}  /  https://github.com/oliexe/Dashborne', 180, 449, 440, 20, 14, 0x858c94)
-    for id, key, text, y in [(20006, 'patches', 'Patches', 40), (20007, 'adb', 'ADB', 116), (20008, 'loader', 'Loader', 192), (20012, 'device', 'Device', 268)]:
+    for id, key, text, y in [(20006, 'patches', 'Extensions', 40), (20007, 'adb', 'ADB', 116), (20008, 'loader', 'Loader', 192), (20012, 'device', 'Device', 268)]:
         config['button__nav_'+key] = button(id, text, 180, y, 400, 64)
         config['button__nav_'+key].update(backgroundColor=0x000000,
             textPosition=position(36, 0, 340, 64),
@@ -82,7 +82,7 @@ def screen():
             position=position(24, y, 1012, 1), backgroundColor=0x202228, touchable=False)
     patches = dict(id=110004, position=position(680, 24, 1060, 376), visible=True,
                    backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
-    patches['textview__heading'] = dict(label(50005, 'Patches', 24, 16, 340, 36, 28, 0xf1f2f4), bold=True)
+    patches['textview__heading'] = dict(label(50005, 'Extensions', 24, 16, 340, 36, 28, 0xf1f2f4), bold=True)
     patches['textview__header_line'] = dict(id=50026, position=position(24, 64, 1012, 1),
         backgroundColor=0x202228, touchable=False)
     patches['textview__count'] = label(50018, '', 440, 20, 596, 28, 17, 0x858c94, 38)
@@ -97,7 +97,7 @@ def screen():
         rows=5, cols=1, rowSpacing=0, colSpacing=0, item=item,
         hasScrollbar=True, scrollbarColor=0x626a73, autoRollback=True,
         dragMaxDis=12, beepEnable=False, backgroundColor=0x07080a)
-    patches['textview__empty'] = label(50019, 'No patches found on microSD', 24, 94, 1000, 36, 22, 0x858c94)
+    patches['textview__empty'] = label(50019, 'No extensions found on microSD', 24, 94, 1000, 36, 22, 0x858c94)
     browser = dict(id=110005, position=position(680, 24, 1060, 376), visible=False,
         backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
     browser['textview__heading'] = dict(label(50040, 'Loader', 24, 16, 500, 36, 28, 0xf1f2f4), bold=True)

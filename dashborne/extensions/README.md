@@ -9,7 +9,7 @@ and managed resource overlays.
 Dashborne activates extensions when you launch the dashboard or let the splash
 expire, using the installed Linux system and app. Opening configuration does not
 load extension code. A newly installed user extension is off until selected in
-the patch list. Extra Menu and Widget Runtime are built into Dashborne and
+the Extensions list. Extra Menu and Widget Runtime are built into Dashborne and
 start before selected extensions.
 
 ## Extension directory
@@ -37,7 +37,7 @@ extensions/my-extension/
 
 The Dashborne build compiles these sources and installs the result as
 `Dashborne/extensions/my-extension/libextension.so`, together with the manifest
-and assets. It adds a native entry to the shared patch catalog. Set
+and assets. It adds a native entry to the shared extension catalog. Set
 `tweak.my-extension.enabled=1` in root `dashborne.conf` to enable it. Installation
 preserves existing selections.
 The catalog determines activation order. IDs must be unique across both types.
@@ -147,7 +147,7 @@ If a cleanup fails, reboot before retrying. If the log identifies a malformed
 recovery journal, reboot to clear mounts, then remove or repair that journal on
 the card before starting Dashborne again.
 
-## Other patch formats
+## Layout extensions
 
 Store layout definitions in [`patches/definitions`](../patches/definitions).
 DBP1 adds controls; interactive controls need a native extension to handle them.

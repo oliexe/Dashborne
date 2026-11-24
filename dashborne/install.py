@@ -1,4 +1,4 @@
-"""Install Dashborne's splash, configuration and patch loader on microSD."""
+"""Install Dashborne's splash, configuration and extension loader on microSD."""
 import argparse
 import json
 import os

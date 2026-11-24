@@ -1,6 +1,6 @@
 # Dashborne
 
-Dashborne is the microSD startup app, configuration screen and temporary patch
+Dashborne is the microSD startup app, configuration screen and temporary extension
 loader for the official S3XY DASH UI.
 
 ## Startup
@@ -8,10 +8,10 @@ loader for the official S3XY DASH UI.
 The splash shows the centered logo, animated loading dots, and
 **Tap screen to enter boot option** at the bottom for three seconds. Tapping anywhere on the splash cancels it and opens
 configuration; there is no further timeout while configuring. Otherwise,
-Dashborne applies the selected patches and opens the official startup activity
+Dashborne applies the selected extensions and opens the official startup activity
 from the installed app in flash.
 
-Choose a category from the left sidebar to open its page. **Patches** opens by
+Choose a category from the left sidebar to open its page. **Extensions** opens by
 default. Switching pages keeps your selections and list position. The footer
 shows the version from `VERSION` and the repository URL beneath the logo.
 
@@ -21,17 +21,17 @@ Configuration includes:
   ADB. The page uses aligned rows for the switch, live status, IP address with
   port, and configured developer Wi-Fi name. Address and network fields clear
   when ADB is disabled.
-- Patches: swipe the native list to browse up to 64 entries. Tap a row to
-  toggle its patch; each row has a title, description and switch. Incompatible
-  patches have a disabled switch. Selections save immediately, and the header
-  shows how many patches are enabled.
+- Extensions: swipe the native list to browse up to 64 entries. Tap a row to
+  toggle its extension; each row has a title, description and switch. Incompatible
+  extensions have a disabled switch. Selections save immediately, and the header
+  shows how many extensions are enabled.
 - Loader: browse microSD folders, select an app, and tap **Load app**.
   **Up** navigates to the parent folder and **Refresh** rescans the current folder.
 - Device: a scrollable table of software versions, device identifiers, board
   details, memory, uptime, display mode and storage serials/capacities. Values are
   read when the page opens; **Refresh** updates the snapshot. Missing values show
   **Unavailable**, and unrecognized dashboard binaries are identified as such.
-- Continue booting: save selections, apply the patches, open the official UI.
+- Continue booting: save selections, load the extensions, open the official UI.
 
 ## Configuration file
 
@@ -55,7 +55,7 @@ backslashes inside values. Comments occupy their own lines, starting with `#` or
 `;`. Wi-Fi supports 1–32 SSID bytes and 8–63 passphrase bytes. ADB is off by
 default.
 
-Saving keeps unknown keys, comments and selections for absent tweaks. The writer
+Saving keeps unknown keys, comments and selections for absent extensions. The writer
 syncs a temporary file before replacing the original. It rejects invalid syntax,
 duplicate keys, unsupported formats and oversized files without overwriting them.
 If Dashborne cannot read the configuration, it keeps the boot menu open with ADB
@@ -81,7 +81,7 @@ and shows up to 256 entries per folder; larger folders display a limit message.
 
 This launches native DASH/FlyThings apps: ARMv7 Linux hard-float shared libraries
 exporting `onEasyUIInit`, `onStartupApp`, and `onEasyUIDeinit`. A Dashborne extension
-is a different interface and belongs in **Patches**. Standalone Linux executables,
+is a different interface and belongs in **Extensions**. Standalone Linux executables,
 shell scripts, and Android APKs are not supported by this launcher.
 
 To start an app automatically, select it and enable **Autolaunch** in Loader.
@@ -99,7 +99,7 @@ retry loop. Dashborne retries autolaunch on the next power cycle.
 Keep the app's resources and dependencies on the card in the paths expected by
 that app. The runtime resource root remains `/res/ui/`; apps can reference their
 own SD layouts with `../../../mnt/extsd/...`.
-Loading an app does not apply the selected dashboard patches.
+Loading an app does not apply the selected dashboard extensions.
 
 The loader validates the selected ELF, then writes a one-use request in `/tmp`
 and restarts only the UI service. The new process consumes the request before
@@ -162,7 +162,7 @@ python3 dashborne/install.py --card /Volumes/CARD --wifi-config /path/to/wifi.js
 The installer sets `startupLibPath` to
 `/mnt/extsd/Dashborne/lib/libdashborne.so`, preserves existing configuration
 fields (or creates the tested DASH defaults for a fresh card), and saves the
-previous selection in `Dashborne/previous.cfg`. Reinstalling keeps patch choices
+previous selection in `Dashborne/previous.cfg`. Reinstalling keeps extension choices
 and Wi-Fi settings. For ADB uploads, the installer reads files back and compares
 them before activation.
 
@@ -171,7 +171,7 @@ create `Dashborne/config.once`; Dashborne consumes it on startup. Development
 previews use `--preview` with an automatic four-minute reboot to the previous
 startup selection; `--keep` retains the preview as the normal startup.
 
-## Patch files
+## Extension files
 
 Patch definitions live in [`patches/definitions`](patches/definitions). The build
 compiles each definition to a small `.dbp` and generates `patches/catalog.tsv`.
@@ -185,7 +185,7 @@ behavior, and override theme resources. They activate only when launching the
 dashboard; installing one leaves it disabled until selected. The build rejects
 duplicate IDs and additive control IDs/keys.
 
-The loader disables incompatible or missing patches in the list. At launch, it
+The loader disables incompatible or missing extensions in the list. At launch, it
 combines selected edits, checks for conflicts and applies them to the installed
 layout. It writes `Dashborne/generated.ftu` on the card and bind-mounts it over
 the original resource. With no layout patches selected, it skips this override.
@@ -198,7 +198,7 @@ UI restarts.
 ## Reversal
 
 Power off, remove the microSD, then boot to return to the installed official
-app. A reboot clears temporary mounts; Dashborne reapplies selected patches if
+app. A reboot clears temporary mounts; Dashborne reapplies selected extensions if
 its card is still inserted. The loader also clears its previous layout override
 when reloaded so configuration starts from the installed base resource.
 

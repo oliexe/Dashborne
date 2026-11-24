@@ -204,7 +204,7 @@ static void render(void *self) {
     unsigned int n = number(counts, 0, enabled);
     n = append(counts, n, " enabled / ", sizeof(counts));
     n = number(counts, n, settings.count);
-    append(counts, n, settings.count > 5 ? " patches  -  Swipe to scroll" : " patches", sizeof(counts));
+    append(counts, n, settings.count > 5 ? " extensions  -  Swipe to scroll" : " extensions", sizeof(counts));
     label(self, COUNT_ID, counts);
     visible(self, EMPTY_ID, settings.count == 0);
     visible(self, LIST_ID, settings.count != 0);
@@ -313,10 +313,10 @@ static void launch(void *self) {
     phase = 2; unregister_timer(self, BOOT_TIMER); unregister_timer(self, LOADING_TIMER);
     void *notice=find_control(self, NOTICE_ID);
     if(notice)set_color(notice,0x858c94);
-    label(self, NOTICE_ID, "Applying selected patches...");
+    label(self, NOTICE_ID, "Loading selected extensions...");
     int result = state_apply(&settings, log_line);
     if (result < 0) {
-        launch_error = "Patch could not be applied. Uncheck it to continue.";
+        launch_error = "Extension could not be applied. Disable it to continue.";
         phase = 1; render(self);
         return;
     }

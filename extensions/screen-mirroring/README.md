@@ -6,7 +6,7 @@ aspect controls. Back returns to Extra and requests CarPlay/Android Auto again.
 
 ## Use
 
-1. Enable this plugin under **Patches** in Dashborne, then launch the dashboard.
+1. Enable this extension under **Extensions** in Dashborne, then launch the dashboard.
 2. Tap the star at the bottom right, select **Screen Mirroring**, and tap **Open**.
 3. Choose **AirPlay** or **Miracast (experimental)**, then **Start mirroring**.
 4. For AirPlay, join the DASH hotspot on your iPhone and select the DASH in

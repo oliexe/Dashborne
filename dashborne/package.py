@@ -43,7 +43,7 @@ def package(source, destination, extensions=None):
                 raise ValueError('Invalid extension labels')
             catalog.append('\t'.join((id, title, description, 'native')))
     if len(catalog) > 64:
-        raise ValueError('This loader supports up to 64 patches')
+        raise ValueError('This loader supports up to 64 extensions')
     (destination / 'catalog.tsv').write_text('\n'.join(catalog) + '\n')
 
 

@@ -7,9 +7,9 @@
 
 # Dashborne
 
-Dashborne is an ADB enabler, patch loader, and app loader for the S3XY DASH's
+Dashborne is an ADB enabler, extension loader, and app loader for the S3XY DASH's
 official Linux-based OS. It gives users the tools to modify every aspect of the
-DASH's software or load custom apps. It loads patches from a microSD card and
+DASH's software or load custom apps. It loads extensions from a microSD card and
 applies them temporarily, without writing them to the DASH's internal flash memory.
 
 ## FAQ
@@ -17,43 +17,43 @@ applies them temporarily, without writing them to the DASH's internal flash memo
 <details>
 <summary>What does it allow?</summary>
 
-You can change the DASH's UI and behavior, add features through patches and
-modules, load custom apps, and enable ADB for development.
+You can change the DASH's UI and behavior, add features through extensions,
+load custom apps, and enable ADB for development.
 
 </details>
 
 <details>
 <summary>Can it brick my device?</summary>
 
-Dashborne's normal patch loading leaves the OS in flash untouched.
-Custom apps and modules run with system privileges, so code that writes to
+Dashborne's normal extension loading leaves the OS in flash untouched.
+Custom apps and extensions run with system privileges, so code that writes to
 internal storage can still damage the system.
 
 </details>
 
 <details>
-<summary>Are these patches permanent?</summary>
+<summary>Are these extensions permanent?</summary>
 
-No; Dashborne's normal patches apply only while running from the card.
+No; Dashborne's normal extensions apply only while running from the card.
 Power off and remove the microSD card to boot the unpatched OS.
 
 </details>
 
 <details>
-<summary>What if a module fails to load?</summary>
+<summary>What if an extension fails to load?</summary>
 
-If a module reports a loading or activation error, Dashborne stays in the boot
+If an extension reports a loading or activation error, Dashborne stays in the boot
 menu and shows the error so you can disable it.
 If it crashes or freezes the UI, power-cycle the DASH and tap the splash to
-disable the module, or remove the card to boot stock.
+disable the extension, or remove the card to boot stock.
 
 </details>
 
 <details>
-<summary>Can I create my own apps and modules?</summary>
+<summary>Can I create my own apps and extensions?</summary>
 
-Yes, you can build custom apps and modules for the DASH's Linux platform.
-Use the [extension SDK](dashborne/extensions/README.md) for modules and the
+Yes, you can build custom apps and extensions for the DASH's Linux platform.
+Use the [extension SDK](dashborne/extensions/README.md) for extensions and the
 [Loader](dashborne/README.md) to launch compatible apps from microSD.
 
 </details>
@@ -82,7 +82,7 @@ and extract it.
    settings and startup backup.
 3. Eject the card, insert it into the powered-off DASH, then power on.
    **Tap the splash within three seconds** to configure Dashborne; otherwise it
-   continues to the official dashboard with your selected tweaks.
+   continues to the official dashboard with your selected extensions.
 
 For developer Wi-Fi, edit `wifi.ssid` and `wifi.password` in the card-root
 `dashborne.conf`, then enable ADB in the boot menu. ADB is off by default.
@@ -94,9 +94,9 @@ With a Dashborne microSD card inserted, the S3XY DASH shows the Dashborne boot
 screen at startup. **Tap the screen within three seconds** to enter the boot menu;
 otherwise, Dashborne continues to the official dashboard with your selected extensions.
 
-![Dashborne boot menu on the S3XY DASH, showing the Patches page](docs/images/boot-menu.png)
+![Dashborne boot menu on the S3XY DASH, showing the boot options](docs/images/boot-menu.png)
 
-- Patches: enable or disable tweaks and extensions on your microSD card.
+- Extensions: enable or disable extensions on your microSD card.
 - ADB: enable root access over Wi-Fi, useful for development and modding the device.
 - Loader: browse and launch compatible apps from microSD, with optional autolaunch.
 - Device: view hardware details, software versions, serials and system information.
@@ -124,9 +124,7 @@ Dashborne includes a Wi-Fi ADB enabler that gives you root access to the DASH's
 Linux system. You can read firmware and system files, make changes on the fly,
 debug applications, and reverse-engineer the device's software.
 
-To enable it, open Dashborne's boot menu, select **ADB**, and turn on
-**Enable ADB**. Connect from your computer using the IP address and port shown
-on the screen.
+Refer to the [boot menu](#boot-menu) section to enable the ADB bridge.
 
 ## Development
 
