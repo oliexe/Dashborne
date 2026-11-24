@@ -1,5 +1,6 @@
 > [!IMPORTANT]
 > Dashborne is a community-driven hobby project, not affiliated with Enhance Ltd. or Tesla, Inc.
+> No vendor firmware or proprietary libraries are bundled.
 > Provided **as is**, without warranty—use at your own risk.
 
 <img src="dashborne/assets/icon.png" alt="Dashborne logo" width="160">
