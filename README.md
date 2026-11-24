@@ -141,16 +141,9 @@ Other aftermarket Tesla clusters have similar specifications:
 | [TESLASY T9 Gen 2](https://www.teslasy.com/products/model-3-y-model-3-highland-t9-9-6-inch-gen-2-carplay-instrument-cluster-head-up-touch-display) | 9.6-inch Linux cluster with CarPlay, Android Auto, OTA updates and magnetic mounting; the listing does not identify its processor. |
 | [TESERY 9.6-inch cluster](https://www.tesery.com/products/9-6-inch-instrument-cluster-dashboard-display-for-tesla-model-3-y) | Linux, 1920 × 480 IPS display, CarPlay and Android Auto; the listing does not identify its processor. |
 
-The Yeslak match suggests a shared hardware design, but a common manufacturer or
-identical circuit board has not been verified. These specifications alone do not
-establish that the S3XY DASH is a clone or rebrand.
-
-Enhance-specific integration is confirmed: the DASH communicates with the Gen2
-Commander and S3XY Knob over BLE, separately from phone Bluetooth used for
-CarPlay/Android Auto. Enhance documents this in its
-[DASH FAQ](https://www.enhauto.com/blogs/all/s3xy-dash-installation-tutorials-faq-tesla-model-3-y).
-Whether this required changes to a shared board, and what other hardware differs,
-remains unverified.
+Our working hypothesis is that the S3XY DASH is a slightly modified and rebranded
+[Yeslak T9](https://www.yeslak.com/products/9-6-carplay-instrument-cluster-for-tesla-model-3-y-ly)
+or a similar device.
 
 [photos]: https://fccid.io/2BUSZ-S3XYDASH/Internal-Photos/Internal-photos-9104326.pdf
 [manual]: https://fccid.io/2BUSZ-S3XYDASH/User-Manual/User-manual-9104334.pdf
