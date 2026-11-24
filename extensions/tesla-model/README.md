@@ -32,6 +32,10 @@ Park uses the front three-quarter view. Drive rotates through the overhead view
 to a rear view; Reverse uses the overhead view with reversed road motion.
 The road stops when reported speed is zero. Opening a panel brings the camera
 back to the parked view, where each door, frunk and trunk animates independently.
+Camera and panel motion ease into and out of each transition. Changing gear
+mid-turn reverses from the current pose; the camera waits for panels to close
+before leaving the parked view. Road motion pauses during camera transitions
+to avoid decoding two animation sequences at once.
 
 The adapter reads the stock application's Commander state without changing its
 subscriptions. It uses the previously verified connection, gear, door and turn
@@ -39,17 +43,23 @@ indicator mappings for the supported app build. Low and high beams use the same
 fields as the stock light controls, checked against the app retrieved over ADB.
 When disconnected, live indicators clear; the car stays at full opacity.
 The stock widget frame supplies the background and rounded corners.
+The full-tile touch target has no background fill, so the stock page's dimming
+cannot reveal a rectangle over the car.
 
 ## Development
 
 `scene.c` handles animation and layer placement without UI dependencies.
 `data.c` reads vehicle state; `extension.c` connects the scene to native widget
 controls. The renderer shares a 12-image cache across placements, releases it on
-pause, and requests updates at most 40 times per second while visible.
+pause, and schedules state updates at 40 Hz while visible. It keeps its update
+deadline across late native timer callbacks rather than accumulating delay;
+actual rendering speed depends on the number of layers and image loads.
 
 Run `sh extensions/tesla-model/test.sh` for the state-machine, parser, telemetry
 and lifecycle tests. They cover all panel combinations, gear changes during
 animation, missing images, model cycling, page reuse and bounded cache cleanup.
-A timed test on the DASH captured panel animations, Drive/Reverse views, lights
-and color changes, then restored configuration without changing the saved layout.
-Touch gestures and live vehicle-state changes still need a hands-on check.
+Device checks captured panel animations, Drive/Reverse views, lights and color
+changes, including a color change through the native touch handler. The final
+build completed 60 alternating page changes in one UI process, then returned to
+configuration with the saved layout unchanged. These checks used sample states;
+live Commander changes still need a vehicle check.

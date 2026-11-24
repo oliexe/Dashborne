@@ -8,11 +8,14 @@ struct tm_reading {
     unsigned int known, open;
     int lights_known, low_beam, high_beam;
 };
+/* Fixed-point animation retains sub-frame progress when a target changes. */
+struct tm_motion { int value, from, target; unsigned int elapsed, duration; };
 struct tm_scene {
     struct tm_reading data;
     int angle, panels[TM_PANEL_COUNT], road;
     unsigned long long tick, road_clock;
     int initialized;
+    struct tm_motion camera, panel_motion[TM_PANEL_COUNT];
 };
 struct tm_layer { const char *name; int frame, x, y, w, h; };
 struct tm_lamp {int x0,y0,x1,y1;unsigned int color;};

@@ -26,6 +26,7 @@ static int (*bitmap_load)(void *,const char *,int,int);
 static void (*bitmap_fill)(void *,void *,int,int,int,int);
 static void (*position)(void *,const struct rect *),(*visible)(void *,int);
 static void (*picture)(void *,int,const char *),(*alpha)(void *,unsigned char);
+static void (*background)(void *,unsigned int);
 static void (*brush)(void *,unsigned int),(*fill_box)(void *,int,int,int,int);
 static char preview[512];
 static void cache_clear(void) {
@@ -63,6 +64,10 @@ static int create(struct dashborne_widget_view *v) {
     visible(v->title,0);visible(v->value,0);visible(v->status,0);
     alpha(v->canvas,255);
     widgets->text(v->action,"");alpha(v->action,0);
+    /* A native parent's non-opaque alpha overrides its children's alpha.
+       Remove the hit target's fill as well, so dimming cannot expose a solid
+       rectangle over the car. Zero is the runtime's no-fill color. */
+    background(v->action,0);
     for(int i=0;i<5;++i)picture(v->action,i,"");
     /* Native click handling still owns gesture cancellation; the runtime hides
        the hit area in edit mode so selection, dragging and removal stay native. */
@@ -72,7 +77,11 @@ static int create(struct dashborne_widget_view *v) {
 static void update(struct dashborne_widget_view *v,unsigned long long now) {
     struct state *s=v->user;if(!s || !v->visible)return;
     if(s->next && now<s->next && s->next-now<100000)return;
-    s->next=now+25000;struct tm_reading r;tm_data_read(&r);
+    /* Keep a deadline rather than adding 25 ms to each late callback. The
+       stock 16 ms timer would otherwise turn a 40 Hz animation into 31 Hz. */
+    if(!s->next || now<s->next || now-s->next>100000)s->next=now+25000;
+    else s->next+=((now-s->next)/25000+1)*25000;
+    struct tm_reading r;tm_data_read(&r);
     if(tm_step(&s->scene,&r,now))widgets->invalidate(v);
 }
 static void draw(struct dashborne_widget_view *v,void *surface) {
@@ -116,6 +125,7 @@ static void destroy(struct dashborne_widget_view *v) {
        is reused. The core will restore sizes and labels on its next assignment. */
     visible(v->title,1);visible(v->value,1);visible(v->status,1);alpha(v->canvas,255);
     alpha(v->action,255);
+    background(v->action,2237484);
     if(users>0)--users;if(!users)cache_clear();
 }
 static void suspend(struct dashborne_widget_view *v) {
@@ -132,6 +142,7 @@ static int activate(const struct dashborne_host *api) {
     UI(bitmap_load,"_ZN13BitmapWrapper18loadBitmapFromFileEPKcii");UI(bitmap_fill,"_ZN13BitmapWrapper17fillBoxWithBitmapEPviiii");
     UI(position,"_ZN6ZKBase11setPositionERK14LayoutPosition");UI(visible,"_ZN6ZKBase10setVisibleEb");
     UI(alpha,"_ZN6ZKBase8setAlphaEh");
+    UI(background,"_ZN6ZKBase18setBackgroundColorEj");
     UI(picture,"_ZN8ZKButton18setButtonStatusPicEiPKc");
     UI(brush,"SetBrushColor");UI(fill_box,"zk_gdi_fill_box");
 #undef UI
