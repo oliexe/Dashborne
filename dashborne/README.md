@@ -117,18 +117,20 @@ selection; the saved autolaunch preference still applies to the next boot.
 
 Enable ADB manages a developer connection only inside configuration. The
 controller confirms the previous TCP daemon has stopped, validates Wi-Fi
-settings in `dashborne.conf`, requests station mode when needed, waits for
-association, then starts ADB. It reuses a healthy connection to the configured
-SSID. The toggle shows your saved choice; the status reports connection progress
-or failure.
+settings in `dashborne.conf`, turns Wi-Fi off, waits for teardown, then connects
+in station mode. Each enable starts a fresh connection, including when the
+previous driver state still reports connected. The toggle shows your saved
+choice; the status reports connection progress or failure.
 
-The controller shows an address only when the station interface is up, the
-vendor reports a connection, the driver association/SSID checks pass, and the
-daemon has a TCP 5555 listener on that address or a wildcard address. If the
-driver reports that it lacks the additional wireless checks, the page shows
-**limited Wi-Fi verification**. **ADB listening** confirms a local listener.
-Router isolation, routing or driver faults can still prevent the Mac from
-connecting.
+Before showing an address, Dashborne checks the interface, association and SSID
+where the driver supports them, a fresh ARP reply from the local router, and a
+TCP 5555 listener. The router check uses nonblocking packets and refreshes every
+eight seconds. A failed check clears the address and triggers a bounded Wi-Fi
+reset. It does not require internet access.
+
+**ADB listening; LAN verified** means the local listener and router path passed.
+**ADB client connected** means an incoming TCP connection is established. Router
+client isolation can still block a computer even when the router itself replies.
 
 The controller clears stale displayed addresses, retries failed Wi-Fi
 connections and missing ADB listeners up to three times, then reports a failure.

@@ -14,18 +14,23 @@
 #include "../debug.c"
 
 static int config_valid;
+static int lan_result=1,lan_resets;
+int lan_poll(const char *ip) {assert(*ip);return lan_result;}
+void lan_reset(void) {++lan_resets;}
+const char *lan_error(void) {return "Router did not answer LAN probe";}
 static char configured_ssid[33], configured_password[64], proc4[2048], proc6[2048], mock_daemon[128], port[128];
 static unsigned int offsets[3], chunk;
 static int mode, connected, carrier, association, correct_ssid, ioctl_error, error_number;
 static unsigned char ipv4[4];
 static int modes, connects, disconnects, starts, stops, writes, opens, closes;
-static int stop_delay, pending_stop, start_delay, pending_start, mode_delay, pending_mode;
+static int stop_delay, pending_stop, start_delay, pending_start, mode_delay, pending_mode, target_mode;
 static int fail_stop, fail_start, fail_port, fail_get, fail_open, fail_read, fail_socket;
 static int automatic_link, automatic_listener, missing_api, read_error_after;
 static int events, essid_nul;
 static const char *valid_line = " 0: 00000000:15B3 00000000:0000 0A 00000000:00000000\n";
 static void mode_change(int value) {
-    assert(value == 2);
+    assert(value == 0 || value == 2);
+    target_mode=value;
     ++modes;
     ++events;
     pending_mode = mode_delay + 1;
@@ -174,7 +179,7 @@ int mock_ioctl(int fd, unsigned long request, ...) {
 }
 static void tick(void) {
     if (pending_mode && !--pending_mode)
-        mode = 2;
+        mode = target_mode;
     if (pending_stop && !--pending_stop) {
         strcpy(mock_daemon, "stopped");
         proc4[0] = proc6[0] = 0;
@@ -214,6 +219,7 @@ static void reset(void) {
     fail_stop = fail_start = fail_port = fail_get = fail_open = fail_read = fail_socket = 0;
     ioctl_error = missing_api = read_error_after = essid_nul = 0;
     automatic_link = automatic_listener = 1;
+    lan_result=1;
     debug_bind((void *)1, (void *)2, NULL);
 }
 static void ready(void) {
@@ -238,7 +244,7 @@ static void test_default_and_normal(void) {
     advance(200);
     assert(!events && !strcmp(debug_status(), "Disabled"));
     ready();
-    assert(modes == 1 && connects == 1 && starts == 1);
+    assert(modes == 2 && connects == 1 && starts == 1);
     assert(!strcmp(debug_wifi_name(), "TestNetwork"));
     ipv4[3] = 36;
     tick();
@@ -254,7 +260,7 @@ static void test_default_and_normal(void) {
     mode = 2;
     connected = carrier = association = 1;
     ready();
-    assert(!modes && !connects && !disconnects);
+    assert(modes==2 && connects==1 && disconnects==2);
     cancelled();
 }
 static void test_config(void) {
@@ -403,12 +409,12 @@ static void test_network(void) {
     reset();
     ioctl_error = 95;
     ready();
-    assert(strstr(debug_status(), "limited"));
+    assert(strstr(debug_status(), "LAN verified"));
     cancelled();
     reset();
     ioctl_error = 25;
     ready();
-    assert(strstr(debug_status(), "limited"));
+    assert(strstr(debug_status(), "LAN verified"));
     cancelled();
     reset();
     mode_delay = 1000;
@@ -425,8 +431,23 @@ static void test_network(void) {
     ready();
     cancelled();
 }
+static void test_lan_failure(void) {
+    reset();ioctl_error=95;ready();
+    /* Driver, lease and listening socket all look good, but the LAN is dead. */
+    lan_result=-1;tick();assert(!*debug_ip());
+    advance(400);assert(step==FAILED && modes<=8 && !*debug_ip());
+    cancelled();
+    reset();lan_result=0;debug_set_enabled(1);advance(40);
+    assert(!*debug_ip() && !starts && strstr(debug_status(),"Verifying"));
+    lan_result=1;advance(10);assert(*debug_ip());
+    int before=lan_resets;debug_set_enabled(0);assert(lan_resets>before);
+    advance(10);cancelled();
+}
+static int listener_line(const char *line,const char *ip) {return socket_line(line,ip,0);}
 static void test_parser(void) {
     reset();
+    assert(socket_line("0: 2301000A:15B3 3101000A:ABCD 01", "10.0.1.35",1));
+    assert(!socket_line("0: 2301000A:15B3 00000000:0000 01", "10.0.1.35",1));
     assert(listener_line(valid_line, "10.0.1.35"));
     assert(listener_line("0: 2301000A:15B3 00000000:0000 0A", "10.0.1.35"));
     assert(!listener_line("0: 2301000A:15B3 00000000:0000 0A", "10.0.1.36"));
@@ -514,13 +535,15 @@ static void test_cancellation_and_stress(void) {
 }
 int main(void) {
     test_default_and_normal();
-    puts("PASS: ADB default, normal transitions, address changes and reuse");
+    puts("PASS: ADB default, normal transitions, address changes and full Wi-Fi reset");
     test_config();
     puts("PASS: configuration rejection, maximum-length credentials and missing APIs");
     test_service();
     puts("PASS: rapid toggles, delayed/failed stops, start recovery and other transports");
     test_network();
-    puts("PASS: stale network rejection, loss recovery, bounded retries and fallback checks");
+    puts("PASS: stale network rejection, loss recovery, bounded retries and driver fallback");
+    test_lan_failure();
+    puts("PASS: unreachable LAN never reports listening despite cached link/address and active daemon");
     test_parser();
     puts("PASS: listener parsing, short reads, truncation, overflow and bind addresses");
     test_cancellation_and_stress();

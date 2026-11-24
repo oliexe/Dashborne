@@ -8,4 +8,6 @@ for scenario in autolaunch autolaunch-tap autolaunch-invalid autolaunch-return a
 done
 ${HOST_CC:-cc} -std=c11 -Wall -Wextra -Werror -fno-strict-aliasing -fsanitize=address,undefined -g tests/debug_test.c -o build/debug-test
 build/debug-test
+${HOST_CC:-cc} -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -g tests/lan_test.c -o build/lan-test
+build/lan-test
 python3 -m unittest discover -s tests -p 'test_*.py' -v

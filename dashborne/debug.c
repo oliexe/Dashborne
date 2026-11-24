@@ -2,6 +2,7 @@
    advances on the UI timer; no worker can change networking after handoff. */
 #include "debug.h"
 #include "config.h"
+#include "lan.h"
 typedef __SIZE_TYPE__ usize;
 extern void *dlsym(void *, const char *);
 extern int open(const char *, int, ...), read(int, void *, unsigned int), close(int);
@@ -15,9 +16,9 @@ static int (*set_property)(const char *, const char *);
 static void (*logger)(const char *);
 static char ssid[33], password[64], address[16];
 static const char *status = "Disabled";
-static int active, wanted, owned_network, config_ok, limited_checks, start_pending;
+static int active, wanted, owned_network, config_ok, start_pending;
 static unsigned int ticks, stop_attempts, network_attempts, adb_attempts, stable, lost;
-enum { STOP, PREPARE, MODE_WAIT, SETTLE, CONNECT_WAIT, SERVE, FAILED };
+enum { STOP, PREPARE, OFF_WAIT, MODE_WAIT, SETTLE, CONNECT_WAIT, SERVE, FAILED };
 static int step;
 struct string_view_abi {
     const char *data;
@@ -70,6 +71,7 @@ static void report(const char *message) {
     }
 }
 static void fail(const char *message) {
+    lan_reset();
     step = FAILED;
     address[0] = 0;
     report(message);
@@ -128,9 +130,7 @@ static int network_address(char *ip) {
         }
         if (!any || all == 255 || (r.bytes[18] & 1))
             goto done;
-    } else if (unsupported())
-        limited_checks = 1;
-    else
+    } else if (!unsupported())
         goto done;
     char current[33] = {0};
     struct essid_request e = {0};
@@ -149,9 +149,7 @@ static int network_address(char *ip) {
         current[count] = 0;
         if (!equal(current, ssid))
             goto done;
-    } else if (unsupported())
-        limited_checks = 1;
-    else
+    } else if (!unsupported())
         goto done;
     r = (union request){0};
     copy((char *)r.bytes, "wlan0");
@@ -188,11 +186,13 @@ static int token(const char **at, char *out, unsigned int cap) {
     out[n] = 0;
     return n != 0;
 }
-static int listener_line(const char *line, const char *ip) {
-    char ignored[96], local[48], state[8];
+static int socket_line(const char *line, const char *ip, int connected) {
+    char ignored[96], local[48], remote[48], state[8];
     if (!token(&line, ignored, sizeof(ignored)) || !token(&line, local, sizeof(local)) ||
-        !token(&line, ignored, sizeof(ignored)) || !token(&line, state, sizeof(state)) ||
-        !equal(state, "0A"))
+        !token(&line, remote, sizeof(remote)) || !token(&line, state, sizeof(state)) ||
+        !equal(state, connected ? "01" : "0A"))
+        return 0;
+    if (connected && (equal(remote,"00000000:0000") || equal(remote,"00000000000000000000000000000000:0000")))
         return 0;
     unsigned int n = length(local);
     if ((n != 13 && n != 37) || !equal(local + n - 5, ":15B3"))
@@ -225,7 +225,7 @@ static int listener_line(const char *line, const char *ip) {
             return 0;
     return 1;
 }
-static int listener_file(const char *path, const char *ip) {
+static int socket_file(const char *path, const char *ip, int connected) {
     int fd = open(path, 0);
     if (fd < 0)
         return 0;
@@ -236,7 +236,7 @@ static int listener_file(const char *path, const char *ip) {
         for (int i = 0; i < n; ++i) {
             if (buf[i] == '\n') {
                 line[at] = 0;
-                if (!overflow && listener_line(line, ip)) {
+                if (!overflow && socket_line(line, ip, connected)) {
                     found = 1;
                     break;
                 }
@@ -249,11 +249,12 @@ static int listener_file(const char *path, const char *ip) {
         }
     if (!found && n == 0 && at && !overflow) {
         line[at] = 0;
-        found = listener_line(line, ip);
+        found = socket_line(line, ip, connected);
     }
     close(fd);
     return found;
 }
+static int listener_file(const char *path,const char *ip) {return socket_file(path,ip,0);}
 static void begin_network(void) {
     address[0] = 0;
     ticks = stable = lost = 0;
@@ -261,16 +262,12 @@ static void begin_network(void) {
         fail("Wi-Fi connection failed - toggle ADB to retry");
         return;
     }
+    lan_reset();
     owned_network = 1;
-    if (get_mode() == 2) {
-        disconnect_wifi();
-        step = SETTLE;
-        report("Reconnecting developer Wi-Fi...");
-    } else {
-        change_mode(2);
-        step = MODE_WAIT;
-        report("Waiting for Wi-Fi station mode...");
-    }
+    disconnect_wifi();
+    change_mode(0);
+    step = OFF_WAIT;
+    report("Resetting developer Wi-Fi...");
 }
 static void poll_stop(void) {
     char daemon[128], port[128];
@@ -364,12 +361,12 @@ void debug_bind(void *stock, void *runtime, void (*log)(const char *)) {
 #undef BIND
 }
 void debug_set_enabled(int enabled) {
+    lan_reset();
     active = 1;
     wanted = !!enabled;
     step = STOP;
     address[0] = 0;
     ticks = stop_attempts = network_attempts = adb_attempts = stable = lost = 0;
-    limited_checks = 0;
     if (!wanted && owned_network && get_mode && get_mode() == 2 && disconnect_wifi)
         disconnect_wifi();
     owned_network = 0;
@@ -383,6 +380,7 @@ void debug_set_enabled(int enabled) {
     poll_stop();
 }
 void debug_release(void) {
+    lan_reset();
     active = wanted = owned_network = start_pending = 0;
     address[0] = 0;
     wipe(password, sizeof(password));
@@ -401,11 +399,18 @@ void debug_poll(void) {
     if (step == PREPARE) {
         if (++ticks < 2)
             return;
-        if (network_address(ip)) {
-            step = SERVE;
-            ticks = 0;
-        } else
-            begin_network();
+        begin_network();
+        return;
+    }
+    if (step == OFF_WAIT) {
+        /* Allow the asynchronous driver teardown to finish before reloading it. */
+        if (get_mode() == 0 && ++stable >= 3) {
+            change_mode(2);step = MODE_WAIT;ticks = stable = 0;
+            report("Waiting for Wi-Fi station mode...");
+        } else {
+            if (get_mode() != 0) stable = 0;
+            if (++ticks >= 20) begin_network();
+        }
         return;
     }
     if (step == MODE_WAIT) {
@@ -451,9 +456,17 @@ void debug_poll(void) {
     if (!network_address(ip)) {
         address[0] = 0;
         stable = 0;
+        lan_reset();
         report("Wi-Fi link lost; reconnecting...");
         if (++lost >= 3)
             begin_network();
+        return;
+    }
+    int lan = lan_poll(ip);
+    if (lan != 1) {
+        address[0] = 0;
+        report(lan < 0 ? lan_error() : "Verifying local network...");
+        if (lan < 0) begin_network();
         return;
     }
     lost = 0;
@@ -473,8 +486,8 @@ void debug_poll(void) {
         (listener_file("/proc/net/tcp", ip) || listener_file("/proc/net/tcp6", ip))) {
         copy(address, ip);
         ticks = 0;
-        report(limited_checks ? "ADB listening - limited Wi-Fi verification"
-                              : "ADB listening on developer Wi-Fi");
+        report(socket_file("/proc/net/tcp",ip,1) || socket_file("/proc/net/tcp6",ip,1)
+               ? "ADB client connected" : "ADB listening; LAN verified");
         if (++stable >= 30) {
             network_attempts = adb_attempts = 0;
             stable = 30;
