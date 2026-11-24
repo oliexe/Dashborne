@@ -94,6 +94,45 @@ static int item_count(void *list) {
     if(t==2 && extra)set_position(list,&(struct rect){520,11,1030,469});
     return count+extra;
 }
+#ifdef DASHBORNE_WIDGET_DEVICE_TEST
+/* Run on the UI thread. Native count callbacks use the selected tab/category
+   globals; Special also positions its list. Borrow a live control for that
+   position call, then restore every field before returning to the event loop. */
+int registry_device_probe(void *control) {
+    int *tab=(int *)(base+0x3593c0),saved_tab=*tab,saved_category[3];
+    void *saved_list=pointer(base+0x35ee10);
+    memcpy(saved_category,category,sizeof(saved_category));
+    memcpy(base+0x35ee10,&control,sizeof(control));
+    const int counts[]={4,12,9};int ok=1,checked=0;
+    struct widget_provider *provider=0;
+    for(int i=0;i<PROVIDERS;++i)if(providers[i].host && providers[i].source!=FIRST_SOURCE){provider=&providers[i];break;}
+    const struct dashborne_widget *saved_widget=provider?provider->widget:0;
+    struct dashborne_widget definition={0};
+    if(saved_widget){definition=*saved_widget;definition.sizes=DBW_ALL_SIZES;provider->widget=&definition;}
+    else ok=0;
+    for(int t=0;ok && t<3;++t)for(int c=0;ok && c<counts[t];++c) {
+        *tab=t;category[t]=c;definition.tab=(unsigned int)t;definition.category=(unsigned int)c;
+        int native=original_count[t](control),expected=stock_count(t);
+        if(native!=expected){ok=0;break;}
+        /* Other registered providers may precede this one in the same list. */
+        for(int s=0;s<DBW_SIZE_COUNT;++s) {
+            int found=0;
+            for(int row=expected;row<expected+PROVIDERS*DBW_SIZE_COUNT;++row) {
+                int size=-1;const struct widget_provider *p=row_provider(t,row,&size);
+                if(!p)break;
+                if(p==provider && size==s){found=1;break;}
+            }
+            if(!found)ok=0;
+        }
+        ++checked;
+    }
+    if(provider)provider->widget=saved_widget;
+    *tab=saved_tab;memcpy(category,saved_category,sizeof(saved_category));
+    memcpy(base+0x35ee10,&saved_list,sizeof(saved_list));
+    char message[128];snprintf(message,sizeof(message),"widget-check: %s native picker counts and eight sizes in %d categories",ok?"PASS":"FAIL",checked);
+    api->log(api,message);return ok;
+}
+#endif
 static int candidate(struct layout *out,int size) {
     if(size<0 || size>=DBW_SIZE_COUNT)return 0;
     void *edit=*caller;if(!edit || !intent[0] || intent[0]>25)return 0;

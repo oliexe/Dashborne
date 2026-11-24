@@ -37,6 +37,17 @@ and `sh test.sh`. The optional `DASHBORNE_WIDGET_DEVICE_TEST` build runs
 `tests/device_probe.h` against native page objects; it does not save the temporary
 placements. Normal release builds exclude that probe.
 
-Hardware verification is still in progress. Touch placement/removal, rapid page
-swipes, theme changes, knob navigation and coexistence with active projection must
-be checked on the final build before claiming complete stock-widget parity.
+The hardware probe passed on app 6.11.2:
+
+- All eight sizes matched the native grid dimensions and control positions.
+- Native button lookup and edit-mode action visibility passed at each size.
+- Picker row counts matched the stock callbacks in all 25 categories, with all
+  eight custom size choices found in each category.
+- Two example instances and a car instance coexisted with separate example state.
+- Custom wide widgets were excluded from the native projection lookup.
+
+These checks changed only live grid objects; they did not save temporary
+placements. The normal build was restored afterward. Touch placement/removal,
+rapid page swipes, theme changes, knob navigation and coexistence with active
+projection still need confirmation on the final build before claiming complete
+stock-widget parity.

@@ -44,6 +44,11 @@ static void views_device_probe(unsigned long long now) {
     runtime_host->log(runtime_host,message);
     if(!ok){done=1;return;}
     if(stage==0) {
+        extern int registry_device_probe(void *);
+        struct rect saved_position=*position(v->public.window);
+        ok=registry_device_probe(v->public.window);
+        set_position(v->public.window,&saved_position);
+        if(!ok){done=1;return;}
         layout.x=1;layout.id=61000;void *second=activate_widget(grid,&layout,0);
         unsigned short car_sources[3]={FIRST_SOURCE,0,35};layout=(struct layout){.type=5,.x=2,.id=62000,.begin=car_sources,.end=car_sources+3,.capacity=car_sources+3};
         void *car=activate_widget(grid,&layout,0);views_tick(now);
