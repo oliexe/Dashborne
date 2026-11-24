@@ -34,7 +34,10 @@ class StateTests(unittest.TestCase):
         stub = cls.root/'mount.c'
         stub.write_text('int core_available; int extension_probe(const char*id){return id[0]==110 || (core_available && id[0]==101);}\nint mount(const char*a,const char*b,const char*c,unsigned long d,const void*e){(void)a;(void)b;(void)c;(void)d;(void)e;return 0;}\nint umount2(const char*a,int b){(void)a;(void)b;return 0;}\n')
         output = cls.root/'state.so'
+        # Keep test mounts separate from libc symbols on ELF hosts, where
+        # Python's already-loaded libc can otherwise override these stubs.
         subprocess.run(['cc','-shared','-fPIC','-std=c11', '-Wall','-Wextra','-Werror',
+                        '-Dmount=test_mount', '-Dumount2=test_umount2',
                         '-DCONFIG_CARD=\"'+str(cls.root/'card')+'\"',
                         '-DCONFIG_LEGACY=\"'+str(cls.root/'card')+'\"',
                         '-DDASHBORNE_ROOT="'+str(cls.root/'card')+'"',
