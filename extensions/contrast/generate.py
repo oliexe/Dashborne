@@ -1,8 +1,11 @@
 """Build an original settings panel and guarded additive FTU patch."""
+import argparse
 import json
+import os
+import shutil
+import subprocess
 from pathlib import Path
 import struct
-import sys
 import zlib
 ROOT = Path(__file__).resolve().parent
 
@@ -54,7 +57,26 @@ def build(base):
     fields=(len(base),zlib.crc32(base),len(plain),zlib.crc32(plain),len(fragment),zlib.crc32(fragment))
     return b'DBP1'+struct.pack('<6I',*fields)+fragment
 
-if __name__=='__main__':
-    patch=build(Path(sys.argv[1]).read_bytes())
-    (ROOT/'assets/panel.dbp').write_bytes(patch)
-    print('Built original Contrast panel:',len(patch),'bytes')
+def generate_from_device(device, adb, destination=None):
+    result = subprocess.run(
+        [adb, '-s', device, 'exec-out', 'cat', '/res/ui/awlsettings.ftu'],
+        check=True, capture_output=True, timeout=20)
+    patch = build(result.stdout)
+    output = Path(destination) if destination else ROOT/'assets/panel.dbp'
+    output.write_bytes(patch)
+    return len(patch)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Build the Contrast patch from the connected DASH.')
+    parser.add_argument('--device', required=True, help='ADB device serial or address:port')
+    parser.add_argument('--adb', default=os.environ.get('ADB') or shutil.which('adb') or
+                        str(Path.home()/'Library/Android/sdk/platform-tools/adb'))
+    args = parser.parse_args()
+    try:
+        size = generate_from_device(args.device, args.adb)
+    except (OSError, ValueError, AssertionError, struct.error, zlib.error,
+            subprocess.SubprocessError) as error:
+        parser.exit(1, 'Generation failed (' + type(error).__name__ +
+                    '). Check the ADB connection, layout and output path.\n')
+    print('Built original Contrast panel:', size, 'bytes')

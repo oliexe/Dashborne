@@ -1,7 +1,7 @@
-"""Create guarded scalar edits from a locally supplied FTU reference.
+"""Create guarded scalar edits from FTU bytes read through ADB.
 
 This helper returns patch metadata and the selected old/new scalar values.
-It does not store a copy of the reference layout in the patch.
+It does not store a copy of the input layout in the patch.
 """
 import hashlib
 import json

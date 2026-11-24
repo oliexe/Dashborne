@@ -18,7 +18,7 @@ current UI process.
 
 ## Implementation
 
-The adapter supports the inspected official app 6.11.2 and FlyThings runtime.
+The adapter supports the tested official app 6.11.2 and FlyThings runtime.
 It checks both complete library fingerprints and all ten callback addresses
 before installing hooks. It rejects other app/runtime builds.
 
@@ -61,8 +61,11 @@ On the DASH, we confirmed that the Contrast page opens, the enabled Contrast
 slider changes the image, and Reset restores it. We have not confirmed the
 luminance slider or reversal after booting without the card for this plugin.
 
-To regenerate the additive panel against a local settings layout:
+To regenerate the panel, enable ADB in Dashborne configuration and connect to
+the DASH. The generator reads the installed settings layout into memory and
+writes the patch:
 
 ```sh
-python3 extensions/contrast/generate.py /path/to/awlsettings.ftu
+adb connect DEVICE_IP:5555
+python3 extensions/contrast/generate.py --device DEVICE_IP:5555
 ```

@@ -140,8 +140,8 @@ DBP1 adds controls; interactive controls need a native extension to handle them.
 DBP2 changes guarded, equal-length JSON scalar tokens in the dashboard layout.
 Both compose against the same original file; mismatched fingerprints or
 overlapping scalar edits reject the entire batch.
-[`author.py`](../patches/author.py) produces metadata and offsets from a local
-reference. Native overlays support larger structural or complete resource
+[`author.py`](../patches/author.py) produces metadata and offsets from layout bytes
+read through ADB. Native overlays support larger structural or complete resource
 replacements without the DBP2 scalar-size restriction.
 
 ## Validation

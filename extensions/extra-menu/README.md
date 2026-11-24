@@ -60,7 +60,7 @@ DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld sh dashborne/build.sh
 Host tests cover empty and 64-entry menus, selection and return, duplicate
 opens, cleanup while a window is live, stale tokens, rollback, owner namespaces
 and composition with selected patches. We also applied the dashboard patch to
-the installed reference and checked that it preserved the original controls. On
+the device layout and checked that it preserved the original controls. On
 the DASH, the user confirmed the stock-style menu, opening Screen Mirroring and
 returning to Extra. Deployment checks compared uploaded files with read-back
 copies, preserved settings, and confirmed that configuration and ADB returned

@@ -7,7 +7,7 @@ adds the Dashborne label; users select it in the boot menu.
 - DBP1: append a root control. Interactive controls need a native extension
   to handle their events.
 - DBP2: replace guarded, equal-length JSON scalar tokens. Use
-  [`author.py`](author.py) to calculate offsets and metadata from a local reference.
+  [`author.py`](author.py) to calculate offsets and metadata from layout bytes read through ADB.
 - For new activities, behavior or whole resource replacements, use the
   [native extension SDK](../extensions/README.md).
 

@@ -1,7 +1,7 @@
 # Platform research
 
-We tested one S3XY DASH and inspected its 6.11.2/6.11.4 application resources. Hardware specifications and public sources are in the
-[main README](../README.md#hardware).
+On-device findings from the test DASH. Hardware specifications and public
+sources are in the [main README](../README.md#hardware).
 
 ## Loading from microSD
 
@@ -35,15 +35,10 @@ installed dashboard. See [installation](../README.md#install).
   supplies activity factories, controls and event dispatch. Native adapters check
   runtime fingerprints and relevant ABI details before use.
 
-The downloaded display update contains the application partition. Replacing the
-kernel or bootloader is unnecessary for loading extensions into the installed UI.
-
 ## Temporary patches
 
-The downloaded 6.11.4 package and installed 6.11.2 app contain the same
-`dash1act.ftu`: 19,739 bytes, SHA-256
-`23c4185111b23a29c11f67ee4820eeb77c110c59a4f7213e079ac641344b69f2`.
-Dashborne checks compatibility against the installed resource fingerprint.
+Dashborne checks compatibility against the installed resource fingerprint before
+applying patches.
 
 Layout patches generate a modified resource on microSD and bind-mount it over
 the original for the session. After rebooting, we checked that the installed
