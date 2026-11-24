@@ -5,7 +5,7 @@
 struct widget_provider providers[PROVIDERS];
 const struct widget_geometry widget_sizes[8]={{1,1,0,250,224},{2,1,2,510,224},{1,2,4,250,458},{2,2,5,510,458},{3,2,13,770,458},{4,2,14,1030,458},{5,2,15,1290,458},{6,2,16,1550,458}};
 const struct widget_provider *provider_for(unsigned int s){return s==0x212?&providers[0]:0;}
-struct control {void **table;int id,shown;struct rect rect;void *parent;char text[100];};
+struct control {void **table;int id,shown;struct rect rect,icon_rect;void *parent;char text[100];};
 static struct control controls[36][7],pages[3],stock[3];
 static unsigned char grids[3][80];
 static int current,creates,destroys,updates,draws,clicks,delegations,lookup_calls,deactivations,parse_fail;
@@ -23,6 +23,7 @@ static void caption(void *p,const char *s){snprintf(((struct control *)p)->text,
 static void font_size(void *p,unsigned int n){assert(p && n>=16 && n<=22);}
 static int original_count(void *e,int t){(void)e;(void)t;return 2;}
 static void geometry(void *p,const struct rect *r){((struct control *)p)->rect=*r;}
+static void icon_geometry(void *p,const struct rect *r){((struct control *)p)->icon_rect=*r;}
 static void listen(void *p,void *a){(void)p;(void)a;}
 static void ctor(void *p,int n){(void)p;(void)n;}
 static void reader_init(void *p){(void)p;}
@@ -52,7 +53,7 @@ int main(void) {
     const struct dashborne_widget w={.create=on_create,.destroy=on_destroy,.update=on_update,.draw=on_draw,.click=on_click,.title="Test"};
     providers[0]=(struct widget_provider){&h,&w,0x212};
     parent=get_parent;find=lookup;visible=visibility;is_visible=shown;get_id=id;text=caption;listener=listen;
-    set_position=geometry;text_size=font_size;json_ctor=ctor;json_dtor=reader_dtor=dtor;reader_ctor=reader_init;json_parse=parse;parse_controls=controls_parse;
+    set_position=geometry;set_icon_position=icon_geometry;text_size=font_size;json_ctor=ctor;json_dtor=reader_dtor=dtor;reader_ctor=reader_init;json_parse=parse;parse_controls=controls_parse;
     base_ctor=init_base;set_ui=ui_base;set_editable=editable;grid_activate=activate_grid;grid_deactivate=deactivate_grid;cpp_delete=dtor;
     factory=stock_factory;button_lookup=stock_lookup;theme=get_theme;invalidate=dirty;base_draw=original_draw;text_table=tables;
     for(int i=0;i<3;++i){pages[i].shown=1;stock[i].parent=&pages[i];void *p=&stock[i];memcpy(grids[i]+40,&p,sizeof(p));}
@@ -65,6 +66,8 @@ int main(void) {
             struct view *v=native_view(p);assert(parent(v->public.window)==&pages[page]);
             assert(v->public.width==widget_sizes[size].width && v->public.height==widget_sizes[size].height);
             assert(((struct control *)v->public.canvas)->rect.w==v->public.width-24);
+            struct control *frame=v->button;
+            assert(frame->icon_rect.x==0 && frame->icon_rect.y==0 && frame->icon_rect.w==v->public.width && frame->icon_rect.h==v->public.height);
             assert(get_by_button(grids[page],id(v->button))==p);
             /* A newly reassigned window cannot draw the retired provider. */
             int old_draws=draws;render(v->public.canvas,0);assert(draws==old_draws);
@@ -86,5 +89,5 @@ int main(void) {
     views_pause(0);views_tick(500000);assert(updates>before);
     assert(!views_detach() && creates==destroys && deactivations==3);
     assert(clicks==24 && !views_cleanup());
-    puts("Widget views: 8 sizes, three page parents, native delegation, independent instances, no stale frame, edit gating, pause and teardown passed");
+    puts("Widget views: 8 sizes with matching frame bounds, three page parents, native delegation, independent instances, no stale frame, edit gating, pause and teardown passed");
 }

@@ -33,6 +33,7 @@ static void (*base_ctor)(void *),(*set_ui)(void *,const void *),(*set_editable)(
 static void *(*parent)(void *),*(*find)(void *,int),*(*theme)(void);
 static int (*is_visible)(void *),(*get_id)(void *);
 static void (*visible)(void *,int),(*text)(void *,const char *),(*listener)(void *,void *),(*set_position)(void *,const struct rect *);
+static void (*set_icon_position)(void *,const struct rect *);
 static void (*set_alpha)(void *,unsigned char),(*button_picture)(void *,int,const char *),(*text_color)(void *,int,unsigned int),(*text_size)(void *,unsigned int);
 static void (*json_ctor)(void *,int),(*json_dtor)(void *),(*reader_ctor)(void *),(*reader_dtor)(void *);
 static int (*json_parse)(void *,const char *,const char *,void *,int);
@@ -118,6 +119,9 @@ static void dimensions(struct view *v,const struct widget_geometry *g) {
     v->public.width=w;v->public.height=h;
     set_position(v->public.window,&(struct rect){0,0,w,h});
     set_position(v->button,&(struct rect){0,0,w,h});
+    /* Button status pictures have their own drawing rectangle. Resizing the
+       control alone leaves the frame at its original 250x224 dimensions. */
+    set_icon_position(v->button,&(struct rect){0,0,w,h});
     set_position(v->public.canvas,&(struct rect){12,54,w-24,h-108});
     int action_width=w==250?64:108;
     set_position(v->public.title,&(struct rect){16,12,w-action_width-48,36});
@@ -194,6 +198,7 @@ int views_bind(const struct dashborne_host *h) {
     UI(get_id,"_ZNK6ZKBase5getIDEv");UI(is_visible,"_ZNK6ZKBase9isVisibleEv");UI(visible,"_ZN6ZKBase10setVisibleEb");
     UI(text,"_ZN10ZKTextView7setTextEPKc");UI(listener,"_ZN6ZKBase16setClickListenerEPNS_14IClickListenerE");
     UI(set_position,"_ZN6ZKBase11setPositionERK14LayoutPosition");UI(set_alpha,"_ZN6ZKBase8setAlphaEh");
+    UI(set_icon_position,"_ZN8ZKButton15setIconPositionERK14LayoutPosition");
     UI(button_picture,"_ZN8ZKButton18setButtonStatusPicEiPKc");
     UI(text_size,"_ZN10ZKTextView11setTextSizeEj");
     UI(text_color,"_ZN10ZKTextView18setTextStatusColorEij");
