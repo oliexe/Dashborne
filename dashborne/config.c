@@ -71,9 +71,11 @@ static int validate(void) {
     return lookup("format",&b,&e,&v,&n) && n==1 && document[v]=='1';
 }
 int config_get(const char *key,char *out,unsigned int capacity) {
-    if(!capacity)return 0;out[0]=0;unsigned int b,e,v,n;
+    if(!capacity)return 0;
+    out[0]=0;unsigned int b,e,v,n;
     if(!valid || !lookup(key,&b,&e,&v,&n) || n>=capacity)return 0;
-    for(unsigned int i=0;i<n;++i)out[i]=document[v+i];out[n]=0;return 1;
+    for(unsigned int i=0;i<n;++i)out[i]=document[v+i];
+    out[n]=0;return 1;
 }
 int config_set(const char *key,const char *value) {
     if(!valid || !key_ok(key))return 0;
@@ -85,9 +87,12 @@ int config_set(const char *key,const char *value) {
     char *next=malloc(size+1);if(!next)return 0;
     unsigned int at=0;for(unsigned int i=0;i<b;++i)next[at++]=document[i];
     if(separator)next[at++]='\n';
-    for(unsigned int i=0;i<k;++i)next[at++]=key[i];next[at++]='=';
-    for(unsigned int i=0;i<n;++i)next[at++]=value[i];next[at++]='\n';
-    for(unsigned int i=e;i<used;++i)next[at++]=document[i];next[at]=0;
+    for(unsigned int i=0;i<k;++i)next[at++]=key[i];
+    next[at++]='=';
+    for(unsigned int i=0;i<n;++i)next[at++]=value[i];
+    next[at++]='\n';
+    for(unsigned int i=e;i<used;++i)next[at++]=document[i];
+    next[at]=0;
     wipe(document,sizeof(document));for(unsigned int i=0;i<=at;++i)document[i]=next[i];used=at;
     wipe(next,size+1);free(next);return 1;
 }
