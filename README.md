@@ -3,8 +3,9 @@
 # Dashborne
 
 Dashborne is an ADB enabler, patch loader, and app loader for the S3XY DASH's
-official Linux-based OS. It loads patches from a microSD card and applies them
-temporarily, without writing them to the DASH's internal flash memory.
+official Linux-based OS. It gives users the tools to modify every aspect of the
+DASH's software or load custom apps. It loads patches from a microSD card and
+applies them temporarily, without writing them to the DASH's internal flash memory.
 
 ## Install
 
