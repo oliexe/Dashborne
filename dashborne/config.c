@@ -107,7 +107,6 @@ int config_commit(void) {
 static int legacy_settings(void) {
     char *raw=malloc(8193);if(!raw)return 0;unsigned int size=0;
     int result=load(CONFIG_LEGACY "/settings.conf",raw,8193,&size),ok=result>=0;
-    if(result==0)ok=config_set("tweak.dashborne-badge.enabled","1");
     if(result==1)for(unsigned int i=0;i<size;++i)if(!raw[i])ok=0;
     if(result==1 && ok)for(unsigned int at=0;at<size;) {
         unsigned int end=at;while(end<size && raw[end]!='\n')++end;

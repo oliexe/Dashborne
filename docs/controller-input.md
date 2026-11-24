@@ -24,25 +24,6 @@ verified the event codes, callback signatures, repeat behavior or dispatcher in
 the installed 6.11.2 app. The input may arrive through the app's communication
 layer rather than Linux input devices.
 
-## Tesla UI handler
-
-`cluster_window_input(action, navigation_allowed)` accepts logical previous,
-next, select and Back actions on the UI thread. It returns whether it handled
-the action. The fixed cluster currently has one interactive control, Back:
-previous/next highlights it, select activates the focused control, and Back
-returns directly to Extra. Unknown and page-change actions remain unhandled.
-
-The handler ignores inactive and paused views, clears focus when navigation is
-disallowed, and prevents repeated activation while closing. Pause clears focus.
-The existing native Activity Back callback uses this path. Knob and scroll-wheel
-events are **not connected yet**; tests supply logical actions directly.
-
-The device adapter still needs to identify the stock UI navigation dispatcher,
-preserve its enablement and Autopilot gates, normalize the verified events, and
-route them to the foreground view. Handled events must not also activate a stock
-widget behind Tesla UI. Release/repeat rules and callback thread ownership need
-verification before attaching the adapter.
-
 ## ADB capture
 
 With ADB enabled in Dashborne configuration, collect the input inventory:

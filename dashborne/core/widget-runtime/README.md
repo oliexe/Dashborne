@@ -15,8 +15,7 @@ conflicting hook or failed restoration prevents unloading. Layout reads and
 writes are redirected to RAM, with saves stored in `dashborne.conf`; teardown
 loads the flash layout before restoring its write path.
 
-Start with [widget-example](../../../extensions/widget-example), or see
-[3D Vehicle Widget](../../../extensions/vehicle-widget) for a shared image cache and custom drawing.
+Start with [widget-example](../../../extensions/widget-example) to add a custom widget.
 
 ## Verification
 
@@ -30,10 +29,8 @@ cover:
 - Three page parents, pooled view reassignment, edit-mode action gating and pause.
 - Card-layout round trips, malformed configuration, failed writes and cleanup order.
 - Hook conflicts, memory-protection failures and cache-flush failures.
-- Car resizing, bounded shared image cache, Preview/Stop and unavailable telemetry.
 
-Run `sh dashborne/core/widget-runtime/test.sh`, `sh extensions/vehicle-widget/test.sh`
-and `sh test.sh`. The optional `DASHBORNE_WIDGET_DEVICE_TEST` build runs
+Run `sh dashborne/core/widget-runtime/test.sh` and `sh test.sh`. The optional `DASHBORNE_WIDGET_DEVICE_TEST` build runs
 `tests/device_probe.h` against native page objects; it does not save the temporary
 placements. Normal release builds exclude that probe.
 
@@ -44,7 +41,7 @@ The hardware probe passed on app 6.11.2 with both frameworks linked into
 - Native button lookup and edit-mode action visibility passed at each size.
 - Picker row counts matched the stock callbacks in all 25 categories, with all
   eight custom size choices found in each category.
-- Two example instances and a car instance coexisted with separate example state.
+- Multiple custom widgets coexisted with independent example state.
 - Custom wide widgets were excluded from the native projection lookup.
 
 These checks changed only live grid objects; they did not save temporary

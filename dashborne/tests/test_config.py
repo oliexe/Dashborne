@@ -27,6 +27,13 @@ class ConfigTests(unittest.TestCase):
         p=subprocess.run([str(self.bin),*args],capture_output=True)
         self.assertEqual(p.returncode,0 if success else 1,p.stderr.decode())
         return p.stdout.decode().removesuffix('\n')
+    def test_fresh_configuration_has_no_implicit_tweaks(self):
+        expected=host.parse(host.migrate(self.card))
+        self.call('load')
+        actual=host.parse(self.file.read_bytes())
+        self.assertEqual(actual,expected)
+        self.assertFalse(any(key.startswith('tweak.') for key in actual))
+
     def test_migration_and_authoritative_root(self):
         (self.card/'Dashborne/settings.conf').write_text('wifi_adb=1\npatch.test=1\npatch.missing=0\n')
         (self.card/'Dashborne/wifi.conf').write_text(' Network #= \\ "\n Password #= \\ "\n')

@@ -49,6 +49,7 @@ def package(source, destination, extensions=None):
 
 if __name__ == '__main__':
     card = ROOT / 'build/card/Dashborne'
+    if (card / 'patches').exists(): shutil.rmtree(card / 'patches')
     package(ROOT / 'patches/definitions', card / 'patches', card / 'extensions')
     (card / 'ui').mkdir(parents=True, exist_ok=True)
     shutil.copyfile(ROOT / 'assets/icon.png', card / 'ui/icon.png')

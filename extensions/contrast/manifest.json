@@ -1,7 +1,0 @@
-{
-  "id": "contrast",
-  "title": "Contrast",
-  "description": "Adds Contrast to official Settings, with temporary contrast and luminance sliders.",
-  "abi": 1,
-  "sources": ["extension.c", "display.c", "layout.c"]
-}

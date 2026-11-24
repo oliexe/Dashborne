@@ -66,11 +66,9 @@ static void views_device_probe(unsigned long long now) {
         set_position(v->public.window,&saved_position);
         if(!ok){done=1;return;}
         layout.x=1;layout.id=61000;void *second=activate_widget(grid,&layout,0);
-        unsigned short car_sources[3]={FIRST_SOURCE,0,35};layout=(struct layout){.type=5,.x=2,.id=62000,.begin=car_sources,.end=car_sources+3,.capacity=car_sources+3};
-        void *car=activate_widget(grid,&layout,0);views_tick(now);
-        struct view *other=native_view(second),*vehicle=native_view(car);
-        ok=other && vehicle && other!=v && vehicle!=v && other->public.user!=v->public.user && other->attached && vehicle->attached && !vehicle->failed;
-        runtime_host->log(runtime_host,ok?"widget-check: PASS two examples and car coexist":"widget-check: FAIL coexistence");
+        views_tick(now);struct view *other=native_view(second);
+        ok=other && other!=v && other->public.user!=v->public.user && other->attached;
+        runtime_host->log(runtime_host,ok?"widget-check: PASS two independent examples coexist":"widget-check: FAIL coexistence");
         if(!ok){done=1;return;}
     }
     ++stage;

@@ -1,0 +1,14 @@
+{
+  "id": "test-label",
+  "title": "Test label",
+  "description": "Synthetic additive patch fixture",
+  "target": "/res/ui/dash1act.ftu",
+  "base": {},
+  "operation": "append-root-control",
+  "key": "textview__900001",
+  "control": {
+    "id": 59001,
+    "text": "ADDED",
+    "touchable": false
+  }
+}

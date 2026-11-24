@@ -99,15 +99,9 @@ Dashborne includes the [Extra menu](dashborne/core/extra-menu) and
 [widget runtime](dashborne/core/widget-runtime). Extensions use these built-in
 services to add pages to **Tweaks** or widgets to the stock picker.
 
-- [Contrast](extensions/contrast): display contrast and luminance controls in stock Settings.
-- [Tesla UI](extensions/tesla-ui): a fixed Model S style instrument view in Extra,
-  with live readings, energy history and navigation trip details.
 - [Widget Example](extensions/widget-example): boilerplate for adding widgets to any stock picker category.
-- [3D Vehicle Widget](extensions/vehicle-widget): an animated car in the stock widget
-  picker, placed through the dashboard editor, with a local preview.
 - [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
   viewer with aspect controls; Back restores CarPlay/Android Auto.
-- [Dashborne badge](dashborne/patches/definitions/badge.json): an optional dashboard label.
 
 ## Hardware
 

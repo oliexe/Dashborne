@@ -53,7 +53,7 @@ class PatchTests(unittest.TestCase):
         self.original = {'id': 0, 'textview__1': {'id': 50001, 'text': 'Synthetic fixture'}}
         self.base = encode(self.original)
         plain = zlib.decompress(self.base[26:-6])
-        self.spec = json.loads((ROOT / 'definitions/badge.json').read_text())
+        self.spec = json.loads((ROOT / 'tests/additive.json').read_text())
         self.spec['base'].update(size=len(self.base), crc32=f'{zlib.crc32(self.base):08x}',
                                  plain_size=len(plain), plain_crc32=f'{zlib.crc32(plain):08x}')
         self.patch = compile_patch(self.spec)
@@ -75,7 +75,7 @@ class PatchTests(unittest.TestCase):
 
     def test_patch_contains_our_fragment_not_base(self):
         self.assertNotIn(b'Synthetic fixture', self.patch)
-        self.assertIn(b'DASHBORNE', self.patch)
+        self.assertIn(b'ADDED', self.patch)
 
     def test_different_version_and_already_patched_are_rejected(self):
         self.assertIsNone(apply(encode({'id': 1}), self.patch))
@@ -120,11 +120,11 @@ class ScalarTests(unittest.TestCase):
 
     def test_scalar_and_additive_edits_compose_without_other_changes(self):
         color=compile_patch(scalar_patch(self.base,'color','Color','Test',[(('control','color'),9352703)]))
-        badge=json.loads((ROOT/'definitions/badge.json').read_text());badge['base']=self.spec['base']
+        addition=json.loads((ROOT/'tests/additive.json').read_text());addition['base']=self.spec['base']
         expected=json.loads(json.dumps(self.original));expected['control'].update(fontSize=32,color=9352703)
-        expected[badge['key']]=badge['control']
-        self.assertEqual(decode(apply_many(self.base,[self.packet,color,compile_patch(badge)])),expected)
-        self.assertEqual(decode(apply_many(self.base,[compile_patch(badge),color,self.packet])),expected)
+        expected[addition['key']]=addition['control']
+        self.assertEqual(decode(apply_many(self.base,[self.packet,color,compile_patch(addition)])),expected)
+        self.assertEqual(decode(apply_many(self.base,[compile_patch(addition),color,self.packet])),expected)
 
     def test_conflicts_and_incorrect_expected_value_fail_entire_set(self):
         self.assertIsNone(apply_many(self.base,[self.packet,self.packet]))

@@ -14,7 +14,7 @@ start before selected extensions.
 
 ## Extension directory
 
-See the bundled [Contrast](../../extensions/contrast) and
+See the bundled [Widget Example](../../extensions/widget-example) and
 [Screen Mirroring](../../extensions/screen-mirroring) implementations.
 Each source extension has a directory under `extensions/`:
 
@@ -43,8 +43,7 @@ preserves existing selections.
 The catalog determines activation order. IDs must be unique across both types.
 
 Bundled modules can reuse another extension's source assets without duplicating
-them in Git. Add `"asset_sources": [{"extension": "tesla-ui", "paths": ["motion",
-"Model3-CREDITS.md"]}]` to the manifest. The builder copies those files from the
+them in Git. Add `"asset_sources": [{"extension": "my-assets", "paths": ["icons"]}]` to the manifest. The builder copies those files from the
 named extension's `assets/` directory into the new package's own `assets/` tree;
 the provider module does not need to be enabled. Paths cannot leave that source
 directory, and duplicate destinations fail the build.

@@ -1,8 +1,8 @@
 # Layout patches
 
 Dashborne compiles JSON patch definitions into `.dbp` files and a catalog
-for `Dashborne/patches` on microSD. The bundled [badge](definitions/badge.json)
-adds the Dashborne label; users select it in the boot menu.
+for `Dashborne/patches` on microSD. Add your definitions under
+`dashborne/patches/definitions/`; users select them in the boot menu.
 
 - DBP1: append a root control. Interactive controls need a native extension
   to handle their events.

@@ -9,21 +9,23 @@ spec=importlib.util.spec_from_file_location('loader_install',ROOT/'install.py')
 install=importlib.util.module_from_spec(spec);spec.loader.exec_module(install)
 
 class InstallTests(unittest.TestCase):
-    def test_core_migration_preserves_user_extensions_and_preferences(self):
+    def test_retired_packages_removed_without_losing_user_data(self):
         with tempfile.TemporaryDirectory() as tmp:
             card=Path(tmp)
             install.stage(card)
             settings=b'format=1\nadb.enabled=0\nwidgets.source.530=my-widget\nvehicle-widget.layout.bytes=2\nvehicle-widget.layout.0=7b7d\n'
             (card/'dashborne.conf').write_bytes(settings)
-            for old in install.RETIRED_CORE:
+            for old in install.RETIRED_PACKAGES:
                 folder=card/old;folder.mkdir(parents=True)
                 (folder/'libextension.so').write_bytes(b'old core')
+            (card/'Dashborne/patches/dashborne-badge.dbp').write_bytes(b'old patch')
             user=card/'Dashborne/extensions/my-widget';user.mkdir()
             (user/'libextension.so').write_bytes(b'user widget')
             install.stage(card)
             self.assertEqual((card/'dashborne.conf').read_bytes(),settings)
             self.assertEqual((user/'libextension.so').read_bytes(),b'user widget')
-            self.assertTrue(all(not (card/old).exists() for old in install.RETIRED_CORE))
+            self.assertTrue(all(not (card/old).exists() for old in install.RETIRED_PACKAGES))
+            self.assertFalse((card/'Dashborne/patches/dashborne-badge.dbp').exists())
 
     def test_migrate_preserve_choices_and_restore_exact_config(self):
         with tempfile.TemporaryDirectory() as tmp:

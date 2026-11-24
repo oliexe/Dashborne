@@ -25,6 +25,9 @@ class ReleaseTests(unittest.TestCase):
             with zipfile.ZipFile(archive) as zipped:
                 self.assertIsNone(zipped.testzip())
                 zipped.extractall(package)
+            bundles=package/'card/Dashborne/extensions'
+            self.assertEqual({p.name for p in bundles.iterdir()}, {'widget-example','screen-mirroring'})
+            self.assertEqual(list((package/'card/Dashborne/patches').glob('*.dbp')), [])
             config = release.install.configuration.parse((package / 'card/dashborne.conf').read_bytes())
             self.assertEqual(config['adb.enabled'], '0')
             self.assertEqual(config['wifi.password'], '')

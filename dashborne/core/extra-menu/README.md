@@ -14,7 +14,7 @@ to the dashboard; closing an extension window returns to Extra.
 The menu is linked into `libdashborne.so` and starts before selected plugins.
 Its layout and icons live in `Dashborne/assets/extra-menu` on the card.
 Only enabled plugins register entries; an empty menu explains how to add them.
-Contrast remains in stock Settings as **\* Contrast**. Screen Mirroring opens from Extra.
+Screen Mirroring opens from Extra.
 
 ## Add an entry
 

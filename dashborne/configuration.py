@@ -84,8 +84,6 @@ def migrate(card):
                 changes['adb.enabled'] = value
             elif key.startswith('patch.') and re.fullmatch('[a-z0-9_-]{1,31}', key[6:]):
                 changes['tweak.'+key[6:]+'.enabled'] = value
-    else:
-        changes['tweak.dashborne-badge.enabled'] = '1'
     for name in (LEGACY[1], 'adb-enabler/wifi.conf'):
         source = card/name
         if source.exists():

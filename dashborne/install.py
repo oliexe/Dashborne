@@ -26,6 +26,10 @@ DEFAULT_STARTUP = {
 }
 SAVED = ('dashborne.conf', 'EasyUI.cfg', BACKUP, 'Dashborne/settings.conf', 'Dashborne/wifi.conf', 'adb-enabler/wifi.conf')
 RETIRED_CORE = ('Dashborne/extensions/extra-menu', 'Dashborne/extensions/widget-runtime')
+RETIRED_PACKAGES = RETIRED_CORE + ('Dashborne/extensions/tesla-ui',
+                                 'Dashborne/extensions/vehicle-widget',
+                                 'Dashborne/extensions/contrast')
+RETIRED_FILES = ('Dashborne/patches/dashborne-badge.dbp',)
 
 
 def stage(card, wifi_config=None, configure=False, restore=False, build=None):
@@ -70,10 +74,13 @@ def stage(card, wifi_config=None, configure=False, restore=False, build=None):
         atomic_write(card/'dashborne.conf', unified); changed.append('dashborne.conf')
     for legacy in configuration.LEGACY:
         (card/legacy).unlink(missing_ok=True)
-    for legacy in RETIRED_CORE:
+    for legacy in RETIRED_PACKAGES:
+        if (build / legacy).exists(): continue
         folder = card / legacy
         if folder.is_symlink(): folder.unlink()
         elif folder.is_dir(): shutil.rmtree(folder)
+    for legacy in RETIRED_FILES:
+        if not (build / legacy).exists(): (card / legacy).unlink(missing_ok=True)
     if configure:
         atomic_write(card / 'Dashborne/config.once', b''); changed.append('Dashborne/config.once')
     config['startupLibPath'] = STARTUP
@@ -113,8 +120,10 @@ def deploy(device, adb, wifi_config=None, configure=False, restore=False, previe
             # Root configuration is verified before retiring the old active files.
             for legacy in configuration.LEGACY:
                 shell('rm -f '+shlex.quote('/mnt/extsd/'+legacy))
-            for legacy in RETIRED_CORE:
-                shell('rm -rf '+shlex.quote('/mnt/extsd/'+legacy))
+            for legacy in RETIRED_PACKAGES:
+                if not (card / legacy).exists(): shell('rm -rf '+shlex.quote('/mnt/extsd/'+legacy))
+            for legacy in RETIRED_FILES:
+                if not (card / legacy).exists(): shell('rm -f '+shlex.quote('/mnt/extsd/'+legacy))
         if preview:
             before = shell('if [ -f /mnt/extsd/Dashborne/loader.log ]; then cat /mnt/extsd/Dashborne/loader.log; fi').count(b'dashborne-selected')
             upload(original, '/mnt/extsd/Dashborne/preview-previous.cfg')

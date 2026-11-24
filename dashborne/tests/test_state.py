@@ -59,7 +59,7 @@ class StateTests(unittest.TestCase):
         self.original={'id':0,'textview__1':{'id':50001,'text':'Synthetic base'}}
         self.base=codec.encode(self.original); (self.root/'base.ftu').write_bytes(self.base)
         plain=zlib.decompress(self.base[26:-6])
-        p=json.loads((ROOT/'patches/definitions/badge.json').read_text())
+        p=json.loads((ROOT/'patches/tests/additive.json').read_text())
         p['base'].update(size=len(self.base),crc32=f'{zlib.crc32(self.base):08x}',plain_size=len(plain),plain_crc32=f'{zlib.crc32(plain):08x}')
         (self.card/'patches/one.dbp').write_bytes(patcher.compile_patch(p))
         p['key']='textview__900002';p['control']['id']=59002;p['control']['text']='SECOND'
@@ -81,7 +81,7 @@ class StateTests(unittest.TestCase):
         s=self.load();self.assertEqual(s.wifi_adb,1);self.assertEqual(s.patches[1].enabled,1)
         self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),3)
         result=codec.decode((self.card/'generated.ftu').read_bytes())
-        self.assertEqual(result.pop('textview__900001')['text'],'DASHBORNE')
+        self.assertEqual(result.pop('textview__900001')['text'],'ADDED')
         self.assertEqual(result.pop('textview__900002')['text'],'SECOND')
         self.assertEqual(result.pop('textview__900003')['text'],'EXTRA')
         self.assertEqual(result,self.original)
@@ -107,13 +107,13 @@ class StateTests(unittest.TestCase):
         author=load_module('patch_author',ROOT/'patches/author.py')
         spec=author.scalar_patch(self.base,'scalar','Scalar','Example',[(('textview__1','id'),50002)])
         (self.card/'patches/scalar.dbp').write_bytes(patcher.compile_patch(spec))
-        (self.card/'patches/catalog.tsv').write_text('one\tBadge\tExample\nscalar\tScalar\tExample\n')
+        (self.card/'patches/catalog.tsv').write_text('one\tLabel\tExample\nscalar\tScalar\tExample\n')
         s=self.load()
         for i in range(s.count):s.patches[i].enabled=1
         self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),3)
         changed=codec.decode((self.card/'generated.ftu').read_bytes())
         self.assertEqual(changed['textview__1']['id'],50002)
-        self.assertEqual(changed['textview__900001']['text'],'DASHBORNE')
+        self.assertEqual(changed['textview__900001']['text'],'ADDED')
         (self.card/'patches/one.dbp').write_bytes(patcher.compile_patch(spec))
         (self.card/'generated.ftu').unlink()
         self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),-1)

@@ -61,7 +61,12 @@ def compile_patch(spec, *, native_controls=False):
 
 
 if __name__ == "__main__":
-    out = ROOT / "build/badge.dbp"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_bytes(compile_patch(json.loads((ROOT / "definitions/badge.json").read_text())))
-    print(f"Built {out.name}: {out.stat().st_size} bytes")
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('definition', type=Path)
+    parser.add_argument('output', type=Path)
+    args = parser.parse_args()
+    packet = compile_patch(json.loads(args.definition.read_text()))
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_bytes(packet)
+    print(f"Built {args.output.name}: {len(packet)} bytes")

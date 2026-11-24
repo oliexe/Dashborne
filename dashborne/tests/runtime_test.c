@@ -37,7 +37,7 @@ void state_load(struct settings *s) {
     *s = (struct settings){0}; s->count = 2;s->config_ok=strcmp(scenario,"config-invalid")!=0;
     if(!strncmp(scenario,"autolaunch",10)){s->loader_autolaunch=1;strcpy(s->loader_app,"/mnt/extsd/test.so");}
     s->wifi_adb = !strcmp(scenario, "developer-auto") || !strcmp(scenario, "developer-tap") || !strcmp(scenario, "config-on");
-    strcpy(s->patches[0].id, "badge"); strcpy(s->patches[0].title, "Badge");
+    strcpy(s->patches[0].id, "test-label"); strcpy(s->patches[0].title, "Test label");
     s->patches[0].compatible = 1; s->patches[0].enabled = 1;
     strcpy(s->patches[1].id, "incompatible");
     if (!strcmp(scenario, "extension") || !strcmp(scenario, "extension-failure") || !strcmp(scenario, "extension-cleanup-failure")) {
@@ -354,7 +354,7 @@ int main(int argc, char **argv) {
                     obtain(p, 63); assert(!strcmp(((struct mock_control *)find(p, TOGGLE_ID))->text, "1"));
                     obtain(p, 1); assert(!strcmp(((struct mock_control *)find(p, TOGGLE_ID))->text, "2"));
                     item_click(p, 1); item_click(p, -1); item_click(p, 64); assert(saved == 1);
-                    obtain(p, 0); assert(!strcmp(((struct mock_control *)find(p, 24000))->text, "Badge"));
+                    obtain(p, 0); assert(!strcmp(((struct mock_control *)find(p, 24000))->text, "Test label"));
                     int before_refresh = list_refreshes;
                     tick(p, NETWORK_TIMER); assert(list_refreshes == before_refresh);
                     item_click(p, 63); assert(!settings.patches[63].enabled && saved == 2);
