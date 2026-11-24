@@ -30,7 +30,7 @@ static int opened, applied, saved, stopped, retried, cancelled, list_refreshes;
 static void *bound_adapter, *bound_listener;
 static int force_save_failure, extension_calls, restored;
 struct mock_control { int id; char text[256]; int shown, selected; };
-static struct mock_control controls[40];
+static struct mock_control controls[64];
 static int control_count;
 void state_restore(void) { ++restored; }
 void state_load(struct settings *s) {
@@ -67,6 +67,13 @@ int extensions_start(const char *const *ids, unsigned int count, void *s, void *
 }
 const char *extensions_activity(const char *name) { return name; }
 int extensions_stop(void) { return 1; }
+static int device_reads;
+void device_bind(void *s,void *r) {assert(s==(void *)1 && r==(void *)2);}
+void device_refresh(void) {++device_reads;}
+unsigned int device_count(void) {return 1;}
+const struct device_row *device_row(unsigned int i) {
+    static const struct device_row row={"System firmware","1.2.3"};return i==0 ? &row : NULL;
+}
 static int browser_prepared, browser_cancelled, browser_opens, restarts;
 void browser_init(void) { ++browser_opens; }
 void browser_refresh(void) {}
@@ -122,7 +129,7 @@ static int create(void *p) {
 static void *find(void *p, int id) {
     assert(p);
     for (int i = 0; i < control_count; ++i) if (controls[i].id == id) return &controls[i];
-    assert(control_count < 40); controls[control_count].id = id;
+    assert(control_count < 64); controls[control_count].id = id;
     return &controls[control_count++];
 }
 static void attach_adapter(void *p, void *a) { assert(p && a); if (((struct mock_control *)p)->id == LIST_ID) bound_adapter = a; }
@@ -230,6 +237,24 @@ int main(int argc, char **argv) {
         assert(external_app && !ready && !registered && !applied);
         assert(is("external-empty") ? !selected && restarts==1 : selected && !strcmp(selected,"installedActivity"));
         onEasyUIDeinit((void *)123);assert(deinit_calls==1);
+        printf("PASS: %s\n",scenario);return 0;
+    }
+    if(is("device")) {
+        assert(!strcmp(selected,ACTIVITY));void *p=registered();
+        on_click(p,find(p,TAP_ID));assert(!device_reads);
+        on_click(p,find(p,DEVICE_TAB_ID));assert(section==3 && device_reads==1);
+        assert(((struct mock_control *)find(p,DEVICE_PANEL_ID))->shown);
+        assert(!((struct mock_control *)find(p,ADB_PANEL_ID))->shown);
+        assert(info_count(NULL,NULL)==1);
+        info_data(NULL,NULL,find(p,24020),0);
+        assert(!strcmp(((struct mock_control *)find(p,24021))->text,"1.2.3"));
+        info_data(NULL,NULL,find(p,24020),-1);
+        on_timer(p,NETWORK_TIMER);assert(device_reads==1);
+        on_click(p,find(p,DEVICE_REFRESH_ID));assert(device_reads==2);
+        on_click(p,find(p,ADB_TAB_ID));assert(section==1);
+        on_click(p,find(p,DEVICE_REFRESH_ID));assert(device_reads==2);
+        assert(!applied && !opened && !saved);
+        destroy(p);onEasyUIDeinit((void *)123);assert(allocations==frees);
         printf("PASS: %s\n",scenario);return 0;
     }
     if(is("browser") || is("browser-prepare-failure") || is("browser-restart-failure") || is("external-return") || is("external-invalid") || is("external-load-failure") || is("external-symbol-failure") || is("external-self")) {

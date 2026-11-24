@@ -46,14 +46,14 @@ def screen():
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
     config['textview__5'] = label(50013, 'DASHBORNE', 242, 416, 340, 30, 23, 0xf0f2ff)
     config['textview__6'] = label(50014, f'v{VERSION}  /  https://github.com/oliexe/Dashborne', 180, 449, 440, 20, 14, 0x79849a)
-    for id, key, text, y in [(20006, 'patches', 'Patches', 40), (20007, 'adb', 'ADB', 116), (20008, 'loader', 'Loader', 192)]:
+    for id, key, text, y in [(20006, 'patches', 'Patches', 40), (20007, 'adb', 'ADB', 116), (20008, 'loader', 'Loader', 192), (20012, 'device', 'Device', 268)]:
         config['button__nav_'+key] = button(id, text, 180, y, 400, 64)
         config['button__nav_'+key].update(backgroundColor=0x000000,
             textPosition=position(36, 0, 340, 64),
             picTab={'pic0': '../../../mnt/extsd/Dashborne/ui/nav-idle.png',
                     'pic1': '../../../mnt/extsd/Dashborne/ui/nav-pressed.png',
                     'pic2': '../../../mnt/extsd/Dashborne/ui/nav-selected.png'})
-        config['textview__active_'+key] = dict(id=50035 if id == 20008 else 50020+(id-20006),
+        config['textview__active_'+key] = dict(id={20006: 50020, 20007: 50021, 20008: 50035, 20012: 50050}[id],
             position=position(196, y+22, 3, 20), backgroundColor=0x8eb5ff, touchable=False)
     adb = dict(id=110003, position=position(680, 24, 1060, 376), visible=False,
                backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
@@ -115,6 +115,23 @@ def screen():
         touchable=True, visible=False,
         picTab={'pic0': '../../../mnt/extsd/Dashborne/ui/continue.png',
                 'pic1': '../../../mnt/extsd/Dashborne/ui/continue-pressed.png'})
+    device = dict(id=110006, position=position(680, 24, 1060, 376), visible=False,
+        backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
+    device['textview__heading'] = dict(label(50051, 'Device', 24, 16, 500, 36, 28, 0xf0f2ff), bold=True)
+    device['textview__header_line'] = dict(id=50052, position=position(24, 64, 1012, 1),
+        backgroundColor=0x202228, touchable=False)
+    device['button__refresh'] = dict(label(20013, 'Refresh', 900, 16, 136, 36, 18, 0x8eb5ff, 37),
+        touchable=True, bgColorTab={'color0': 0x07080a, 'color1': 0x15171d})
+    device_item = label(24020, '', 0, 0, 1060, 56, 22, 0xe6e9f1)
+    device_item.update(touchable=True, textPosition=position(24, 0, 340, 56),
+        bgColorTab={'color0': 0x07080a, 'color1': 0x07080a},
+        subItem=[label(24021, '', 380, 0, 656, 56, 18, 0x9ba6bd, 38),
+                 dict(id=24022, position=position(24, 55, 1012, 1), backgroundColor=0x202228, touchable=False)])
+    device['listview__information'] = dict(id=80003, position=position(0, 72, 1060, 280),
+        rows=5, cols=1, rowSpacing=0, colSpacing=0, item=device_item,
+        hasScrollbar=True, scrollbarColor=0x596173, autoRollback=True,
+        dragMaxDis=12, beepEnable=False, backgroundColor=0x07080a)
+    config['window__device'] = device
     config['window__browser'] = browser
     config['window__adb'] = adb
     config['window__patches'] = patches

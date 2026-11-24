@@ -29,6 +29,10 @@ Configuration includes:
   shows how many patches are enabled.
 - **Loader:** browse microSD folders, select an app, and tap **Load app**.
   **Up** navigates to the parent folder and **Refresh** rescans the current folder.
+- **Device:** a scrollable table of software versions, device identifiers, board
+  details, memory, uptime, display mode and storage serials/capacities. Values are
+  read when the page opens; **Refresh** updates the snapshot. Missing values show
+  **Unavailable**, and unrecognized dashboard binaries are identified as such.
 - **Continue booting:** save selections, apply the patches, open the official UI.
 
 Selections are written to `Dashborne/settings.conf`. Network credentials are
@@ -207,3 +211,19 @@ The patch browser uses the runtime's [native list control](https://developer.fly
 Only visible rows are populated through the adapter; scrolling and drag-versus-tap
 handling remain with the framework. Switch images are original geometric assets
 rendered by `switches.py` during the build.
+
+## Device information
+
+The Device page reads OS properties, `/proc`, `/sys`, and selected app settings.
+The official dashboard version is identified by the complete installed library's
+size and CRC32 (currently 6.11.2 and 6.11.4); it is never inferred from a downloaded
+update or a selected patch. The hardware ID comes from the installed runtime's
+read-only device-ID API. The DASH serial uses the same prefix, UUID word sum and
+production date formatting as stock Settings. Component firmware fields use bounded snapshots of the
+recognized app's reported values, and remain unavailable before it has received
+them. Production stamp is the app's stored `proddate` value. Board vendor is the
+OS image's reported board vendor, which is distinct from the product brand.
+
+Memory values reflect Linux-usable RAM. Storage capacity is the whole medium,
+not the mounted partition's free space. Panel mode is the kernel's physical mode
+before the UI's rotation. The inventory does not change device configuration.

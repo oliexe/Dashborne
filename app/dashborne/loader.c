@@ -1,6 +1,7 @@
 /* Original C adapter for the inspected ARM FlyThings Activity ABI. */
 #include "debug.h"
 #include "browser.h"
+#include "device.h"
 #include "../extensions/engine.h"
 #include "state.h"
 typedef __SIZE_TYPE__ usize;
@@ -36,6 +37,10 @@ EXPORT const char *onStartupApp(void *);
 #define PATCHES_TAB_ID 20006
 #define ADB_TAB_ID 20007
 #define BROWSER_TAB_ID 20008
+#define DEVICE_TAB_ID 20012
+#define DEVICE_REFRESH_ID 20013
+#define DEVICE_PANEL_ID 110006
+#define DEVICE_LIST_ID 80003
 #define BROWSER_PANEL_ID 110005
 #define BROWSER_LIST_ID 80002
 #define BROWSER_UP_ID 20009
@@ -147,6 +152,11 @@ static void render(void *self) {
     if (phase != 1 && phase != 2) return;
     visible(self, PATCHES_PANEL_ID, section == 0);
     visible(self, ADB_PANEL_ID, section == 1);
+    visible(self, DEVICE_PANEL_ID, section == 3);
+    visible(self, 50050, section == 3);
+    void *device_tab = find_control(self, DEVICE_TAB_ID);
+    if (device_tab) set_selected(device_tab, section == 3);
+    color(self, DEVICE_TAB_ID, section == 3 ? 0xf0f2ff : 0x79849a);
     visible(self, BROWSER_PANEL_ID, section == 2);
     visible(self, 50035, section == 2);
     visible(self, 50020, section == 0); visible(self, 50021, section == 1);
@@ -219,6 +229,19 @@ static void list_click(void *self, void *list, int index, int subitem) {
 static void *adapter_table[] = {0, 0, (void *)list_noop, (void *)list_noop, (void *)list_count, (void *)list_data};
 static void *listener_table[] = {0, 0, (void *)list_noop, (void *)list_noop, (void *)list_click};
 static void **adapter = adapter_table + 2, **list_listener = listener_table + 2;
+
+static int info_count(void *self, void *list) { (void)self; (void)list; return (int)device_count(); }
+static void info_data(void *self, void *list, void *item, int index) {
+    (void)self; (void)list;
+    const struct device_row *row=device_row((unsigned int)index); if(!row)return;
+    set_text(item,row->label);
+    void *value=find_subitem(item,24021); if(value)set_text(value,row->value);
+}
+static void *info_adapter_table[]={0,0,(void *)list_noop,(void *)list_noop,(void *)info_count,(void *)info_data};
+static void **info_adapter=info_adapter_table+2;
+static void refresh_device(void *self) {
+    device_refresh();void *list=find_control(self,DEVICE_LIST_ID);if(list)refresh_list(list);
+}
 
 static int file_count(void *self, void *list) { (void)self; (void)list; return (int)browser_count(); }
 static void file_data(void *self, void *list, void *item, int index) {
@@ -317,6 +340,8 @@ static void on_create(void *self) {
         set_adapter(list, &adapter); set_list_listener(list, &list_listener);
         refresh_list(list);
     }
+    void *info=find_control(self,DEVICE_LIST_ID);
+    if(info)set_adapter(info,&info_adapter);
     void *files=find_control(self,BROWSER_LIST_ID);
     if(files) { set_adapter(files,&file_adapter); set_list_listener(files,&file_listener); }
     if(browser_returning) { browser_init(); browser_initialized=1; refresh_browser(self); }
@@ -340,6 +365,8 @@ static void on_click(void *self, void *control) {
     else if (id == LAUNCH_ID) { launch(self); return; }
     else if (id == PATCHES_TAB_ID) section = 0;
     else if (id == ADB_TAB_ID) section = 1;
+    else if (id == DEVICE_TAB_ID) { section=3;refresh_device(self); }
+    else if (id == DEVICE_REFRESH_ID && section == 3) refresh_device(self);
     else if (id == BROWSER_TAB_ID) {
         section=2; if(!browser_initialized) { browser_init();browser_initialized=1;refresh_browser(self); }
     } else if (id == BROWSER_UP_ID && section == 2) { browser_up();refresh_browser(self); }
@@ -411,6 +438,7 @@ static int bind_runtime(void) {
     table[15] = (void *)destroy_secondary;
     table[16] = (void *)on_timer_secondary;
     debug_bind(stock, runtime, log_line);
+    device_bind(stock, runtime);
     return 1;
 }
 

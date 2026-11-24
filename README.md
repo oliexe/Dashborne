@@ -37,10 +37,9 @@ Dashborne shows a small centered icon and **Tap screen to enter configuration**.
 Tap within three seconds to open configuration. Otherwise, it applies the
 selected patches and opens the installed official dashboard.
 
-Configuration has **Patches** and **ADB** categories in a left sidebar. The
+Configuration has **Patches**, **ADB**, **Loader**, and **Device** categories in a left sidebar. The
 patches panel has a scrollable list with individual toggles; the ADB panel has
-developer-only access (off by default) with a live status/address. **Launch
-dashboard** remains available below the panels. Settings are saved
+developer-only access (off by default) with a live status/address. **Continue booting** remains available below the panels. Settings are saved
 on the card and remain selected on the next boot.
 
 ```text
