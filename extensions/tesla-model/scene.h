@@ -15,7 +15,9 @@ struct tm_scene {
     int angle, panels[TM_PANEL_COUNT], road;
     unsigned long long tick, road_clock;
     int initialized;
-    struct tm_motion camera, panel_motion[TM_PANEL_COUNT];
+    struct tm_motion camera, panel_motion[TM_PANEL_COUNT], approach;
+    int shift; /* 1 forward, -1 reverse, 0 hidden */
+    unsigned int shift_phase;
 };
 struct tm_layer { const char *name; int frame, x, y, w, h; };
 struct tm_lamp {int x0,y0,x1,y1;unsigned int color;};

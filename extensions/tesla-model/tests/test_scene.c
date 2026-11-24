@@ -17,7 +17,7 @@ int main(void) {
     r.speed=0;advance(&s,&r,1);old=s.road;advance(&s,&r,100);assert(s.road==old);
     /* Interrupt a transition with an open door. Camera returns before the
        panel moves, and the driving camera cannot hide an unclosed door. */
-    r.gear=TM_DRIVE;advance(&s,&r,10);assert(s.angle>24&&s.angle<48);
+    r.speed=30;r.gear=TM_DRIVE;advance(&s,&r,16);advance(&s,&r,10);assert(s.angle>24&&s.angle<48);
     old=s.angle;r.open=1;advance(&s,&r,10);assert(s.angle<old&&s.panels[0]==0);
     advance(&s,&r,60);assert(s.angle==0&&s.panels[0]==15);
     r.known=62;r.open=0;advance(&s,&r,20);assert(s.panels[0]==15&&s.data.open==1);
@@ -33,7 +33,7 @@ int main(void) {
         for(int p=0;p<6;++p)assert(s.panels[p]==((mask>>p&1)?15:0));
         for(int i=0;i<count;++i)assert(layers[i].w>0&&layers[i].h>0&&layers[i].frame>=-1&&layers[i].frame<25);
     }
-    r.gear=TM_DRIVE;r.open=0;r.left=r.right=1;r.lights_known=r.high_beam=1;
+    r.gear=TM_DRIVE;r.speed=30;r.open=0;r.left=r.right=1;r.lights_known=r.high_beam=1;
     s=(struct tm_scene){0};tm_step(&s,&r,now);int count=tm_layers(&s,layers);assert(count==3);
     struct tm_lamp lamps[4];assert(tm_lamps(&s,lamps)==2&&lamps[0].y0==272);
     s.angle=0;assert(tm_lamps(&s,lamps)==2&&lamps[0].color==0xffa52d);
@@ -64,9 +64,42 @@ int main(void) {
     for(unsigned long long t=1075000;t<=2200000;t+=75000)tm_step(&jitter,&r,t);
     assert(regular.angle==48&&jitter.angle==48);
     for(int i=0;i<10000;++i) {
-        r.gear=i%3==0?TM_PARK:i%3==1?TM_REVERSE:TM_DRIVE;r.open=(unsigned int)i%64;
+        r.gear=i%3==0?TM_PARK:i%3==1?TM_REVERSE:TM_DRIVE;r.open=(unsigned int)i%64;r.speed=i%5?0:50;
         advance(&s,&r,1);assert(s.camera.value>=0&&s.camera.value<=48*1024);
+        assert(s.approach.value>=-16*1024&&s.approach.value<=16*1024);
         for(int p=0;p<6;++p)assert(s.panels[p]>=0&&s.panels[p]<=15);
+    }
+    /* Direction cues wait for a settled camera and stop at the first movement. */
+    for(int direction=0;direction<2;++direction) {
+        s=(struct tm_scene){0};r=(struct tm_reading){.connected=1,.known=63,
+            .gear=direction?TM_REVERSE:TM_DRIVE};
+        tm_step(&s,&r,now);assert(s.shift==(direction?-1:1));
+        count=tm_layers(&s,layers);assert(count==3);
+        assert(!strcmp(layers[count-1].name,direction?"night_back_gears_remind":"night_forward_gears_remind"));
+        assert(!strcmp(layers[0].name,"n_road")&&layers[0].frame==0);
+        assert(layers[0].w==210&&layers[0].h==510);
+        assert(direction?layers[0].y<0:layers[0].y+layers[0].h>458);
+        int start_y=layers[count-1].y;
+        advance(&s,&r,28);tm_layers(&s,layers);
+        assert(layers[count-1].y==start_y+(direction?95:-95));
+        assert(layers[count-1].y>=0&&layers[count-1].y+layers[count-1].h<=458);
+        advance(&s,&r,28);tm_layers(&s,layers);assert(layers[count-1].y==start_y);
+        unsigned int phase=s.shift_phase;now+=90000000;tm_step(&s,&r,now);assert(s.shift_phase==phase);
+        r.speed=1;tm_step(&s,&r,now);assert(!s.shift&&tm_layers(&s,layers)==1);
+        old=s.approach.value;int road=s.road;
+        advance(&s,&r,1);assert(s.angle==24&&s.approach.value!=old&&s.road==road);
+        advance(&s,&r,15);assert(s.angle==24&&!s.approach.value);
+        advance(&s,&r,48);assert(!s.approach.value&&tm_layers(&s,layers)==2);
+        r.speed=0;advance(&s,&r,64);assert(s.shift);
+        r.gear=direction?TM_DRIVE:TM_REVERSE;tm_step(&s,&r,now);assert(!s.shift);
+        advance(&s,&r,31);assert(!s.shift);advance(&s,&r,1);assert(s.shift==(direction?1:-1));
+        r.open=1;tm_step(&s,&r,now);assert(!s.shift);
+        advance(&s,&r,100);r.open=0;advance(&s,&r,17);assert(!s.shift);
+        advance(&s,&r,100);assert(s.shift);
+        r.gear=TM_NEUTRAL;tm_step(&s,&r,now);assert(!s.shift);
+        r.gear=TM_PARK;advance(&s,&r,100);assert(!s.shift);
+        r.gear=TM_DRIVE;advance(&s,&r,100);assert(s.shift);
+        r.connected=0;tm_step(&s,&r,now);assert(!s.shift);
     }
     puts("Tesla Model: transitions, reversals, all panel masks, disconnect and pause passed");
 }

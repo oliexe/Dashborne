@@ -21,9 +21,11 @@ static void bg(void *p,unsigned int color){assert(p==&action_control);action_bac
 static void text(void *p,const char *s){(void)p;assert(!*s);}
 static void invalidate(struct dashborne_widget_view *v){assert(v);++repaints;}
 static void log_message(const struct dashborne_host *h,const char *s){(void)h;(void)s;}
-static int fills,lamp_boxes;
-static void brush_color(void *p,unsigned int color){(void)p;assert((color>>24)==255 && (color&0xffffff));}
-static void clipped_box(void *p,int x,int y,int w,int h){(void)p;assert(x>=0&&y>=0&&x+w<=486&&y+h<=434);assert(w==3&&h==3);++lamp_boxes;}
+static int fills,lamp_boxes,backing_rows;
+static unsigned int theme_words[140],last_brush;
+static const void *theme_config(void){return theme_words;}
+static void brush_color(void *p,unsigned int color){(void)p;last_brush=color;assert((color>>24)==255 && (color&0xffffff));}
+static void clipped_box(void *p,int x,int y,int w,int h){(void)p;assert(x>=0&&y>=0&&x+w<=486&&y+h<=434);if(w==3&&h==3)++lamp_boxes;else{assert(w==88&&h==1&&x==199&&y>=173&&y<261);++backing_rows;}}
 static void fill(void *b,void *p,int x,int y,int w,int h){(void)b;(void)p;(void)x;(void)y;assert(w>0&&h>0);++fills;}
 int main(void) {
     struct dashborne_host api={.extension_directory="/tmp/test",.log=log_message};host=&api;
@@ -55,7 +57,11 @@ int main(void) {
         assert(get_image(variant,&l));int before=loads;assert(get_image(variant,&l));assert(loads==before);
     }
     assert(peak==CACHE_SIZE&&live==CACHE_SIZE);
-    draw(&a,(void *)1);assert(fills>0&&!lamp_boxes);
+    draw(&a,(void *)1);assert(fills>0&&!lamp_boxes&&backing_rows==88);
+    active_theme=theme_config;theme_words[0x20c/4]=0x101010;
+    draw(&a,(void *)1);assert(last_brush==0xfff0f0f0&&backing_rows==176);
+    theme_words[0x20c/4]=0xffffff;
+    draw(&a,(void *)1);assert(last_brush!=0xfff0f0f0&&backing_rows==264);
     int previous_fills=fills;a.width=0;draw(&a,(void *)1);assert(fills==previous_fills);a.width=510;
     states[0].scene.angle=0;states[0].scene.data.lights_known=states[0].scene.data.low_beam=1;
     draw(&a,(void *)1);assert(lamp_boxes>0);

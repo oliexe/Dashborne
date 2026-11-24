@@ -11,7 +11,9 @@ SEQUENCES = {'P_N': (25, 482, 322), 'n_road': (25, 149, 361),
              'door_right_front': (16, 182, 160), 'door_right_back': (16, 152, 139),
              'front_hood': (16, 220, 136), 'back_hood': (16, 184, 134)}
 SHARED = {'dipped_light': (327, 208), 'distance_light': (327, 208),
-          'back_left_light': (34, 19), 'back_right_light': (34, 19)}
+          'back_left_light': (34, 19), 'back_right_light': (34, 19),
+          'night_forward_gears_remind': (82, 190), 'night_back_gears_remind': (82, 190),
+          'forward_gears_rectangle': (330, 428), 'back_gears_rectangle': (330, 428)}
 
 
 def png(path, dimensions):

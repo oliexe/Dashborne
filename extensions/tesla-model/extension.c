@@ -29,6 +29,7 @@ static void (*picture)(void *,int,const char *),(*alpha)(void *,unsigned char);
 static void (*background)(void *,unsigned int);
 static void (*brush)(void *,unsigned int),(*fill_box)(void *,int,int,int,int);
 static char preview[512];
+static const void *(*active_theme)(void);
 static void cache_clear(void) {
     for(int i=0;i<CACHE_SIZE;++i) {
         if(cache[i].constructed)bitmap_dtor(&cache[i].object);
@@ -84,6 +85,22 @@ static void update(struct dashborne_widget_view *v,unsigned long long now) {
     struct tm_reading r;tm_data_read(&r);
     if(tm_step(&s->scene,&r,now))widgets->invalidate(v);
 }
+static void clear_placeholder(struct dashborne_widget_view *v,void *surface) {
+    /* The native 2x2 frame embeds an 80px navigation glyph. Restore its blank
+       center before drawing transparent model layers; leave the frame and
+       selection outline untouched. All fills use the native page clip. */
+    const unsigned char *theme=active_theme?active_theme():0;
+    unsigned int primary=theme?*(const unsigned int *)(theme+0x20c):0xffffff;
+    int light=(primary&255)<128;
+    int cw=v->width-24,ch=v->height-24,side=88;
+    if(side>cw)side=cw;if(side>ch)side=ch;
+    int x=(cw-side)/2,y=(ch-side)/2;
+    for(int row=0;row<side;++row) {
+        unsigned int gray=light?240u:(unsigned int)(31-(19*(y+row+12)+v->height/2)/v->height);
+        brush(surface,0xff000000u|gray*0x010101u);
+        fill_box(surface,x,y+row,side,1);
+    }
+}
 static void draw(struct dashborne_widget_view *v,void *surface) {
     struct state *s=v->user;if(!s)return;
     int cw=v->width-24,ch=v->height-24;
@@ -91,6 +108,7 @@ static void draw(struct dashborne_widget_view *v,void *surface) {
     /* Native drawing respects the page's moving clip region. Raw DC pointers
        can address pixels outside the framebuffer while the page slides. Keep
        the stock background and rounded frame visible through PNG transparency. */
+    clear_placeholder(v,surface);
     struct tm_layer layers[TM_LAYERS];int count=tm_layers(&s->scene,layers);
     int scale=cw*1000/510;if(ch*1000/458<scale)scale=ch*1000/458;
     int ox=(cw-510*scale/1000)/2,oy=(ch-458*scale/1000)/2;
@@ -134,6 +152,8 @@ static void suspend(struct dashborne_widget_view *v) {
 }
 static int activate(const struct dashborne_host *api) {
     host=api;widgets=dashborne_widget_api();if(!widgets || tm_data_bind(api))return -1;
+    *(void **)(&active_theme)=api->resolve(api->official_library,"_ZN12ThemeManager9getActiveEv");
+    if(!active_theme)return -1;
     if(tm_pack_load(&pack,api->extension_directory)) {
         api->log(api,"tesla-model: install a model pack in this extension's models directory");return -1;
     }
