@@ -1,0 +1,7 @@
+{
+  "id": "development-menu",
+  "title": "Development Menu",
+  "description": "Reveals the stock Development category in Settings without entering a password.",
+  "abi": 1,
+  "sources": ["extension.c"]
+}
