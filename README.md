@@ -118,6 +118,9 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 
 See the [extension development guide](dashborne/extensions/README.md) to build your own.
 
+If you'd like to publish an extension you've built, open a pull request adding it
+to [`/extensions`](extensions).
+
 ## ADB Debugging
 
 Dashborne includes a Wi-Fi ADB enabler that gives you root access to the DASH's
