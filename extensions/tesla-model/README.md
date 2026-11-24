@@ -37,7 +37,8 @@ The adapter reads the stock application's Commander state without changing its
 subscriptions. It uses the previously verified connection, gear, door and turn
 indicator mappings for the supported app build. Low and high beams use the same
 fields as the stock light controls, checked against the app retrieved over ADB.
-When disconnected, the car dims and live indicators clear.
+When disconnected, live indicators clear; the car stays at full opacity.
+The stock widget frame supplies the background and rounded corners.
 
 ## Development
 

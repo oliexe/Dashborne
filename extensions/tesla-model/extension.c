@@ -13,7 +13,7 @@ struct bitmap {
     char name[64];int variant,constructed,loaded;
     unsigned long long age;
 };
-struct state {struct tm_scene scene;struct dashborne_widget_view *view;int variant,opacity;unsigned long long next;};
+struct state {struct tm_scene scene;struct dashborne_widget_view *view;int variant;unsigned long long next;};
 static struct state states[36];
 static struct bitmap cache[CACHE_SIZE];
 static unsigned long long age;
@@ -26,8 +26,7 @@ static int (*bitmap_load)(void *,const char *,int,int);
 static void (*bitmap_fill)(void *,void *,int,int,int,int);
 static void (*position)(void *,const struct rect *),(*visible)(void *,int);
 static void (*picture)(void *,int,const char *),(*alpha)(void *,unsigned char);
-static void *(*lock_dc)(void *,const void *,int *,int *,int *);
-static void (*unlock_dc)(void *);
+static void (*brush)(void *,unsigned int),(*fill_box)(void *,int,int,int,int);
 static char preview[512];
 static void cache_clear(void) {
     for(int i=0;i<CACHE_SIZE;++i) {
@@ -59,9 +58,10 @@ static struct bitmap *get_image(int variant,const struct tm_layer *layer) {
 }
 static int create(struct dashborne_widget_view *v) {
     if(v->instance>=36)return -1;
-    struct state *s=&states[v->instance];*s=(struct state){.view=v,.variant=selected_variant,.opacity=-1};v->user=s;++users;
+    struct state *s=&states[v->instance];*s=(struct state){.view=v,.variant=selected_variant};v->user=s;++users;
     position(v->canvas,&(struct rect){12,12,v->width-24,v->height-24});
     visible(v->title,0);visible(v->value,0);visible(v->status,0);
+    alpha(v->canvas,255);
     widgets->text(v->action,"");alpha(v->action,0);
     for(int i=0;i<5;++i)picture(v->action,i,"");
     /* Native click handling still owns gesture cancellation; the runtime hides
@@ -73,19 +73,15 @@ static void update(struct dashborne_widget_view *v,unsigned long long now) {
     struct state *s=v->user;if(!s || !v->visible)return;
     if(s->next && now<s->next && s->next-now<100000)return;
     s->next=now+25000;struct tm_reading r;tm_data_read(&r);
-    int opacity=r.connected?255:150;
-    if(s->opacity!=opacity){alpha(v->canvas,(unsigned char)opacity);s->opacity=opacity;}
     if(tm_step(&s->scene,&r,now))widgets->invalidate(v);
 }
 static void draw(struct dashborne_widget_view *v,void *surface) {
     struct state *s=v->user;if(!s)return;
-    int cw=v->width-24,ch=v->height-24,w=0,h=0,pitch=0;
-    struct rect bounds={0,0,cw,ch};
-    unsigned int *pixels=lock_dc(surface,&bounds,&w,&h,&pitch);
-    if(!pixels)return;
-    if(w<=0 || h<=0 || w>cw || h>ch || pitch<w*4){unlock_dc(surface);return;}
-    for(int y=0;y<h;++y)for(int x=0;x<w;++x)pixels[y*(pitch/4)+x]=0xff000000u;
-    unlock_dc(surface);
+    int cw=v->width-24,ch=v->height-24;
+    if(cw<=0 || ch<=0)return;
+    /* Native drawing respects the page's moving clip region. Raw DC pointers
+       can address pixels outside the framebuffer while the page slides. Keep
+       the stock background and rounded frame visible through PNG transparency. */
     struct tm_layer layers[TM_LAYERS];int count=tm_layers(&s->scene,layers);
     int scale=cw*1000/510;if(ch*1000/458<scale)scale=ch*1000/458;
     int ox=(cw-510*scale/1000)/2,oy=(ch-458*scale/1000)/2;
@@ -95,20 +91,16 @@ static void draw(struct dashborne_widget_view *v,void *surface) {
     }
     struct tm_lamp lamps[4];int lamp_count=tm_lamps(&s->scene,lamps);
     if(!lamp_count)return;
-    pixels=lock_dc(surface,&bounds,&w,&h,&pitch);if(!pixels)return;
-    if(w<=0 || h<=0 || w>cw || h>ch || pitch<w*4){unlock_dc(surface);return;}
     for(int i=0;i<lamp_count;++i) {
         const struct tm_lamp *l=&lamps[i];
         int x0=ox+l->x0*scale/1000,y0=oy+l->y0*scale/1000;
         int dx=(l->x1-l->x0)*scale/1000,dy=(l->y1-l->y0)*scale/1000;
         int steps=dx<0?-dx:dx,ady=dy<0?-dy:dy;if(ady>steps)steps=ady;
         if(!steps)continue;
-        for(int k=0;k<=steps;++k)for(int yy=-1;yy<=1;++yy)for(int xx=-1;xx<=1;++xx) {
-            int x=x0+dx*k/steps+xx,y=y0+dy*k/steps+yy;
-            if(x>=0&&y>=0&&x<w&&y<h)pixels[y*(pitch/4)+x]=0xff000000u|l->color;
-        }
+        brush(surface,0xff000000u|l->color);
+        for(int k=0;k<=steps;++k)
+            fill_box(surface,x0+dx*k/steps-1,y0+dy*k/steps-1,3,3);
     }
-    unlock_dc(surface);
 }
 static void click(struct dashborne_widget_view *v) {
     struct state *s=v->user;if(!s || v->editing)return;
@@ -141,7 +133,7 @@ static int activate(const struct dashborne_host *api) {
     UI(position,"_ZN6ZKBase11setPositionERK14LayoutPosition");UI(visible,"_ZN6ZKBase10setVisibleEb");
     UI(alpha,"_ZN6ZKBase8setAlphaEh");
     UI(picture,"_ZN8ZKButton18setButtonStatusPicEiPKc");
-    UI(lock_dc,"zk_gdi_lock_dc");UI(unlock_dc,"zk_gdi_unlock_dc");
+    UI(brush,"SetBrushColor");UI(fill_box,"zk_gdi_fill_box");
 #undef UI
     int n=snprintf(preview,sizeof(preview),"../../..%s/models/%s/P_N0.png",api->extension_directory,pack.ids[0]);
     if(n<0 || (usize)n>=sizeof(preview))return -1;
