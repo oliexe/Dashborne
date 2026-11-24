@@ -3,7 +3,7 @@
 #include "dashborne_extension.h"
 #include "model.h"
 int source_bind(const struct dashborne_host *);
-void source_preview_awake(int enabled);
+void source_view_awake(int enabled);
 void source_read(struct readings *);
 unsigned int source_seconds(void);
 unsigned long long source_microseconds(void);

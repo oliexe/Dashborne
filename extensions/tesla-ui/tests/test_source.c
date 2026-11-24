@@ -16,18 +16,24 @@ static int format(void *p) {assert(p==(void *)123);return 0;}
 static void *clock_inst(void) {return (void *)123;}
 static void *blinker_inst(void) {return b;}
 static void fvalue(unsigned int offset,float n) {union {float f;unsigned int u;} value={.f=n};v[offset/4]=value.u;}
-static unsigned char display[16];static int holds,releases;
+static unsigned char display[16];static int holds,releases,reenter_release;
 static void *get_display(void) {return display;}
 static void inhibit(void *d,int bit,int enabled) {
     assert(d==display && bit==0x80);
-    if(enabled){display[8]|=bit;++holds;}else {display[8]&=~bit;++releases;}
+    if(enabled){display[8]|=bit;++holds;}else {
+        display[8]&=~bit;++releases;
+        if(reenter_release){reenter_release=0;source_view_awake(0);}
+    }
 }
 int main(void) {
     display_instance=get_display;display_inhibit=inhibit;
-    source_preview_awake(1);source_preview_awake(1);assert(holds==1 && !releases);
-    source_preview_awake(0);source_preview_awake(0);assert(releases==1 && !display[8]);
-    display[8]=0x80;source_preview_awake(1);source_preview_awake(0);
+    source_view_awake(1);source_view_awake(1);assert(holds==1 && !releases);
+    source_view_awake(0);source_view_awake(0);assert(releases==1 && !display[8]);
+    display[8]=0x80;source_view_awake(1);source_view_awake(0);
     assert(holds==1 && releases==1 && display[8]==0x80);
+    /* Native display policy may synchronously pause/destroy the view. */
+    display[8]=0;source_view_awake(1);reenter_release=1;
+    source_view_awake(0);assert(holds==2 && releases==2 && !view_display);
     quick=(void *)q;medium=(void *)m;slow=(void *)s;vehicle=(void *)v;flags=&flags_storage;demo=&demo_storage;
     paired=(void *)paired_storage;paired_storage[1]=12;
     speed=get_speed;limit=get_limit;battery=get_battery;range=get_range;temperature=get_temp;

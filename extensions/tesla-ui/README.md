@@ -16,9 +16,11 @@ door and hatch, acceleration, regeneration, turn signals, blind-spot warnings,
 hazards, reverse, charging and disconnection. An amber PREVIEW label names the
 current scene. **Stop preview** returns to live readings and clears the sample
 history. Leaving the view also ends preview; it starts disabled each time you
-open Tesla UI. Sample values stay inside this view. Preview temporarily
-inhibits automatic display sleep and releases that hold on Stop preview, Back,
-pause or destruction.
+open Tesla UI. Sample values stay inside this view.
+
+Tesla UI holds off automatic display sleep while the view is open. Stopping
+Preview keeps that hold and returns to live data. Back, pause and destruction
+release the hold; resuming the view acquires it again.
 
 The controller-navigation handler is prepared locally: previous/next highlights
 Back, select activates it, and Back returns to Extra. The native Activity Back
@@ -166,7 +168,9 @@ Tests cover units, signed power, invalid values, connection loss, history gaps,
 state transitions, unknown panel states, graph interpolation and gaps, bounds,
 pixel-equivalent graph merging, animation deadlines, stalled callbacks and
 timer cleanup, speed-driven road motion, reverse flow and blind-spot
-availability. A stationary 10-second fixture checks 625 timer callbacks, 100
+availability. Preview tests stop in every sample scene and interrupt all 64
+panel masks. Lifecycle tests cover repeated toggles, late callbacks and
+reentrant cleanup. A stationary 10-second fixture checks 625 timer callbacks, 100
 data reads and zero native setters or lookups. The benchmark measures the host
 C update path with fake telemetry and native setters; it excludes image
 decoding and native painting, so its numbers are not device frame times. A

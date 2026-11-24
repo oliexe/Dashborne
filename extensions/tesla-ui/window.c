@@ -22,7 +22,7 @@ extern int snprintf(char *,__SIZE_TYPE__,const char *,...);
 struct rectangle {int left,top,width,height;};
 static const struct dashborne_host *api;
 static void *table[17],*live;
-static int pending,closing,paused_state;
+static int pending,closing,paused_state,disposing;
 static int navigation_focus;
 static int preview_active;
 static unsigned long long preview_started;
@@ -292,9 +292,10 @@ static void report(void) {
     api->log(api,message);perf=(__typeof__(perf)){0};
 }
 static void back(void *s) {
-    (void)s;if(closing)return;
-    preview_active=0;source_preview_awake(0);
+    if(s!=live || closing)return;
+    preview_active=0;
     closing=1;unregister_timer(live,TIMER);report();close_activity(context(),ACTIVITY);
+    source_view_awake(0);
 }
 static void focus_back(int selected) {
     navigation_focus=selected;
@@ -311,21 +312,25 @@ int cluster_window_input(enum cluster_input action,int navigation_allowed) {
     if(action==CLUSTER_SELECT && !navigation_focus)return 0;
     back(live);return 1;
 }
-static int hardware_back(void *s) {(void)s;return cluster_window_input(CLUSTER_BACK,1);}
+static int hardware_back(void *s) {return s==live?cluster_window_input(CLUSTER_BACK,1):0;}
 static void click(void *s,void *c) {
-    if(!c || closing || paused_state)return;
+    if(s!=live || !c || closing || paused_state)return;
     if(id_of(c)==BACK)back(s);
     else if(id_of(c)==PREVIEW) {
-        preview_active=!preview_active;source_preview_awake(preview_active);
+        preview_active=!preview_active;
+        api->log(api,preview_active?"tesla-ui: preview-start":"tesla-ui: preview-stop");
         unsigned long long now=source_microseconds();preview_started=now;
         /* Never carry sample history, poses or interpolation into live mode. */
         cluster_reset(&state);history_drawn=0;road_motion=(struct road_motion){0};
         text(c,preview_active?"Stop preview":"Preview");
         render(now,1);next_sample=now+SAMPLE_US;
+        api->log(api,preview_active?"tesla-ui: preview-ready":"tesla-ui: live-ready");
     }
 }
 static void created(void *s) {
     base_created(s);pending=0;closing=0;paused_state=0;preview_active=0;
+    source_view_awake(1);
+    if(s!=live)return;
     for(int i=0;i<34;++i)primary[i]=(struct control_cache){0};
     for(int i=0;i<GRAPH_WIDTH;++i)fills[i]=traces[i]=(struct control_cache){0};
     for(int i=0;i<35;++i)means[i]=(struct control_cache){0};
@@ -351,7 +356,9 @@ static void created(void *s) {
     api->log(api,"tesla-ui: view-ready");
 }
 static void resumed(void *s) {
-    if(closing)return;
+    if(s!=live || closing)return;
+    source_view_awake(1);
+    if(s!=live || closing)return;
     if(paused_state) {
         cluster_reset(&state);history_drawn=0;
         unsigned long long now=source_microseconds();render(now,1);next_sample=now+SAMPLE_US;
@@ -360,15 +367,17 @@ static void resumed(void *s) {
     unregister_timer(s,TIMER);register_timer(s,TIMER,FRAME_MS);
 }
 static void paused(void *s) {
+    if(s!=live || paused_state)return;
+    paused_state=1;unregister_timer(s,TIMER);
     if(preview_active) {
-        preview_active=0;source_preview_awake(0);show(PREVIEW_LABEL,0);
+        preview_active=0;show(PREVIEW_LABEL,0);
         void *button=find(s,PREVIEW);if(button)text(button,"Preview");
     }
-    paused_state=1;focus_back(0);road_motion=(struct road_motion){0};unregister_timer(s,TIMER);report();
+    focus_back(0);road_motion=(struct road_motion){0};report();
+    source_view_awake(0);
 }
 static int timer(void *s,int id) {
-    (void)s;
-    if(id!=TIMER || closing || paused_state || !live)return 1;
+    if(s!=live || id!=TIMER || closing || paused_state || !live)return 1;
     unsigned long long now=source_microseconds();
     if(perf.last_tick && now>=perf.last_tick) {
         unsigned long long gap=now-perf.last_tick;
@@ -394,20 +403,26 @@ static int timer(void *s,int id) {
     return 1;
 }
 static int timer_secondary(void *s,int id) {return timer((char *)s-sizeof(void *),id);}
-static void destroy_only(void *s) {
-    visual_detach();road_canvas_detach();source_preview_awake(0);
-    unregister_timer(s,TIMER);report();if(live==s)live=0;pending=0;dtor(s);
+static int dispose(void *s) {
+    if(disposing || s!=live)return 0;
+    disposing=1;
+    live=0;pending=0;closing=1;paused_state=1;preview_active=0;
+    unregister_timer(s,TIMER);visual_detach();road_canvas_detach();report();dtor(s);
+    source_view_awake(0);
+    disposing=0;
+    return 1;
 }
-static void destroy(void *s) {destroy_only(s);free(s);}
+static void destroy_only(void *s) {(void)dispose(s);}
+static void destroy(void *s) {if(dispose(s))free(s);}
 static void destroy_only_secondary(void *s) {destroy_only((char *)s-sizeof(void *));}
 static void destroy_secondary(void *s) {destroy((char *)s-sizeof(void *));}
 static void *create(void) {
-    if(live)return 0;
+    if(live || disposing)return 0;
     void **p=calloc(6,sizeof(void *));if(!p) {pending=0;return 0;}
     ctor(p);p[0]=table+2;p[1]=table+14;live=p;return p;
 }
 void cluster_window_open(void) {
-    if(!api || pending || live)return;
+    if(!api || pending || live || disposing)return;
     pending=1;open_activity(context(),ACTIVITY,0);
 }
 int cluster_window_bind(const struct dashborne_host *host) {
@@ -436,6 +451,6 @@ int cluster_window_bind(const struct dashborne_host *host) {
     return api->register_activity(api,ACTIVITY,create);
 }
 int cluster_window_cleanup(void) {
-    if(live || pending)return -1;
+    if(live || pending || disposing)return -1;
     api=0;return 0;
 }

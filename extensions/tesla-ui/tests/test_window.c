@@ -15,7 +15,7 @@ static unsigned long long clock_extra;
 static unsigned int read_cost;
 static int writes,pictures,lookups;
 static int opens,closes,registered,reads;
-static int reports,road_frames,awake;
+static int reports,road_frames,awake,wake_releases,reenter_pause;
 int road_canvas_bind(const struct dashborne_host *h) {(void)h;return 0;}
 int road_canvas_attach(void *p) {assert(p);return 0;}
 void road_canvas_detach(void) {}
@@ -26,7 +26,11 @@ void visual_detach(void) {}
 int visual_text(void *p,const char *value) {(void)p;(void)value;return 0;}
 int visual_vehicle(int drive,int mask,unsigned long long now,int immediate) {(void)drive;(void)mask;(void)now;(void)immediate;return 0;}
 void visual_frame(unsigned long long now) {(void)now;}
-void source_preview_awake(int enabled) {awake=enabled;}
+void source_view_awake(int enabled) {
+    if(!enabled && awake)++wake_releases;
+    awake=enabled;
+    if(!enabled && reenter_pause){reenter_pause=0;paused(live);}
+}
 static char last_report[512];
 void source_read(struct readings *r) {*r=fixture;++reads;clock_extra+=read_cost;}
 unsigned int source_seconds(void) {return seconds;}
@@ -50,6 +54,13 @@ static void set_rect(void *p,const struct rectangle *r) {
 static void set_color(void *p,unsigned int c) {++writes;((struct control *)p)->color=c;((struct control *)p)->has_color=1;}
 static int get_id(void *p) {return ((struct control *)p)->id;}
 static void noop(void *s) {(void)s;}
+static int destructors;
+static void reentrant_destructor(void *s) {
+    ++destructors;
+    assert(cluster_window_cleanup()==-1 && !create());
+    int previous_opens=opens;cluster_window_open();assert(opens==previous_opens);
+    destroy(s);paused(s);resumed(s);timer(s,TIMER);
+}
 static void *ctx(void) {return (void *)123;}
 static void opening(void *c,const char *name,void *intent) {assert(c==ctx() && !strcmp(name,ACTIVITY) && !intent);++opens;}
 static void closing_fake(void *c,const char *name) {assert(c==ctx() && !strcmp(name,ACTIVITY));++closes;}
@@ -134,7 +145,7 @@ int main(int argc,char **argv) {
     snprintf(fixture.clock,sizeof(fixture.clock),"11:42");
     cluster_window_open();cluster_window_open();assert(opens==1 && pending && cluster_window_cleanup());
     void *s=create();assert(s && !create());created(s);resumed(s);
-    assert(!pending && registered && state.mode==DRIVING);
+    assert(!pending && registered && state.mode==DRIVING && awake);
     /* A deterministic acceleration/coasting/regen drive, only in test fixtures. */
     const int power[]={12,16,14,20,38,65,57,29,18,21,16,8,-12,-27,-18,3,14,25,21,18,34};
     for(seconds=1;seconds<=60;++seconds) {
@@ -247,9 +258,23 @@ int main(int argc,char **argv) {
     assert(!strcmp(preview_button->value,"Preview"));
     assert(!((struct control *)lookup(s,PREVIEW_LABEL))->shown);
     assert(!state.data.body_known && !state.data.blind_known);
+    assert(awake); /* Stop changes the source, not the display's sleep policy. */
+    int release_count=wake_releases;
+    for(int round=0;round<4;++round)for(int scene=0;scene<SAMPLE_SCENES;++scene) {
+        seconds+=200;subsecond=0;
+        click(s,preview_button);assert(preview_active);
+        seconds+=scene*6;subsecond=225000;timer(s,TIMER);
+        click(s,preview_button);
+        assert(!preview_active && awake && wake_releases==release_count);
+        assert(state.mode==WAITING && !state.count && !state.data.body_known && !state.data.blind_known);
+        assert(!power_motion.active && !active_fills && !active_traces);
+        for(int tick=0;tick<25;++tick){subsecond+=10000;timer(s,TIMER);}
+    }
     click(s,preview_button);assert(preview_active);paused(s);
     assert(!preview_active && !awake);click(s,preview_button);assert(!preview_active);
-    resumed(s);assert(state.mode==WAITING && !preview_active);
+    resumed(s);assert(state.mode==WAITING && !preview_active && awake);
+    reenter_pause=1;paused(s);assert(paused_state && !awake && !registered);
+    resumed(s);assert(awake && registered);
     /* Connected live data replaces preview immediately, without sample history. */
     click(s,preview_button);fixture.connected=1;fixture.gear=4;fixture.speed=37;fixture.power_kw=7;
     click(s,preview_button);assert(state.data.speed==37 && state.count==1);
@@ -273,9 +298,15 @@ int main(int argc,char **argv) {
     /* A new native Activity needs fresh pointers and cached properties. */
     api=&h;control_count=0;memset(controls,0,sizeof(controls));
     s=create();int previous_lookups=lookups;created(s);assert(lookups>previous_lookups);
+    /* A delayed callback from another Activity cannot mutate this instance. */
+    int old_reads=reads,old_writes=writes;
+    void *other=(void *)1;
+    timer(other,TIMER);click(other,lookup(s,PREVIEW));paused(other);resumed(other);destroy_only(other);
+    assert(reads==old_reads && writes==old_writes && live==s && awake && registered && !preview_active);
     assert(!preview_active);click(s,lookup(s,PREVIEW));assert(preview_active);
     assert(!navigation_focus && hardware_back(s) && closes==2 && !preview_active);
     click(s,lookup(s,PREVIEW));assert(!preview_active);
-    destroy(s);assert(!cluster_window_cleanup());
+    dtor=reentrant_destructor;
+    destroy(s);assert(destructors==1 && !cluster_window_cleanup());
     return 0;
 }

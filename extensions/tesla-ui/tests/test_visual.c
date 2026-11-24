@@ -66,6 +66,19 @@ int main(void) {
     visual_vehicle(0,0,19000000,0);visual_frame(19500000);paint();assert(body_mask==0 && hinge_position==0);
     visual_vehicle(1,0,20000000,0);assert(current==0); /* Closed doors must not disable camera animation. */
     visual_frame(22000000);paint();assert(current==64);
+    /* Stop Preview can arrive during any panel pose with a repaint pending.
+       Disconnected live data must replace it immediately, without more loads. */
+    for(int mask=0;mask<64;++mask) {
+        unsigned long long now=23000000+mask*2000000ull;
+        visual_vehicle(mask&1,mask,now,1);
+        visual_vehicle(mask&1,mask?0:1,now+100000,0);
+        visual_frame(now+225000);
+        int loads_before_stop=loaded;
+        visual_vehicle(0,-1,now+230000,1);paint();
+        assert(current==0 && body_mask==0 && requested_mask==0 && hinge_position==0);
+        for(int tick=1;tick<30;++tick){visual_vehicle(0,-1,now+230000+tick*10000,1);paint();}
+        assert(loaded==loads_before_stop);
+    }
     visual_detach();assert(car==native+2 && label==native+2 && loaded==destroyed);
     before=requests;visual_frame(23000000);assert(requests==before);
     fail_at=attempts+17;assert(!visual_attach(599306,&car));assert(car==native+2 && !ready);

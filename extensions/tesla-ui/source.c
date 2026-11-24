@@ -10,18 +10,21 @@ struct calendar {int sec,min,hour,mday,mon,year,wday,yday,isdst;long offset;cons
 extern struct calendar *localtime_r(const long *,struct calendar *);
 static void *(*display_instance)(void);
 static void (*display_inhibit)(void *,int,int);
-static void *preview_display;
-void source_preview_awake(int enabled) {
+static void *view_display;
+void source_view_awake(int enabled) {
     if(!enabled) {
-        if(preview_display)display_inhibit(preview_display,0x80,0);
-        preview_display=0;return;
+        void *d=view_display;view_display=0;
+        /* Native display policy can re-enter Activity cleanup. Relinquish
+           ownership before that call so nested cleanup cannot release twice. */
+        if(d)display_inhibit(d,0x80,0);
+        return;
     }
-    if(preview_display || !display_instance || !display_inhibit)return;
+    if(view_display || !display_instance || !display_inhibit)return;
     void *d=display_instance();
     /* Same temporary inhibitor used by the dedicated projection viewer.
        Never clear a hold acquired elsewhere; manual display-off stays native. */
     if(d && !(((const unsigned char *)d)[8]&0x80)) {
-        preview_display=d;display_inhibit(d,0x80,1);
+        view_display=d;display_inhibit(d,0x80,1);
     }
 }
 static int (*speed)(void),(*limit)(void),(*battery)(void),(*range)(void),(*temperature)(void);
