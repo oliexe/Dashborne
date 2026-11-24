@@ -4,20 +4,21 @@
 static void *native[13];static void **object;
 static int invalidations,draws,boxes;
 static void original_draw(void *self,void *dc) {assert(self==&object && dc==(void *)7);++draws;}
-static void invalid(void *p) {assert(p==&object);++invalidations;}
+static void invalid(void *p,const struct layout_position *area) {assert(p==&object && !area);++invalidations;}
 static void set_brush(void *dc,unsigned int c) {assert(dc==(void *)7 && c==0xff73777e);}
 static void fill(void *dc,int x,int y,int w,int h) {assert(dc==(void *)7 && x>=0 && x+w<=600 && y>=0 && y+h<=360 && w==2 && h==1);++boxes;}
 static void *resolve(void *handle,const char *symbol) {
     (void)handle;
     if(!strcmp(symbol,"_ZTV10ZKTextView"))return native;
     if(!strcmp(symbol,"_ZN10ZKTextView6onDrawEP8ZKCanvas"))return (void *)original_draw;
-    if(!strcmp(symbol,"_ZN6ZKBase10invalidateEv"))return (void *)invalid;
+    if(!strcmp(symbol,"_ZN6ZKBase10invalidateEPK14LayoutPosition"))return (void *)invalid;
     if(!strcmp(symbol,"SetBrushColor"))return (void *)set_brush;
     if(!strcmp(symbol,"zk_gdi_fill_box"))return (void *)fill;
     assert(0);return 0;
 }
+static void log_message(const struct dashborne_host *h,const char *message) {(void)h;assert(strstr(message,"tesla-ui: road"));}
 int main(void) {
-    struct dashborne_host h={.resolve=resolve};
+    struct dashborne_host h={.resolve=resolve,.log=log_message};
     assert(road_canvas_bind(&h)==-1);native[10]=(void *)original_draw;
     assert(!road_canvas_bind(&h));object=native+2;
     assert(!road_canvas_attach(&object));assert(road_canvas_attach(&object)==-1);

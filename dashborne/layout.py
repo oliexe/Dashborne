@@ -140,7 +140,7 @@ def screen():
     config['window__patches'] = patches
     config['textview__footer_line'] = dict(id=50022, position=position(180, 406, 1560, 1),
         backgroundColor=0x202228, touchable=False)
-    config['textview__40'] = label(50004, '', 704, 418, 700, 48, 18, 0x79849a)
+    config['textview__40'] = dict(label(50004, '', 704, 418, 700, 48, 18, 0xff6369), bold=True)
     config['button__43'] = label(20003, 'Continue booting', 1440, 418, 300, 48, 22, 0xffffff, 37)
     config['button__43'].update(touchable=True,
         picTab={'pic0': '../../../mnt/extsd/Dashborne/ui/continue.png',

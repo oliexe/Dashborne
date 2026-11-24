@@ -10,6 +10,7 @@ extern int *__errno_location(void);
 extern char *realpath(const char *, char *);
 extern void *dlopen(const char *, int), *dlsym(void *, const char *);
 extern int dlclose(void *);
+extern char *dlerror(void);
 struct image_info {const char *name;void *base;const char *symbol;void *address;};
 extern int dladdr(const void *,struct image_info *);
 #ifndef DBX_ROOT
@@ -338,8 +339,12 @@ int extensions_start(const char *const *ids, unsigned int count, void *official,
         if (!realpath(directory, resolved) || !copy(e->directory, resolved, sizeof(e->directory)))
             goto failure;
         e->library = dlopen(path, 2);
-        if (!e->library)
+        if (!e->library) {
+            const char *reason=dlerror();
+            event("extensions: could not load ");event(ids[i]);event(": ");
+            event(reason ? reason : "no dynamic loader error");event("\n");
             goto failure;
+        }
         const struct dashborne_extension *(*get)(void) = (void *)0;
         *(void **)(&get) = dlsym(e->library, "dashborne_extension_v1");
         if (!get)
@@ -365,8 +370,10 @@ int extensions_start(const char *const *ids, unsigned int count, void *official,
         activating = 1;
         int rc = d->activate(&e->host);
         activating = 0;
-        if (rc || poisoned)
+        if (rc || poisoned) {
+            event("extensions: activation rejected by ");event(ids[i]);event("\n");
             goto failure;
+        }
         event("extensions: activated ");
         event(ids[i]);
         event("\n");

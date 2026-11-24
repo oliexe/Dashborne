@@ -205,6 +205,8 @@ static void render(void *self) {
     label(self, COUNT_ID, counts);
     visible(self, EMPTY_ID, settings.count == 0);
     visible(self, LIST_ID, settings.count != 0);
+    void *notice=find_control(self, NOTICE_ID);
+    if(notice)set_color(notice,0xff6369);
     label(self, NOTICE_ID, launch_error ? launch_error : settings_ok ? "" : "Could not read or save dashborne.conf");
 }
 /* Independent C adapters for the runtime's list interfaces. The first two
@@ -306,6 +308,8 @@ static void launch(void *self) {
     launch_error = (const char *)0;
     if (!state_save(&settings)) { settings_ok = 0; phase = 1; render(self); return; }
     phase = 2; unregister_timer(self, BOOT_TIMER);
+    void *notice=find_control(self, NOTICE_ID);
+    if(notice)set_color(notice,0x79849a);
     label(self, NOTICE_ID, "Applying selected patches...");
     int result = state_apply(&settings, log_line);
     if (result < 0) {

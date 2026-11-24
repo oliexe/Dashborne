@@ -395,7 +395,7 @@ void cluster_window_open(void) {
 int cluster_window_bind(const struct dashborne_host *host) {
     api=host;
     if(road_canvas_bind(host))return -1;
-#define BIND(v,s) do {*(void **)(&(v))=api->resolve(api->ui_runtime,s);if(!(v))return -1;}while(0)
+#define BIND(v,s) do {*(void **)(&(v))=api->resolve(api->ui_runtime,s);if(!(v)){api->log(api,"tesla-ui: window missing symbol " s);return -1;}}while(0)
     BIND(ctor,"_ZN8ActivityC1Ev");BIND(dtor,"_ZN8ActivityD1Ev");
     BIND(base_created,"_ZN7BaseApp8onCreateEv");BIND(find,"_ZN7BaseApp15findControlByIDEi");
     BIND(text,"_ZN10ZKTextView7setTextEPKc");BIND(visible,"_ZN6ZKBase10setVisibleEb");
@@ -409,7 +409,7 @@ int cluster_window_bind(const struct dashborne_host *host) {
 #undef BIND
     void **original=api->resolve(api->ui_runtime,"_ZTV8Activity");
     if(!original || original[6]!=(void *)base_created ||
-       (__PTRDIFF_TYPE__)original[12]!=-(__PTRDIFF_TYPE__)sizeof(void *))return -1;
+       (__PTRDIFF_TYPE__)original[12]!=-(__PTRDIFF_TYPE__)sizeof(void *)){api->log(api,"tesla-ui: activity vtable mismatch");return -1;}
     for(unsigned int i=0;i<17;++i)table[i]=original[i];
     table[2]=(void *)destroy_only;table[3]=(void *)destroy;table[4]=(void *)click;
     table[5]=(void *)layout;table[6]=(void *)created;table[7]=(void *)timer;
