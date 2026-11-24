@@ -145,6 +145,11 @@ Our working hypothesis is that the S3XY DASH is a slightly modified and rebrande
 [Yeslak T9](https://www.yeslak.com/products/9-6-carplay-instrument-cluster-for-tesla-model-3-y-ly)
 or a similar device.
 
+Enhance's submitted [manual][manual] reproduces the 24-page
+[T9 manual linked by Yeslak](https://drive.google.com/file/d/1kAx3nM93lCkuczWnp6HKOUSXhaLoSg5Z/view),
+including its specifications, wiring diagrams, UI illustrations and installation
+photos, with "S3XY Dash" added to the cover and an extra FCC compliance page.
+
 [photos]: https://fccid.io/2BUSZ-S3XYDASH/Internal-Photos/Internal-photos-9104326.pdf
 [manual]: https://fccid.io/2BUSZ-S3XYDASH/User-Manual/User-manual-9104334.pdf
 [chipsets]: https://fccid.io/2BUSZ-S3XYDASH/Attestation-Statements/Kaspersky-Statement-9104348.pdf
