@@ -116,6 +116,7 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 
 *Proof of concept: a rotating 3D cube running alongside stock dashboard widgets.*
 
+- [Tesla Skin](extensions/tesla-skin): Tesla-inspired light and dark styling for the stock dashboard, Settings and widget picker.
 - [Development Menu](extensions/development-menu): opens the hidden stock Settings category without a password.
 - [Widget Example](extensions/widget-example): boilerplate for adding widgets to any stock picker category.
 - [Tesla Model Widget](extensions/tesla-model): a 2×2 animated car-state widget with tap-to-change
