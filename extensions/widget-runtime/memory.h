@@ -1,5 +1,5 @@
-#ifndef VEHICLE_MEMORY_H
-#define VEHICLE_MEMORY_H
+#ifndef DBW_MEMORY_H
+#define DBW_MEMORY_H
 #include "dashborne_extension.h"
 typedef __UINTPTR_TYPE__ mem_address;
 struct memory_edit {void *at;unsigned char before[32],after[32];unsigned int size;int applied,protection;};

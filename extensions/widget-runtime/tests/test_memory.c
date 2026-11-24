@@ -32,5 +32,5 @@ int main(void) {
     assert(!memory_prepare(&e,at,&old,&new,4));flush_fail=1;
     assert(memory_apply(&e)==-1 && e.applied && *at==new);
     flush_fail=0;assert(!memory_restore(&e)&&*at==old);
-    puts("Vehicle memory hooks: atomic words, conflict and failure recovery passed");
+    puts("Widget memory hooks: atomic words, conflict and failure recovery passed");
 }

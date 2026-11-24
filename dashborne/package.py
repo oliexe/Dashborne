@@ -37,7 +37,7 @@ def package(source, destination, extensions=None):
                 raise ValueError('Invalid or duplicate extension ID/ABI')
             ids.add(id)
             if extension.get('core'):
-                if id != 'extra-menu': raise ValueError('Unknown core extension')
+                if id not in ('extra-menu', 'widget-runtime'): raise ValueError('Unknown core extension')
                 continue
             title, description = extension['title'], extension['description']
             if not title or len(title.encode()) > 63 or len(description.encode()) > 127 or any(c in title + description for c in '\t\r\n\0'):

@@ -1,4 +1,4 @@
-#include "registry.h"
+#include "runtime.h"
 #include "memory.h"
 #include "storage.h"
 typedef __SIZE_TYPE__ usize;
@@ -7,34 +7,28 @@ extern int snprintf(char *,usize,const char *,...),strcmp(const char *,const cha
 extern void *memcpy(void *,const void *,usize);
 struct image_info {const char *name;void *base;const char *symbol;void *address;};
 extern int dladdr(const void *,struct image_info *);
-struct cell {int x,y;};
-struct layout {int type,x,y;unsigned short id,padding;unsigned short *begin,*end,*capacity;};
-struct option {int width,height;unsigned int source;const char *picture;};
-#if defined(__arm__)
-_Static_assert(sizeof(struct layout)==28,"ARM layout ABI");
-_Static_assert(sizeof(struct option)==16,"ARM picker ABI");
-#endif
 static const struct dashborne_host *api;
 static unsigned char *base;
-static struct memory_edit edits[20];
+static struct memory_edit edits[32];
 static unsigned int edit_count;
 static void *stock_special;
-/* Word layout is the fingerprinted ARM WdgList record, copied only at runtime. */
-static uintptr catalog[18][18];
-#define descriptor catalog[17]
-static struct option options[5];
-static unsigned int category_ids[5]={1,2,3,8,17};
-static char thumbnail[512];
-static int *tab,*category;
+/* Descriptors are copied in RAM. Reserved custom IDs remain inert when their
+   provider is disabled, so old placements can still be removed in the editor. */
+static uintptr catalog[256][18];
+static int *category;
 static unsigned char *intent;
 static void **caller;
-static void (*original_click)(void *,int,int),(*original_data)(void *,void *,int);
+static void (*original_click[3])(void *,int,int),(*original_data[3])(void *,void *,int);
+static int (*original_count[3])(void *);
+static void (*set_position)(void *,const void *),(*set_picture)(void *,int,const char *);
+static int (*get_id)(const void *);
+struct rect {int x,y,w,h;};
 static void (*picker_resume)(void *);
 static int (*json_write)(const char *,const void *);
 static void *(*find_sub)(const void *,int);
 static void (*set_text)(void *,const char *);
 static void *(*active_grid)(void *),*(*book)(void),*(*widgets)(void *),*(*loader)(void);
-static int (*loader_load)(void *),(*count_on_page)(void *,int);
+static int (*loader_load)(void *);
 static int (*nearest)(void *,int,struct cell,struct cell *,unsigned short);
 static void (*add_widget)(void *,struct layout *),(*remove_widget)(void *,unsigned short),(*close_editor)(void *,int);
 static unsigned int registered;
@@ -42,70 +36,107 @@ static unsigned int path_edits;
 static int persistence_busy;
 static void *pointer(const void *p){void *v;memcpy(&v,p,sizeof(v));return v;}
 static unsigned short short_at(const void *p){unsigned short v;memcpy(&v,p,sizeof(v));return v;}
-int registry_widget(const void *w) {
+unsigned int registry_source(const void *w) {
     if(!w)return 0;
     const unsigned char *p=w;
     const unsigned short *begin=pointer(p+52),*end=pointer(p+52+sizeof(void *));
     uintptr a=(uintptr)begin,b=(uintptr)end;
-    return a && b>=a && b-a>=2 && b-a<=8 && !((a|b)&1) && short_at(begin)==VEHICLE_SOURCE;
+    if(!a || b<a || b-a<2 || b-a>8 || ((a|b)&1))return 0;
+    unsigned int source=short_at(begin);
+    return source>=FIRST_SOURCE && source<=LAST_SOURCE?source:0;
+}
+int registry_publish(unsigned int source,const struct dashborne_widget *w) {
+    if(source<FIRST_SOURCE || source>LAST_SOURCE)return -1;
+    uintptr *d=catalog[source&255];
+    d[0]=d[1]=(uintptr)(w?w->title:"Unavailable widget");
+    d[17]=(uintptr)(w?w->description:"Enable its extension to restore this widget.");return 0;
 }
 static void prepare_catalog(const uintptr *stock,void *refresh) {
     for(unsigned int i=0;i<17*18;++i)((uintptr *)catalog)[i]=stock[i];
-    for(unsigned int i=0;i<18;++i)descriptor[i]=stock[18+i];
-    descriptor[0]=(uintptr)"3D Vehicle";descriptor[1]=(uintptr)"3D Vehicle";
-    descriptor[2]=descriptor[3]=(uintptr)"";
-    descriptor[15]=(uintptr)refresh;descriptor[16]=0;
-    descriptor[17]=(uintptr)"Animated vehicle state. Park, Drive, doors, frunk and trunk.";
-}
-static int mine(int row) {return *tab==2 && category[2]==1 && row==4;}
-/* Stock placement owns occupancy and IDs. A single car per page shares one of
-   the four native 2x2 gauge containers; no existing choice is replaced. */
-static int candidate(struct layout *out) {
-    void *edit=*caller;if(!edit || !intent[0] || intent[0]>25)return 0;
-    void *grid=active_grid(book());if(!grid || pointer((unsigned char *)edit+48)!=grid)return 0;
-    int x,y;memcpy(&x,intent+4,4);memcpy(&y,intent+8,4);
-    if(x<0 || x>5 || y<0 || y>1)return 0;
-    unsigned short replacing=short_at(intent+36);
-    void **v=widgets(grid);if(!v)return 0;
-    uintptr begin=(uintptr)v[0],end=(uintptr)v[1];
-    if(end<begin || (end-begin)%sizeof(void *) || (end-begin)/sizeof(void *)>64)return 0;
-    int old_type=-1;
-    for(void **i=(void **)begin;(uintptr)i<end;++i) {
-        if(!*i)return 0;
-        unsigned short id=short_at((unsigned char *)*i+48);
-        if(id==replacing)memcpy(&old_type,(unsigned char *)*i+36,4);
-        if(registry_widget(*i) && id!=replacing)return 0;
+    for(unsigned int n=17;n<256;++n) {
+        uintptr *d=catalog[n];
+        for(unsigned int i=0;i<18;++i)d[i]=stock[18+i];
+        d[2]=d[3]=(uintptr)"";d[15]=(uintptr)refresh;d[16]=0;
+        registry_publish(0x200+n,0);
     }
-    for(int type=5;type<=8;++type) {
-        if(count_on_page(edit,type)>(old_type==type?1:0))continue;
-        struct cell cell;
-        if(nearest(grid,type,(struct cell){x,y},&cell,replacing) && cell.x>=0 && cell.x<=4 && cell.y==0) {
-            *out=(struct layout){.type=type,.x=cell.x,.y=cell.y,.id=65535};return 1;
+}
+static int list_tab(void *list) {
+    int id=get_id(list);return id==80002?0:id==80003?1:id==80004?2:-1;
+}
+static int stock_count(int t) {
+    if(t<0 || t>2)return 0;
+    const unsigned int offsets[]={0x3598e0,0x359850,0x3597e4},counts[]={4,12,9};
+    int c=category[t];if(c<0 || (unsigned int)c>=counts[t])return 0;
+    unsigned int n;
+    /* Special rows are presentation templates, not the category's source IDs:
+       Trip has six sources but one row; Navigation has one source but two rows. */
+    memcpy(&n,base+(t==2?0x336e78+c*8:offsets[t]+c*12+8),4);
+    return n<=64?(int)n:0;
+}
+static const struct widget_provider *row_provider(int t,int row,int *size) {
+    row-=stock_count(t);if(row<0 || t<0 || t>2)return 0;
+    for(int i=0;i<PROVIDERS;++i) {
+        const struct widget_provider *p=&providers[i];
+        if(!p->host || p->widget->tab!=(unsigned int)t || p->widget->category!=(unsigned int)category[t])continue;
+        for(int s=0;s<DBW_SIZE_COUNT;++s)if(p->widget->sizes&(1u<<s)) {
+            if(!row--){*size=s;return p;}
         }
     }
     return 0;
 }
+static int item_count(void *list) {
+    int t=list_tab(list);if(t<0)return 0;
+    int count=original_count[t](list),extra=0;
+    for(int i=0;i<PROVIDERS;++i)if(providers[i].host && providers[i].widget->tab==(unsigned int)t &&
+       providers[i].widget->category==(unsigned int)category[t])
+        for(int s=0;s<DBW_SIZE_COUNT;++s)extra+=(providers[i].widget->sizes>>s)&1;
+    /* Special's single-stock-item category otherwise narrows the list. */
+    if(t==2 && extra)set_position(list,&(struct rect){520,11,1030,469});
+    return count+extra;
+}
+static int candidate(struct layout *out,int size) {
+    if(size<0 || size>=DBW_SIZE_COUNT)return 0;
+    void *edit=*caller;if(!edit || !intent[0] || intent[0]>25)return 0;
+    void *grid=active_grid(book());if(!grid || pointer((unsigned char *)edit+48)!=grid)return 0;
+    int x,y;memcpy(&x,intent+4,4);memcpy(&y,intent+8,4);
+    if(x<0 || x>5 || y<0 || y>1)return 0;
+    struct cell cell;const struct widget_geometry *g=&widget_sizes[size];
+    if(!nearest(grid,g->type,(struct cell){x,y},&cell,short_at(intent+36)) ||
+       cell.x<0 || cell.y<0 || cell.x+g->columns>6 || cell.y+g->rows>2)return 0;
+    *out=(struct layout){.type=g->type,.x=cell.x,.y=cell.y,.id=65535};return 1;
+}
 static void item_data(void *list,void *item,int row) {
-    original_data(list,item,row);
-    void *button=find_sub(item,24002);if(!button)return;
-    struct layout wanted;
-    set_text(button,mine(row)?(candidate(&wanted)?"3D Vehicle":"3D Vehicle — no free 2×2 slot"):"");
+    int t=list_tab(list),size=0;if(t<0 || row<0)return;
+    const struct widget_provider *p=row_provider(t,row,&size);
+    /* Populate native styling and scroll arrows using a valid stock row. */
+    void *label=find_sub(item,t==0?24001:t==1?24007:24002);
+    if(t==2 && label)set_text(label,"");
+    original_data[t](list,item,p?0:row);
+    if(!p)return;
+    char title[160];struct layout wanted;
+    const struct widget_geometry *g=&widget_sizes[size];
+    snprintf(title,sizeof(title),"%s\n%d × %d%s",p->widget->title,g->columns,g->rows,candidate(&wanted,size)?"":" — no space");
+    if(label)set_text(label,title);
+    if(t==0) {
+        void *value=find_sub(item,24005),*unit=find_sub(item,24006);
+        if(value)set_text(value,"");if(unit)set_text(unit,"");
+    } else if(t==1) {void *icon=find_sub(item,24017);if(icon)set_text(icon,"");}
+    else if(label) {set_picture(label,0,"");}
 }
 static void item_click(void *list,int row,int child) {
-    if(!mine(row)){original_click(list,row,child);return;}
-    struct layout wanted;if(!candidate(&wanted))return;
-    /* GaugePower::setScale reads its third source before initialize(). Supply
-       the native optional data slots even though our refresh getter is inert. */
-    void *edit=*caller;unsigned short sources[3]={VEHICLE_SOURCE,0,35};
+    int t=list_tab(list),size=0;if(t<0 || row<0)return;
+    const struct widget_provider *p=row_provider(t,row,&size);
+    if(!p) {if(row<stock_count(t))original_click[t](list,row,child);return;}
+    struct layout wanted;if(!candidate(&wanted,size))return;
+    void *edit=*caller;unsigned short sources[3]={(unsigned short)p->source,0,35};
     wanted.begin=sources;wanted.end=wanted.capacity=sources+3;
     unsigned short replacing=short_at(intent+36);
-    /* Keep a copy for rollback if native activation rejects the new widget. */
     struct layout previous={0};unsigned short previous_sources[4];int have_previous=0;
     void *grid=active_grid(book());void **v=widgets(grid);
     for(void **i=v[0];i!=(void **)v[1];++i)if(short_at((unsigned char *)*i+48)==replacing) {
-        const unsigned char *p=*i;memcpy(&previous,p+36,12);previous.id=replacing;
-        const unsigned short *begin=pointer(p+52),*end=pointer(p+52+sizeof(void *));
-        if((uintptr)end<(uintptr)begin || (uintptr)end-(uintptr)begin>sizeof(previous_sources) || !begin)return;
+        const unsigned char *q=*i;memcpy(&previous,q+36,12);previous.id=replacing;
+        const unsigned short *begin=pointer(q+52),*end=pointer(q+52+sizeof(void *));
+        if(!begin || (uintptr)end<(uintptr)begin || (uintptr)end-(uintptr)begin>sizeof(previous_sources))return;
         usize n=(uintptr)end-(uintptr)begin;if(!n || n%2)return;
         memcpy(previous_sources,begin,n);previous.begin=previous_sources;previous.end=previous.capacity=previous_sources+n/2;have_previous=1;break;
     }
@@ -113,29 +144,29 @@ static void item_click(void *list,int row,int child) {
     if(have_previous)remove_widget(edit,replacing);
     add_widget(edit,&wanted);
     v=widgets(grid);int found=0;
-    for(void **i=v[0];i!=(void **)v[1];++i)if(registry_widget(*i))found=1;
+    for(void **i=v[0];i!=(void **)v[1];++i)if(registry_source(*i)==p->source && short_at((unsigned char *)*i+48)==wanted.id)found=1;
     if(!found) {
         if(have_previous){previous.id=65535;add_widget(edit,&previous);}
-        api->log(api,"vehicle-widget: native placement rejected; previous widget restored");return;
+        api->log(api,"widgets: placement rejected; previous widget restored");return;
     }
     close_editor(edit,1);
 }
 static void resume_picker(void *self) {
     /* Re-editing a car opens the picker, not the native gauge's data editor. */
     unsigned short id=short_at(intent+36),source=short_at(intent+38),none=65535;
-    if(source==VEHICLE_SOURCE)memcpy(intent+36,&none,2);
+    if(source>=FIRST_SOURCE && source<=LAST_SOURCE)memcpy(intent+36,&none,2);
     picker_resume(self);
-    if(source==VEHICLE_SOURCE)memcpy(intent+36,&id,2);
+    if(source>=FIRST_SOURCE && source<=LAST_SOURCE)memcpy(intent+36,&id,2);
 }
 static int write_layout(const char *path,const void *json) {
-    if(strcmp(path,VEHICLE_LAYOUT_RAM))return json_write(path,json);
+    if(strcmp(path,WIDGET_LAYOUT_RAM))return json_write(path,json);
     if(__sync_lock_test_and_set(&persistence_busy,1))return 0;
     int ok=json_write(path,json);
-    if(ok && layout_save()) {api->log(api,"vehicle-widget: layout could not be saved to dashborne.conf");ok=0;}
+    if(ok && layout_save()) {api->log(api,"widgets: layout could not be saved to dashborne.conf");ok=0;}
     __sync_lock_release(&persistence_busy);return ok;
 }
 static int edit(void *at,const void *before,const void *after,unsigned int size) {
-    if(edit_count>=20)return -1;
+    if(edit_count>=32)return -1;
     return memory_prepare(&edits[edit_count++],at,before,after,size);
 }
 static int word(unsigned int offset,uintptr before,uintptr after) {
@@ -152,12 +183,14 @@ int registry_bind(const struct dashborne_host *h) {
     base=image.base;
     APP(stock_special,"_ZN7WdgList7specialE");
     APP(active_grid,"_ZNK10WidgetBook13getActiveGridEv");APP(book,"_ZN10WidgetBook8instanceEv");
-    APP(widgets,"_ZNK11DisplayGrid16getActiveWidgetsEv");APP(count_on_page,"_ZN10WidgetEdit11countOnPageE12WdgOutlook_t");
+    APP(widgets,"_ZNK11DisplayGrid16getActiveWidgetsEv");
     APP(nearest,"_ZN11DisplayGrid15findNearestFreeE12WdgOutlook_t12WdgGridPos_tRS1_t");
     APP(add_widget,"_ZN10WidgetEdit9addWidgetER9WdgLayout");APP(remove_widget,"_ZN10WidgetEdit12removeWidgetEt");
     APP(close_editor,"_ZN10WidgetEdit11closeEditorEb");
     APP(picker_resume,"_ZN18widgetEditActivity8onResumeEv");
     APP(loader,"_ZN9WdgLoader11getInstanceEv");APP(loader_load,"_ZN9WdgLoader4loadEv");
+    UI(set_position,"_ZN6ZKBase11setPositionERK14LayoutPosition");
+    UI(get_id,"_ZNK6ZKBase5getIDEv");UI(set_picture,"_ZN8ZKButton18setButtonStatusPicEiPKc");
     UI(json_write,"_ZN10JsonHelper13writeJsonFileEPKcRKN4Json5ValueE");
     UI(find_sub,"_ZNK10ZKListView10ZKListItem15findSubItemByIDEi");UI(set_text,"_ZN10ZKTextView7setTextEPKc");
 #undef APP
@@ -167,21 +200,20 @@ int registry_bind(const struct dashborne_host *h) {
     void *refresh=h->resolve(h->official_library,"_Z13getStat_VideoR11IWidgetBasei");
     if(!refresh)return -1;
     prepare_catalog(stock_special,refresh);
-    int n=snprintf(thumbnail,sizeof(thumbnail),"%s/assets/motion/camera-00.png",h->extension_directory);
-    if(n<0 || (usize)n>=sizeof(thumbnail))return -1;
-    memcpy(options,base+0x3371a8,64);
-    options[4]=(struct option){480,288,VEHICLE_SOURCE,thumbnail};
-    tab=(int *)(base+0x3593c0);category=(int *)(base+0x35ee00);intent=base+0x35f070;caller=(void **)(base+0x35efc8);
-    original_click=(void (*)(void *,int,int))(base+0x128170);
-    original_data=(void (*)(void *,void *,int))(base+0x11e6e8);
+    category=(int *)(base+0x35ee00);intent=base+0x35f070;caller=(void **)(base+0x35efc8);
+    const unsigned int tables[]={0x336df0,0x336de0,0x336dd0};
+    for(int t=0;t<3;++t) {
+        unsigned char *d=base+tables[t];
+        original_count[t]=pointer(d+4);original_data[t]=pointer(d+8);original_click[t]=pointer(d+12);
+        if(word(tables[t]+4,(uintptr)original_count[t],(uintptr)item_count) ||
+           word(tables[t]+8,(uintptr)original_data[t],(uintptr)item_data) ||
+           word(tables[t]+12,(uintptr)original_click[t],(uintptr)item_click))return -1;
+    }
     /* RTLD_LAZY may leave this import pointing at the image's PLT resolver. */
     void *write_slot=pointer(base+0x358378);
     if(write_slot!=(void *)json_write && write_slot!=base+0x97b78)return -1;
     if(word(0x358c44,(uintptr)stock_special,(uintptr)catalog) ||
-       word(0xda218,0xe3510010u,0xe3510011u) ||
-       word(0x336e80,4,5) || word(0x336e84,(uintptr)(base+0x3371a8),(uintptr)options) ||
-       word(0x3597f4,(uintptr)(base+0x2a0028),(uintptr)category_ids) || word(0x3597f8,4,5) ||
-       word(0x336dd8,(uintptr)original_data,(uintptr)item_data) || word(0x336ddc,(uintptr)original_click,(uintptr)item_click) ||
+       word(0xda218,0xe3510010u,0xe35100ffu) ||
        word(0x358378,(uintptr)write_slot,(uintptr)write_layout) ||
        word(0x3507bc,(uintptr)picker_resume,(uintptr)resume_picker))return -1;
     /* Every reference to the layout pathname, including reset/check paths.
@@ -191,13 +223,13 @@ int registry_bind(const struct dashborne_host *h) {
         {0xdf058,0xdeb80},{0xdf080,0xdecb0}};
     path_edits=edit_count;
     for(unsigned int i=0;i<7;++i)if(word(paths[i][0],0x28dda0-paths[i][1],
-        (uintptr)VEHICLE_LAYOUT_RAM-(uintptr)(base+paths[i][1])))return -1;
+        (uintptr)WIDGET_LAYOUT_RAM-(uintptr)(base+paths[i][1])))return -1;
     if(layout_prepare())return -1;
     for(unsigned int i=0;i<edit_count;++i)if(memory_apply(&edits[i]))return -1;
     registered=1;
     /* InitSystem may have loaded the stock layout before extension activation. */
     if(!loader_load(loader()))return -1;
-    h->log(h,"vehicle-widget: stock picker entry registered; layout stored in dashborne.conf");return 0;
+    h->log(h,"widgets: picker and card layout registered");return 0;
 }
 int registry_cleanup(void) {
     /* Called after all dashboard controls have retired. No custom callback is

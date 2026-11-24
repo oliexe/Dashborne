@@ -9,7 +9,7 @@ extern int snprintf(char *,__SIZE_TYPE__,const char *,...);
 #define LAYOUT_STOCK "/data/pagelayout.json"
 #endif
 #ifndef LAYOUT_RAM
-#define LAYOUT_RAM VEHICLE_LAYOUT_RAM
+#define LAYOUT_RAM WIDGET_LAYOUT_RAM
 #endif
 static unsigned char bytes[LIMIT+1];
 static int read_file(const char *p) {

@@ -100,6 +100,7 @@ See [configuration and operation](dashborne/README.md).
 - [Contrast](extensions/contrast): display contrast and luminance controls in stock Settings.
 - [Tesla UI](extensions/tesla-ui): a fixed Model S style instrument view in Extra,
   with live readings, energy history and navigation trip details.
+- [Widget Example](extensions/widget-example): boilerplate for adding widgets to any stock picker category.
 - [3D Vehicle Widget](extensions/vehicle-widget): an animated car in the stock widget
   picker, placed through the dashboard editor, with a local preview.
 - [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared

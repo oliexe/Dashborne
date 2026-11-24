@@ -9,12 +9,7 @@
     "motion.c",
     "data.c",
     "panels.c",
-    "sample.c",
-    "registry.c",
-    "memory.c",
-    "storage.c",
-    "settings.c",
-    "views.c"
+    "sample.c"
   ],
   "asset_sources": [
     {

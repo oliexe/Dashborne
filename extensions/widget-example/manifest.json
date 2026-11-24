@@ -1,0 +1,7 @@
+{
+  "id": "widget-example",
+  "title": "Widget Example",
+  "description": "A small native-picker widget for developing your own dashboard widgets.",
+  "abi": 1,
+  "sources": ["extension.c"]
+}

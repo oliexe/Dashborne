@@ -54,12 +54,12 @@ int state_save(const struct settings *s) { assert(s->count == 2 || s->count == 6
 int state_apply(const struct settings *s, void (*log)(const char *)) {
     assert((s->count == 2 || s->count == 64) && log); ++applied; return !strcmp(scenario, "patch-failure") ? -1 : 1;
 }
-int extension_probe(const char *id) { assert(!strcmp(id,"extra-menu")); return !strcmp(scenario,"extension"); }
+int extension_probe(const char *id) { assert(!strcmp(id,"extra-menu") || !strcmp(id,"widget-runtime")); return !strcmp(scenario,"extension"); }
 int extensions_recover(void (*logger)(const char *)) { assert(logger); return 1; }
 int extensions_start(const char *const *ids, unsigned int count, void *s, void *r,
                      const char *protected_target, void (*logger)(const char *)) {
     assert(ids && s && r && protected_target && logger); ++extension_calls;
-    if (!strcmp(scenario,"extension")) { assert(count==2 && !strcmp(ids[0],"extra-menu") && !strcmp(ids[1],"native-example")); }
+    if (!strcmp(scenario,"extension")) { assert(count==3 && !strcmp(ids[0],"widget-runtime") && !strcmp(ids[1],"extra-menu") && !strcmp(ids[2],"native-example")); }
     else if (settings.patches[1].native) { assert(count == 1 && !strcmp(ids[0], "native-example")); }
     else assert(!count);
     if (!strcmp(scenario, "extension-failure")) return -1;

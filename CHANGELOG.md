@@ -5,6 +5,8 @@ tracked separately in their source history.
 
 ## Unreleased
 
+- Shared widget registration API, native size/category support and card layout ownership.
+
 - The extension builder can package shared source assets into independent modules.
 
 ## 0.1.0 — 2026-11-24

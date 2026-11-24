@@ -12,17 +12,6 @@ clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
     ../tesla-ui/sample.c -o "$output/adapter"
 "$output/adapter"
 clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
-    -I../../dashborne/extensions tests/test_views.c -o "$output/views"
-"$output/views"
-clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
     -I../../dashborne/extensions tests/test_panels.c panels.c -o "$output/panels"
 "$output/panels"
 python3 tests/test_assets.py
-
-clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
-    -I../../dashborne/extensions tests/test_registry.c -o "$output/registry"
-"$output/registry"
-clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
-    -I../../dashborne/extensions tests/test_memory.c -o "$output/memory"
-"$output/memory"
-python3 tests/test_storage.py

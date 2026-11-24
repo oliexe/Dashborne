@@ -19,7 +19,7 @@ extern int dladdr(const void *,struct image_info *);
 #ifndef DBX_RES
 #define DBX_RES "/res"
 #endif
-#define MAX_EXTENSIONS 65
+#define MAX_EXTENSIONS 66
 #define MAX_OVERLAYS 128
 #define PATH_SIZE 512
 #define JOURNAL DBX_ROOT "/extensions.mounts"

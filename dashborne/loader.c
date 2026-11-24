@@ -320,7 +320,8 @@ static void launch(void *self) {
         phase = 1; render(self);
         return;
     }
-    const char *extensions[MAX_PATCHES+1]; unsigned int extension_count = 0;
+    const char *extensions[MAX_PATCHES+2]; unsigned int extension_count = 0;
+    if (extension_probe("widget-runtime")) extensions[extension_count++] = "widget-runtime";
     if (extension_probe("extra-menu")) extensions[extension_count++] = "extra-menu";
     for (unsigned int i = 0; i < settings.count; ++i)
         if (settings.patches[i].enabled && settings.patches[i].native)

@@ -11,18 +11,17 @@ disabled.
 3. Open the special widgets' **Gauges** category and choose **3D Vehicle**.
 4. Leave editing to use **Preview**. **Stop** returns to live vehicle readings.
 
-The widget needs a **2×2 area** and supports one car per page. It uses a free
-native gauge container; the existing gauge choices remain available. If all four
-containers are in use or no 2×2 area fits, the picker explains that it cannot be
-placed. Use the stock editor to change or remove it. Preview is hidden while
-editing, leaving the stock controls available.
+Choose any of the eight stock sizes, from **1×1** to **6×2**. Multiple placements
+can share a page when space permits. The shared widget runtime owns placement
+and editing; the car extension supplies rendering and vehicle data.
 
-The extension starts with a copy of your current dashboard layout. While it is
-enabled, layout changes are saved in the root card's `dashborne.conf`, under
-`vehicle-widget.layout.*`. Disabling the extension or booting without Dashborne
-returns to the flash layout; enabling it again restores the card's layout.
+Use **Preview** to cycle sample states and **Stop** to return to live readings.
+Preview is hidden while editing. All car placements share the same preview and
+image cache.
 
-Picker placement has been tested on a DASH.
+Layouts are stored on the card through the [widget runtime](../widget-runtime).
+Existing 3D Vehicle placements retain their source ID. This adapter is guarded
+for app 6.11.2 and its inspected UI runtime.
 
 ## Vehicle state
 
@@ -36,10 +35,6 @@ combinations use endpoint poses. The car is rendered from the existing
 [credited Model 3 mesh](../tesla-ui/assets/Model3-CREDITS.md), using pre-rendered
 frames rather than a live 3D engine.
 
-The adapter is guarded for the inspected 6.11.2 app and UI runtime. The field
-mapping and injection path have been checked locally; live telemetry, native
-placement, touch and frame rate still need a DASH test.
-
 ## Rendering and lifecycle
 
 The cache holds 65 camera frames, one body pose and at most one 11-frame hinge
@@ -47,29 +42,21 @@ sequence. Its decoded pixels total at most 19.54 MiB, excluding native bitmap
 overhead. It loads no Tesla UI fonts, road graphics, graph or standalone activity.
 Unchanged scenes do not request another repaint; only one repaint can be pending.
 
-Vehicle data is sampled at 10 Hz, with animation ticks every 16 ms. Each car view
-is a child of its native widget window: page movement, clipping and visibility
-follow the stock hierarchy. Reusing a container for a stock gauge hides its car
-view before the container appears.
-The three native page containers share this cache, so swiping does not reload
-the car images. The cache is released when none contains a car or the dashboard
-pauses. Cleanup restores the native
-draw callbacks, picker tables, layout-path references and dashboard hooks after
-the dashboard has closed. A live dashboard requires a restart before unloading.
-The widget does not change display-sleep or networking policy.
+Vehicle data is sampled at 10 Hz, with animation ticks every 16 ms. The runtime
+attaches each view to its moving page container and handles editing, clipping,
+pause and teardown. All placements share one cache, which is released when the
+last assigned car view is retired or the dashboard pauses. The widget does not change display-sleep or
+networking policy.
 
 ## Local checks
 
 ```sh
 sh extensions/vehicle-widget/test.sh
+sh extensions/widget-runtime/test.sh
 sh dashborne/build.sh
 sh test.sh
 ```
 
-Tests cover all 128 Park/Drive panel poses, cache bounds, partial asset failures,
-invalid state, repeated Preview/Stop, picker selection, placement, replacement
-rollback, re-editing, simultaneous page slides, container reuse, pause/resume,
-partial creation, destruction and hook conflicts.
-Storage tests cover round trips, malformed data, size limits and failed writes.
-The build copies shared car assets into this extension's package, so it can run
-without Tesla UI's module loaded.
+Scene tests cover panel poses, cache bounds, asset failures, invalid state and
+repeated Preview/Stop. Adapter tests cover all sizes, multiple views and cache
+release. Native picker and lifecycle checks live with the shared runtime.
