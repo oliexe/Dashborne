@@ -112,6 +112,10 @@ its UI, features, and behavior. Dashborne includes the
 [widget runtime](dashborne/core/widget-runtime), which extensions can use to add
 entries to the floating Extra menu or build custom widgets for the stock widget picker.
 
+![Rotating cube proof of concept running in a custom widget on the S3XY DASH](docs/images/cube-widget.png)
+
+*Proof of concept: a rotating 3D cube running alongside stock dashboard widgets.*
+
 - [Widget Example](extensions/widget-example): boilerplate for adding widgets to any stock picker category.
 - [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
   viewer with aspect controls; Back restores CarPlay/Android Auto.
