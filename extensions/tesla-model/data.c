@@ -47,5 +47,8 @@ void tm_data_read(struct tm_reading *r) {
     r->gear=word(medium,0);r->speed=speed();tm_decode_panels(r,slow);
     const volatile unsigned char *b=blinkers();
     if(b){r->left=b[0x25]!='N' && b[0x38];r->right=b[0x35]!='N' && b[0x38];}
-    /* Lamp fields remain unavailable until their stock getters are verified. */
+    /* Verified through ADB: getAct_Low_Beam_38 and getAct_High_Beam_37
+       read mediumData bytes 0x5e/0x5f in the fingerprinted app. */
+    unsigned int low=medium[0x5e],high=medium[0x5f];
+    if(low<=1 && high<=1){r->lights_known=1;r->low_beam=low;r->high_beam=high;}
 }

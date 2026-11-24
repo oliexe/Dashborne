@@ -21,6 +21,12 @@ int main(void) {
     raw[0xd1]=255;tm_data_read(&r);assert(r.known==62&&r.open==62);
     b[0x25]='L';b[0x38]=1;tm_data_read(&r);assert(r.left&&!r.right);
     b[0x38]=0;tm_data_read(&r);assert(!r.left);
+    unsigned char *lamp=(void *)m;
+    for(int l=0;l<2;++l)for(int h=0;h<2;++h) {
+        lamp[0x5e]=l;lamp[0x5f]=h;tm_data_read(&r);
+        assert(r.lights_known&&r.low_beam==l&&r.high_beam==h);
+    }
+    lamp[0x5e]=255;tm_data_read(&r);assert(!r.lights_known&&!r.low_beam);
     f=0x10;tm_data_read(&r);assert(!r.connected&&!r.known);
     f=0;d=1;tm_data_read(&r);assert(!r.connected&&!r.known);
     d=0;linked=0;tm_data_read(&r);assert(!r.connected);

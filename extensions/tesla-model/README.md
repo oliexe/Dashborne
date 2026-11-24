@@ -35,8 +35,8 @@ back to the parked view, where each door, frunk and trunk animates independently
 
 The adapter reads the stock application's Commander state without changing its
 subscriptions. It uses the previously verified connection, gear, door and turn
-indicator mappings for the supported app build. Headlight rendering is prepared,
-but live headlight fields still need an ADB check and remain unavailable.
+indicator mappings for the supported app build. Low and high beams use the same
+fields as the stock light controls, checked against the app retrieved over ADB.
 When disconnected, the car dims and live indicators clear.
 
 ## Development
@@ -49,4 +49,4 @@ pause, and requests updates at most 40 times per second while visible.
 Run `sh extensions/tesla-model/test.sh` for the state-machine, parser, telemetry
 and lifecycle tests. They cover all panel combinations, gear changes during
 animation, missing images, model cycling, page reuse and bounded cache cleanup.
-Touch gestures, live telemetry and frame timing still require a device test.
+Touch gestures and live vehicle-state changes still require a device test.

@@ -15,8 +15,10 @@ struct tm_scene {
     int initialized;
 };
 struct tm_layer { const char *name; int frame, x, y, w, h; };
+struct tm_lamp {int x0,y0,x1,y1;unsigned int color;};
 #define TM_LAYERS 16
 /* Virtual canvas: 510 × 458. frame=-1 means a single PNG, not a sequence. */
 int tm_step(struct tm_scene *, const struct tm_reading *, unsigned long long now);
 int tm_layers(const struct tm_scene *, struct tm_layer out[TM_LAYERS]);
+int tm_lamps(const struct tm_scene *,struct tm_lamp out[4]);
 #endif

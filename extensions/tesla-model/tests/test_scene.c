@@ -35,7 +35,11 @@ int main(void) {
     r.gear=TM_DRIVE;r.open=0;r.left=r.right=1;r.lights_known=r.high_beam=1;
     s=(struct tm_scene){0};tm_step(&s,&r,now);int count=tm_layers(&s,layers);assert(count==5);
     assert(!strcmp(layers[count-2].name,"back_left_light"));
-    r.connected=0;advance(&s,&r,100);assert(s.angle==0&&s.data.left==0&&!s.data.lights_known);
+    struct tm_lamp lamps[4];assert(tm_lamps(&s,lamps)==0);
+    s.angle=0;assert(tm_lamps(&s,lamps)==2&&lamps[0].color==0xffa52d);
+    s.data.left=s.data.right=0;assert(tm_lamps(&s,lamps)==2&&lamps[0].color==0xf4f8ff);
+    s.data.lights_known=0;assert(!tm_lamps(&s,lamps));
+    r.connected=0;advance(&s,&r,100);assert(s.angle==0&&s.data.left==0&&!s.data.lights_known&&!tm_lamps(&s,lamps));
     r=(struct tm_reading){.connected=1,.gear=999,.speed=999,.known=0,.open=63};
     advance(&s,&r,10);assert(!s.data.open&&!s.data.speed&&s.angle==0);
     /* A long pause or backward clock must not create a burst of animation. */

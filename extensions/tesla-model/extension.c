@@ -13,7 +13,7 @@ struct bitmap {
     char name[64];int variant,constructed,loaded;
     unsigned long long age;
 };
-struct state {struct tm_scene scene;struct dashborne_widget_view *view;int variant;unsigned long long next;};
+struct state {struct tm_scene scene;struct dashborne_widget_view *view;int variant,opacity;unsigned long long next;};
 static struct state states[36];
 static struct bitmap cache[CACHE_SIZE];
 static unsigned long long age;
@@ -24,7 +24,7 @@ static const struct dashborne_widgets *widgets;
 static void (*bitmap_ctor)(void *),(*bitmap_dtor)(void *);
 static int (*bitmap_load)(void *,const char *,int,int);
 static void (*bitmap_fill)(void *,void *,int,int,int,int);
-static void (*position)(void *,const struct rect *),(*visible)(void *,int),(*background)(void *,unsigned int);
+static void (*position)(void *,const struct rect *),(*visible)(void *,int);
 static void (*picture)(void *,int,const char *),(*alpha)(void *,unsigned char);
 static void *(*lock_dc)(void *,const void *,int *,int *,int *);
 static void (*unlock_dc)(void *);
@@ -59,10 +59,10 @@ static struct bitmap *get_image(int variant,const struct tm_layer *layer) {
 }
 static int create(struct dashborne_widget_view *v) {
     if(v->instance>=36)return -1;
-    struct state *s=&states[v->instance];*s=(struct state){.view=v,.variant=selected_variant};v->user=s;++users;
+    struct state *s=&states[v->instance];*s=(struct state){.view=v,.variant=selected_variant,.opacity=-1};v->user=s;++users;
     position(v->canvas,&(struct rect){12,12,v->width-24,v->height-24});
     visible(v->title,0);visible(v->value,0);visible(v->status,0);
-    widgets->text(v->action,"");background(v->action,0xffffffffu);
+    widgets->text(v->action,"");alpha(v->action,0);
     for(int i=0;i<5;++i)picture(v->action,i,"");
     /* Native click handling still owns gesture cancellation; the runtime hides
        the hit area in edit mode so selection, dragging and removal stay native. */
@@ -73,7 +73,8 @@ static void update(struct dashborne_widget_view *v,unsigned long long now) {
     struct state *s=v->user;if(!s || !v->visible)return;
     if(s->next && now<s->next && s->next-now<100000)return;
     s->next=now+25000;struct tm_reading r;tm_data_read(&r);
-    alpha(v->canvas,r.connected?255:150);
+    int opacity=r.connected?255:150;
+    if(s->opacity!=opacity){alpha(v->canvas,(unsigned char)opacity);s->opacity=opacity;}
     if(tm_step(&s->scene,&r,now))widgets->invalidate(v);
 }
 static void draw(struct dashborne_widget_view *v,void *surface) {
@@ -92,6 +93,22 @@ static void draw(struct dashborne_widget_view *v,void *surface) {
         const struct tm_layer *l=&layers[i];struct bitmap *b=get_image(s->variant,l);if(!b)continue;
         bitmap_fill(&b->object,surface,ox+l->x*scale/1000,oy+l->y*scale/1000,l->w*scale/1000,l->h*scale/1000);
     }
+    struct tm_lamp lamps[4];int lamp_count=tm_lamps(&s->scene,lamps);
+    if(!lamp_count)return;
+    pixels=lock_dc(surface,&bounds,&w,&h,&pitch);if(!pixels)return;
+    if(w<=0 || h<=0 || w>cw || h>ch || pitch<w*4){unlock_dc(surface);return;}
+    for(int i=0;i<lamp_count;++i) {
+        const struct tm_lamp *l=&lamps[i];
+        int x0=ox+l->x0*scale/1000,y0=oy+l->y0*scale/1000;
+        int dx=(l->x1-l->x0)*scale/1000,dy=(l->y1-l->y0)*scale/1000;
+        int steps=dx<0?-dx:dx,ady=dy<0?-dy:dy;if(ady>steps)steps=ady;
+        if(!steps)continue;
+        for(int k=0;k<=steps;++k)for(int yy=-1;yy<=1;++yy)for(int xx=-1;xx<=1;++xx) {
+            int x=x0+dx*k/steps+xx,y=y0+dy*k/steps+yy;
+            if(x>=0&&y>=0&&x<w&&y<h)pixels[y*(pitch/4)+x]=0xff000000u|l->color;
+        }
+    }
+    unlock_dc(surface);
 }
 static void click(struct dashborne_widget_view *v) {
     struct state *s=v->user;if(!s || v->editing)return;
@@ -106,7 +123,7 @@ static void destroy(struct dashborne_widget_view *v) {
     /* Restore controls that another provider can receive when this pool slot
        is reused. The core will restore sizes and labels on its next assignment. */
     visible(v->title,1);visible(v->value,1);visible(v->status,1);alpha(v->canvas,255);
-    background(v->action,2237484);
+    alpha(v->action,255);
     if(users>0)--users;if(!users)cache_clear();
 }
 static void suspend(struct dashborne_widget_view *v) {
@@ -122,7 +139,7 @@ static int activate(const struct dashborne_host *api) {
     UI(bitmap_ctor,"_ZN13BitmapWrapperC1Ev");UI(bitmap_dtor,"_ZN13BitmapWrapperD1Ev");
     UI(bitmap_load,"_ZN13BitmapWrapper18loadBitmapFromFileEPKcii");UI(bitmap_fill,"_ZN13BitmapWrapper17fillBoxWithBitmapEPviiii");
     UI(position,"_ZN6ZKBase11setPositionERK14LayoutPosition");UI(visible,"_ZN6ZKBase10setVisibleEb");
-    UI(background,"_ZN6ZKBase18setBackgroundColorEj");UI(alpha,"_ZN6ZKBase8setAlphaEh");
+    UI(alpha,"_ZN6ZKBase8setAlphaEh");
     UI(picture,"_ZN8ZKButton18setButtonStatusPicEiPKc");
     UI(lock_dc,"zk_gdi_lock_dc");UI(unlock_dc,"zk_gdi_unlock_dc");
 #undef UI
