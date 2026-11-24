@@ -118,9 +118,11 @@ int runtime_bind(void) {
     if(registry_bind(api) || views_bind(api))return -1;
     if(add_hook(2,(void *)stock_destroy,(void *)destroy,0) || add_hook(3,(void *)stock_delete,(void *)deleting,0) ||
        add_hook(4,(void *)stock_click,(void *)clicked,1) || add_hook(6,(void *)stock_create,(void *)created,0) ||
-       add_hook(7,(void *)stock_timer,(void *)timer,0) || add_hook(9,(void *)stock_resume,(void *)resume_view,0) ||
-       add_hook(10,(void *)stock_pause,(void *)pause_view,0) || add_hook(24,(void *)stock_timer_secondary,(void *)timer_secondary,0))return -1;
+       add_hook(7,(void *)stock_timer,(void *)timer,1) || add_hook(9,(void *)stock_resume,(void *)resume_view,0) ||
+       add_hook(10,(void *)stock_pause,(void *)pause_view,0) || add_hook(24,(void *)stock_timer_secondary,(void *)timer_secondary,1))return -1;
     *(void **)(&stock_click)=hooks[2].before;
+    *(void **)(&stock_timer)=hooks[4].before;
+    *(void **)(&stock_timer_secondary)=hooks[7].before;
     const int offsets[]={4,24,28,32,36,40,44,48};
     for(int n=0;n<8;++n)for(int deleting_flag=0;deleting_flag<2;++deleting_flag) {
         char symbol[80];snprintf(symbol,sizeof(symbol),"_ZThn%d_N16dash1actActivityD%dEv",offsets[n],deleting_flag?0:1);

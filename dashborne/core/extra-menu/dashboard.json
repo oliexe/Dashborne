@@ -16,12 +16,12 @@
   "control": {
     "id": 119200,
     "position": {
-      "left": 1760,
-      "top": 424,
-      "width": 144,
-      "height": 48
+      "left": 1800,
+      "top": 400,
+      "width": 104,
+      "height": 72
     },
-    "backgroundColor": 1184792,
+    "backgroundColor": -1,
     "button__extra": {
       "id": 299200,
       "text": "",
@@ -33,24 +33,22 @@
       "position": {
         "left": 0,
         "top": 0,
-        "width": 144,
-        "height": 48
+        "width": 104,
+        "height": 72
       },
       "touchable": true,
-      "bgColorTab": {
-        "color0": 1184792,
-        "color1": 2698548
-      },
       "iconPosition": {
-        "left": 48,
-        "top": 0,
-        "width": 48,
-        "height": 48
+        "left": 20,
+        "top": 4,
+        "width": 64,
+        "height": 64
       },
       "picTab": {
-        "pic0": "../../../mnt/extsd/Dashborne/assets/extra-menu/star.png",
-        "pic1": "../../../mnt/extsd/Dashborne/assets/extra-menu/star-pressed.png"
-      }
-    }
+        "pic0": "../../../mnt/extsd/Dashborne/ui/icon.png",
+        "pic1": "../../../mnt/extsd/Dashborne/ui/icon.png"
+      },
+      "backgroundColor": -1
+    },
+    "visible": false
   }
 }

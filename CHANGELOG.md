@@ -5,6 +5,9 @@ tracked separately in their source history.
 
 ## Unreleased
 
+- Extra Menu uses a transparent Dashborne icon that appears on touch and hides
+  after four seconds of inactivity.
+
 - Extra Menu and Widget Runtime are built into Dashborne, with automatic removal
   of their old extension packages during upgrades.
 

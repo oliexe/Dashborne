@@ -36,11 +36,12 @@ static int original_timer(void *p,int id){(void)p;assert(id!=TIMER);return 7;}
 static void original_pause(void *p){(void)p;assert(view_paused);++pauses;}
 static void original_resume(void *p){(void)p;++resumes;}
 static void original_destroy(void *p){assert(p==(void *)1 && !live && detaches);++destructs;}
+static int owns(const struct dashborne_host *h,const void *p){(void)h;return p==(void *)original_timer;}
 static void log_message(const struct dashborne_host *h,const char *s){(void)h;assert(strstr(s,"widgets:"));}
 static void register_tick(void *p,int id,int ms){assert(p==(void *)1 && id==TIMER && ms==16);++registered;}
 static void unregister_tick(void *p,int id){assert(p==(void *)1 && id==TIMER);++unregistered;}
 int main(void) {
-    const struct dashborne_host h={.log=log_message};host=&h;
+    const struct dashborne_host h={.log=log_message,.owns_callback=owns};host=&h;
     stock_create=original_created;stock_click=original_click;stock_timer=stock_timer_secondary=original_timer;
     stock_pause=original_pause;stock_resume=original_resume;stock_destroy=stock_delete=original_destroy;
     register_timer=register_tick;unregister_timer=unregister_tick;
@@ -50,7 +51,13 @@ int main(void) {
     assert(runtime_unbind()==-1 && !views_cleaned);
     pause_view((void *)1);assert(pauses==1 && unregistered==1);resume_view((void *)1);assert(resumes==1 && registered==2 && !view_paused);
     destroy((void *)1);assert(destructs==1 && !runtime_live());
-    activity_table=native_activity;native_activity[4]=(void *)original_click;hook_count=0;
+    activity_table=native_activity;hook_count=0;
+    native_activity[7]=(void *)original_timer;
+    assert(add_hook(7,(void *)timer_secondary,(void *)timer,0)==-1);
+    assert(!add_hook(7,(void *)timer_secondary,(void *)timer,1) && hooks[0].before==(void *)original_timer);
+    native_activity[24]=(void *)original_timer;
+    assert(!add_hook(24,(void *)timer,(void *)timer_secondary,1) && hooks[1].before==(void *)original_timer);
+    native_activity[4]=(void *)original_click;hook_count=0;
     assert(!add_hook(4,(void *)original_click,(void *)clicked,0) && !map_table());
     installed=1;native_activity[4]=(void *)clicked;protect_fail=1;assert(runtime_unbind()==-1 && installed);
     protect_fail=0;native_activity[4]=(void *)original_timer;assert(runtime_unbind()==-1 && installed);

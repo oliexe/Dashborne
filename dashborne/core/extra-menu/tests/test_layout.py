@@ -13,3 +13,10 @@ assert button['button__extra']['touchable']
 assert spec['key'].startswith('window__zz')
 assert not layout['listview__entries']['hasScrollbar']
 assert len({v['id'] for v in layout.values() if isinstance(v,dict) and 'id' in v})==len([v for v in layout.values() if isinstance(v,dict) and 'id' in v])
+
+assert button['visible'] is False
+assert button['backgroundColor'] == -1
+entry=button['button__extra']
+assert entry['backgroundColor'] == -1 and 'bgColorTab' not in entry
+assert set(entry['picTab'].values()) == {'../../../mnt/extsd/Dashborne/ui/icon.png'}
+assert entry['iconPosition']['width'] == entry['iconPosition']['height']
