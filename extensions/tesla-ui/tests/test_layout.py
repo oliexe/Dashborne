@@ -37,7 +37,7 @@ for side in ('left','right'):
 
 # Every reachable panel combination must be packaged for both views.
 for mask in range(64):
-    for view,size in (('park',(500,300)),('drive',(400,300))):
+    for view,size in (('park',(600,360)),('drive',(600,360))):
         path=ROOT/'assets/body'/f'{view}-{mask:02x}.png'
         header=path.read_bytes()[:24]
         assert header[:8]==b'\x89PNG\r\n\x1a\n',path

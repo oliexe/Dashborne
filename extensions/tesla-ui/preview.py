@@ -45,7 +45,7 @@ def render(snapshot):
         if node.get('text'):
             size=node.get('fontSize',24)
             if size not in fonts:
-                f=ImageFont.truetype(str(ROOT/'design/Inter.ttf'),size);f.set_variation_by_axes([28,400]);fonts[size]=f
+                f=ImageFont.truetype(str(ROOT/'design/Montserrat.ttf'),size);f.set_variation_by_axes([400]);fonts[size]=f
             center=node.get('alignment')==37
             draw.text((x+w/2 if center else x,y+h/2),node['text'],anchor='mm' if center else 'lm',
                       font=fonts[size],fill=f"#{node['colorTab']['color0']:06x}")

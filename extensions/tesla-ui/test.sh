@@ -16,3 +16,8 @@ clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined tests/test_roa
 clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I../../dashborne/extensions tests/test_road_canvas.c road.c -o "$output/road-canvas"
 "$output/road-canvas"
 python3 tests/test_layout.py
+clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined tests/test_motion.c motion.c -o "$output/motion"
+"$output/motion"
+clang -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I../../dashborne/extensions tests/test_visual.c motion.c -o "$output/visual"
+"$output/visual"
+python3 tests/test_motion_assets.py

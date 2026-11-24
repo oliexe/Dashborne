@@ -4,6 +4,8 @@
 #include "road.h"
 #include "road_canvas.h"
 #include "sample.h"
+#include "visual.h"
+#include "digit_metrics.h"
 extern void *calloc(__SIZE_TYPE__,__SIZE_TYPE__);
 extern void free(void *);
 extern int strcmp(const char *,const char *);
@@ -73,7 +75,7 @@ static void label(int id,const char *value) {
     struct control_cache *c=control(id);if(!c)return;
     char *old=labels[id-599300];
     if(!(c->known&16) || strcmp(old,value)) {
-        text(c->pointer,value);snprintf(old,sizeof(labels[0]),"%s",value);c->known|=16;++perf.writes;
+        if(!visual_text(c->pointer,value))text(c->pointer,value);snprintf(old,sizeof(labels[0]),"%s",value);c->known|=16;++perf.writes;
     }
 }
 static void show(int id,int value) {
@@ -110,7 +112,7 @@ static float power_at(unsigned long long now) {
 static void paint_power(unsigned long long now) {
     float value=power_at(now);int negative=value<0;
     int width=(int)(negative?-value:value);
-    bar(599323,negative?1090-width:1090,431,width,3,negative?0x66ba6b:0xd9dce0,width>0);
+    bar(599323,negative?955-width:955,469,width,3,negative?0x66ba6b:0xd9dce0,width>0);
     if(value==power_motion.target)power_motion.active=0;
 }
 static void paint_road(unsigned long long now) {
@@ -158,32 +160,35 @@ static void speed_digits(int speed_value) {
     rendered_speed=speed_value;
     int n=speed_value>=100?3:speed_value>=10?2:1;
     char digits[8];snprintf(digits,sizeof(digits),"%d",speed_value);
+    const int *advances=digit_advances;
+    int total=0;for(int i=0;i<n && speed_value>=0;++i)total+=advances[digits[i]-'0'];
+    int cursor=1365-total/2;
     for(int i=0;i<3;++i) {
         int id=599310+i;
         int on=speed_value>=0 && i<n;
         if(on) {
             char path[128];snprintf(path,sizeof(path),ASSETS "digit-%c.png",digits[i]);
-            struct rectangle r={1505-n*38+i*76,140,76,148};place(id,r);asset(id,path);
+            struct rectangle r={cursor-4,177,80,130};place(id,r);asset(id,path);cursor+=advances[digits[i]-'0'];
         }
         show(id,on);
     }
 }
-static void vehicle_body(const struct readings *d,int driving,int waiting) {
+static void vehicle_body(const struct readings *d,int driving,int waiting,unsigned long long now,int immediate) {
     /* Only a complete verified snapshot chooses a posed model. */
     int mask=d->body_known==BODY_ALL?(int)d->body_open:-1;
     int view_key=(mask+1)*2+driving;
-    if(view_key!=rendered_body) {
+    int animated=visual_vehicle(driving,mask,now,immediate || waiting);
+    if(!animated && view_key!=rendered_body) {
         int id=599306+driving;
         char path[160];const char *view=driving?"drive":"park";
         if(mask>=0)snprintf(path,sizeof(path),ASSETS "body/%s-%02x.png",view,mask);
         else snprintf(path,sizeof(path),ASSETS "%s.png",view);
-        struct rectangle r=driving?(mask>=0?(struct rectangle){780,80,400,300}:
-            (struct rectangle){865,125,230,260}):(struct rectangle){720,103,500,300};
+        struct rectangle r={680,55,600,360};
         place(id,r);asset(id,path);
         rendered_body=view_key;
     }
-    show(599306,!driving);show(599307,driving);
-    place(599308,driving?(struct rectangle){745,390,500,30}:(struct rectangle){745,365,500,38});
+    show(599306,animated || !driving);show(599307,!animated && driving);
+    place(599308,(struct rectangle){745,395,500,28});
     if(waiting)label(599308,d->demo?"Vehicle demo mode":"Waiting for vehicle data");
     else if(mask<0)label(599308,"Door status unavailable");
     else if(mask) {
@@ -215,10 +220,10 @@ static void render(unsigned long long now,int immediate) {
     const struct readings *d=&state.data;char line[100];
     int driving=state.mode==DRIVING,waiting=state.mode==WAITING;
     speed_digits(driving?d->speed:-1);
-    show(599309,!driving || d->speed==UNKNOWN);
+    show(599309,waiting || (driving && d->speed==UNKNOWN));
     label(599309,waiting?"—":driving?"—":"P");
-    label(599313,driving?(d->mph?"MPH":"KM/H"):state.mode==CHARGING?"CHARGING":waiting?"":"PARK");
-    vehicle_body(d,driving,waiting);
+    label(599313,driving?(d->mph?"MPH":"KM/H"):"");
+    vehicle_body(d,driving,waiting,now,immediate);
     paint_road(now);
     show(599314,driving && d->limit!=UNKNOWN);
     if(driving && d->limit!=UNKNOWN)snprintf(line,sizeof(line),"%d",d->limit);else line[0]=0;
@@ -232,20 +237,20 @@ static void render(unsigned long long now,int immediate) {
     label(599319,line);
     line[0]=d->gear>=1 && d->gear<=4?"PRND"[d->gear-1]:0;line[1]=0;label(599320,line);
     label(599321,d->clock);
-    bar(599317,188,446,d->battery>0?(d->battery*24+99)/100:1,11,
+    bar(599317,472,440,d->battery>0?(d->battery*24+99)/100:1,11,
         d->battery<=20?0xd5a242:0x66ba6b,d->battery>0);
     show(599324,d->left);show(599325,d->right);
     label(599300,state.mode==CHARGING?"Charging power":"Power");
-    float target=d->power_valid && driving?(d->power_kw<0?d->power_kw*355/100:d->power_kw*355/400):0;
-    if(target>355)target=355;
-    if(target<-355)target=-355;
+    float target=d->power_valid && driving?(d->power_kw<0?d->power_kw*225/100:d->power_kw*225/400):0;
+    if(target>225)target=225;
+    if(target<-225)target=-225;
     if(immediate || !d->power_valid || !driving || previous_mode!=state.mode || !now) {
         power_motion.from=power_motion.target=target;power_motion.active=0;
     } else if(target!=power_motion.target) {
         power_motion.from=power_at(now);power_motion.target=target;power_motion.start=now;power_motion.active=1;
     }
     paint_power(now);
-    if(!history_drawn || history_second!=state.last_second || history_count!=state.count) {
+    if(!history_drawn || history_second!=state.last_second || history_count!=state.count || previous_mode!=state.mode) {
         int average=graph_average(state.history);
         if(average!=UNKNOWN)snprintf(line,sizeof(line),"Avg. %d kW",(average+(average<0?-5:5))/10);
         else snprintf(line,sizeof(line),"— kW");
@@ -254,9 +259,17 @@ static void render(unsigned long long now,int immediate) {
         for(int i=0;i<35;++i)
             bar(602000+i,GRAPH_LEFT+i*12,average!=UNKNOWN?graph_y(average):GRAPH_ZERO,6,1,
                 0x85817a,average!=UNKNOWN);
+        if(!driving) {
+            for(int i=0;i<active_fills;++i)show(GRAPH_FILL_ID+i,0);
+            for(int i=0;i<active_traces;++i)show(GRAPH_TRACE_ID+i,0);
+            for(int i=0;i<35;++i)show(602000+i,0);
+        }
         history_drawn=1;history_second=state.last_second;history_count=state.count;
     }
-    if(d->nav_valid) {
+    for(int i=0;i<4;++i)show(599300+i,driving);
+    for(int i=0;i<3;++i)show(599330+i,driving);
+    show(599322,driving);
+    if(d->nav_valid && driving) {
         int minutes=(int)(d->nav_minutes+0.5f);
         if(minutes>=60)snprintf(line,sizeof(line),"%d hr %d min   ·   %d %s",minutes/60,minutes%60,(int)(d->nav_distance+0.5f),d->miles?"mi":"km");
         else snprintf(line,sizeof(line),"%d min   ·   %d %s",minutes,(int)(d->nav_distance+0.5f),d->miles?"mi":"km");
@@ -317,6 +330,9 @@ static void created(void *s) {
     for(int i=0;i<GRAPH_WIDTH;++i)fills[i]=traces[i]=(struct control_cache){0};
     for(int i=0;i<35;++i)means[i]=(struct control_cache){0};
     for(int i=0;i<ROAD_CONTROLS;++i)road_controls[i]=(struct control_cache){0};
+    for(int i=0;i<34;++i) {
+        struct control_cache *c=control(599300+i);if(c)visual_attach(599300+i,c->pointer);
+    }
     struct control_cache *road=control(ROAD_ID);
     if(!road || road_canvas_attach(road->pointer))api->log(api,"tesla-ui: road canvas unavailable");
     road_motion=(struct road_motion){0};
@@ -332,6 +348,7 @@ static void created(void *s) {
     render(now,1);next_sample=now+SAMPLE_US;
     unsigned long long end=source_microseconds();perf.startup_us=end>=now?end-now:0;
     register_timer(s,TIMER,FRAME_MS);
+    api->log(api,"tesla-ui: view-ready");
 }
 static void resumed(void *s) {
     if(closing)return;
@@ -368,6 +385,7 @@ static int timer(void *s,int id) {
         if(power_motion.active)paint_power(now);
         if(state.mode==DRIVING)paint_road(now);
     }
+    visual_frame(now);
     unsigned long long end=source_microseconds();
     unsigned int work=end>=now?(unsigned int)(end-now):0;
     ++perf.ticks;perf.work_us+=work;
@@ -377,7 +395,7 @@ static int timer(void *s,int id) {
 }
 static int timer_secondary(void *s,int id) {return timer((char *)s-sizeof(void *),id);}
 static void destroy_only(void *s) {
-    road_canvas_detach();source_preview_awake(0);
+    visual_detach();road_canvas_detach();source_preview_awake(0);
     unregister_timer(s,TIMER);report();if(live==s)live=0;pending=0;dtor(s);
 }
 static void destroy(void *s) {destroy_only(s);free(s);}
@@ -394,7 +412,7 @@ void cluster_window_open(void) {
 }
 int cluster_window_bind(const struct dashborne_host *host) {
     api=host;
-    if(road_canvas_bind(host))return -1;
+    if(road_canvas_bind(host) || visual_bind(host))return -1;
 #define BIND(v,s) do {*(void **)(&(v))=api->resolve(api->ui_runtime,s);if(!(v)){api->log(api,"tesla-ui: window missing symbol " s);return -1;}}while(0)
     BIND(ctor,"_ZN8ActivityC1Ev");BIND(dtor,"_ZN8ActivityD1Ev");
     BIND(base_created,"_ZN7BaseApp8onCreateEv");BIND(find,"_ZN7BaseApp15findControlByIDEi");

@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import sys
+import math
 from pathlib import Path
 
 import bpy
@@ -32,6 +33,8 @@ def main():
     parser.add_argument('--states', help='Comma-separated open-panel masks, or all (0–63).')
     parser.add_argument('--samples', type=int, default=128)
     parser.add_argument('--output', type=Path, default=ROOT / 'assets')
+    parser.add_argument('--motion', action='store_true', help='Perspective camera orbit and articulated end views.')
+    parser.add_argument('--frames', default='all', help='Camera frame indices, or all (0–64).')
     args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:])
     if hashlib.sha256(args.model.read_bytes()).hexdigest() != SOURCE_SHA256:
         parser.error('Model differs from the credited source; see assets/Model3-CREDITS.md.')
@@ -68,7 +71,7 @@ def main():
         shader.inputs['Metallic'].default_value = .25
         shader.inputs['Roughness'].default_value = .19
     rig = None
-    if args.states is not None:
+    if args.states is not None or args.motion:
         sys.path.insert(0,str(ROOT))
         from vehicle_rig import build_rig,pose
         rig=build_rig(meshes)
@@ -95,6 +98,9 @@ def main():
     scene.camera = camera
     camera.data.type = 'ORTHO'
     args.output.mkdir(parents=True, exist_ok=True)
+    if args.motion:
+        render_motion(scene, camera, rig, args)
+        return
     masks=(range(64) if args.states=='all' else [int(n,0) for n in args.states.split(',')]) if rig else [0]
     for mask in masks:
         if not 0<=mask<=63:parser.error('Panel mask must be in 0..63')
@@ -124,6 +130,53 @@ def render_views(scene,camera,output,mask):
         rendered.scale(*size)
         rendered.save()
         bpy.data.images.remove(rendered)
+
+
+def camera_pose(camera, t):
+    # Bake easing into the frames: playback keeps a uniform 60 Hz time grid.
+    # Front three-quarter Park -> rear elevated Drive, without image stretching.
+    t = t*t*(3-2*t)
+    angle = math.radians(48 + 132*t)
+    distance = 7.2 + 13.8*t
+    elevation = math.radians(22 + 2*t)
+    target = Vector((0, 0, .68))
+    camera.location = target + Vector((math.cos(angle)*math.cos(elevation),
+        math.sin(angle)*math.cos(elevation), math.sin(elevation)))*distance
+    aim(camera, target)
+    camera.data.type = 'PERSP'
+    camera.data.lens = 50
+    camera.data.sensor_width = 36
+    camera.data.shift_y = -.045 + .225*t
+
+
+def render_motion(scene, camera, rig, args):
+    from vehicle_rig import pose, PANELS
+    scene.render.resolution_x = 1200
+    scene.render.resolution_y = 720
+    def save(name):
+        path = args.output / (name+'.png')
+        if path.exists(): return
+        scene.render.filepath = str(path)
+        bpy.ops.render.render(write_still=True)
+        rendered = bpy.data.images.load(str(path), check_existing=False)
+        rendered.scale(600,360);rendered.save();bpy.data.images.remove(rendered)
+    frames = range(65) if args.frames=='all' else [int(n) for n in args.frames.split(',')]
+    for index in frames:
+        pose(rig,0);camera_pose(camera,index/64);save(f'camera-{index:02}')
+    if args.frames!='all': return
+    for view,t in [('park',0),('drive',1)]:
+        camera_pose(camera,t)
+        for mask in range(64):
+            pose(rig,mask);save(f'{view}-{mask:02x}')
+        # Intermediate hinge poses for independent doors/lids and all panels.
+        for mask in [1,2,4,8,16,32,63]:
+            for frame in range(1,12):
+                pose(rig,mask)
+                for bit,pivot in enumerate(rig):
+                    if mask & (1<<bit):
+                        pivot.rotation_euler['XYZ'.index(PANELS[bit][2])] *= frame/12
+                bpy.context.view_layer.update()
+                save(f'{view}-hinge-{mask:02x}-{frame:02}')
 
 
 if __name__ == '__main__':

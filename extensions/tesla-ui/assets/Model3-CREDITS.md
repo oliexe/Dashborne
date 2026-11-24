@@ -1,6 +1,6 @@
 # Model 3 renders
 
-`park.png`, `drive.png` and `body/*.png` are Blender renders of **2024 Tesla Model 3** by
+`park.png`, `drive.png`, `body/*.png` and `motion/*.png` are Blender renders of **2024 Tesla Model 3** by
 [RBLXSupercars](https://sketchfab.com/RBLXSupercars), licensed under
 [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/).
 
@@ -15,8 +15,8 @@ with [source credits](https://github.com/erictfree/Carbon-Footprint-AI-Visualize
 SHA-256: `6ef6933d93ee0812d4049446a38e9b46273cab03b21be1e2ef1d502eccdb684b`.
 
 Dashborne changes: normalized scale and position, silver paint and smoked-glass
-materials, studio lighting, orthographic cameras, transparent backgrounds and
+materials, studio lighting, perspective camera orbits, transparent backgrounds and
 downsampling. The body-state poses split the mesh at panel outlines and add
-hinges for the four doors, hood and trunk lid. The rendered images retain the
+hinges for the four doors, hood and trunk lid. Motion frames animate these hinges and the camera; packing crops transparent margins without stretching the car. The rendered images retain the
 CC BY 4.0 license. Camera and material settings are in `../render_vehicle.py`;
 panel cuts and pivots are in `../vehicle_rig.py`.

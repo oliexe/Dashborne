@@ -5,7 +5,7 @@
 #define GRAPH_TOP 142
 #define GRAPH_ZERO 262
 #define GRAPH_BOTTOM 322
-#define GRAPH_LEFT 185
+#define GRAPH_LEFT 225
 #define GRAPH_FILL_ID 600000
 #define GRAPH_TRACE_ID 601000
 struct graph_column {int valid,top,bottom,fill_top,fill_height,negative;};

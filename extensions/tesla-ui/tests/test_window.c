@@ -6,7 +6,7 @@
 #undef snprintf
 #endif
 #include "../window.c"
-struct control {int id,shown,has_position,has_color;struct rectangle rect;unsigned int color;char value[192],image[192];};
+struct control {int id,shown,has_position,has_color,has_text;struct rectangle rect;unsigned int color;char value[192],image[192];};
 static struct control controls[1000];static int control_count;
 static struct readings fixture;
 static unsigned int seconds;
@@ -20,20 +20,26 @@ int road_canvas_bind(const struct dashborne_host *h) {(void)h;return 0;}
 int road_canvas_attach(void *p) {assert(p);return 0;}
 void road_canvas_detach(void) {}
 void road_canvas_frame(float p,unsigned long long now) {(void)p;(void)now;++road_frames;}
+int visual_bind(const struct dashborne_host *h) {(void)h;return 0;}
+int visual_attach(int id,void *p) {(void)id;(void)p;return 0;}
+void visual_detach(void) {}
+int visual_text(void *p,const char *value) {(void)p;(void)value;return 0;}
+int visual_vehicle(int drive,int mask,unsigned long long now,int immediate) {(void)drive;(void)mask;(void)now;(void)immediate;return 0;}
+void visual_frame(unsigned long long now) {(void)now;}
 void source_preview_awake(int enabled) {awake=enabled;}
 static char last_report[512];
 void source_read(struct readings *r) {*r=fixture;++reads;clock_extra+=read_cost;}
 unsigned int source_seconds(void) {return seconds;}
 unsigned long long source_microseconds(void) {return seconds*1000000ull+subsecond+clock_extra;}
 static void log_fake(const struct dashborne_host *h,const char *line) {
-    assert(h==api);snprintf(last_report,sizeof(last_report),"%s",line);++reports;
+    assert(h==api);if(!strstr(line,"callbacks="))return;snprintf(last_report,sizeof(last_report),"%s",line);++reports;
 }
 static void *lookup(void *s,int id) {
     assert(s==live);++lookups;
     for(int i=0;i<control_count;++i)if(controls[i].id==id)return &controls[i];
     assert(control_count<1000);struct control *c=&controls[control_count++];c->id=id;c->shown=-1;return c;
 }
-static void set_text(void *p,const char *s) {++writes;snprintf(((struct control *)p)->value,192,"%s",s);}
+static void set_text(void *p,const char *s) {++writes;((struct control *)p)->has_text=1;snprintf(((struct control *)p)->value,192,"%s",s);}
 static void set_pic(void *p,const char *s) {++writes;++pictures;snprintf(((struct control *)p)->image,192,"%s",s);}
 static void set_visible(void *p,int on) {++writes;((struct control *)p)->shown=!!on;}
 static void set_rect(void *p,const struct rectangle *r) {
@@ -80,12 +86,12 @@ static void performance_checks(void *s) {
     for(int i=1;i<=6;++i) {
         subsecond=100000+(unsigned long long)i*16000;timer(s,TIMER);
         struct control *meter=lookup(s,599323);
-        assert(meter->shown && meter->rect.width>previous && meter->rect.width<355);
+        assert(meter->shown && meter->rect.width>previous && meter->rect.width<225);
         previous=meter->rect.width;
     }
     assert(reads==before_reads); /* Animation does not read telemetry. */
     subsecond=212000;timer(s,TIMER);
-    assert(!power_motion.active && ((struct control *)lookup(s,599323))->rect.width==355);
+    assert(!power_motion.active && ((struct control *)lookup(s,599323))->rect.width==225);
     fixture.connected=0;subsecond=312000;timer(s,TIMER);
     assert(!power_motion.active && !((struct control *)lookup(s,599323))->shown);
     assert(state.mode==WAITING && !active_fills && !active_traces);
@@ -110,7 +116,8 @@ static void dump(const char *name) {
     printf("{\"name\":\"%s\",\"road_phase\":%.6f,\"controls\":[",name,(double)road_motion.phase);
     for(int i=0;i<control_count;++i) {
         struct control *c=&controls[i];
-        printf("%s{\"id\":%d,\"visible\":%d,\"text\":\"%s\",\"image\":\"%s\"",i?",":"",c->id,c->shown,c->value,c->image);
+        printf("%s{\"id\":%d,\"visible\":%d,\"image\":\"%s\"",i?",":"",c->id,c->shown,c->image);
+        if(c->has_text)printf(",\"text\":\"%s\"",c->value);
         if(c->has_position)printf(",\"position\":{\"left\":%d,\"top\":%d,\"width\":%d,\"height\":%d}",c->rect.left,c->rect.top,c->rect.width,c->rect.height);
         if(c->has_color)printf(",\"color\":%u",c->color);
         printf("}");
@@ -213,7 +220,7 @@ int main(int argc,char **argv) {
     /* Preview feeds only this view, including without any vehicle connected. */
     struct control *preview_button=lookup(s,PREVIEW);
     seconds=500;subsecond=0;int sample_reads=reads;
-    click(s,preview_button);assert(preview_active && awake && state.mode==DRIVING && reads==sample_reads);
+    click(s,preview_button);assert(preview_active && awake && state.mode==PARKED && reads==sample_reads);
     assert(!strcmp(preview_button->value,"Stop preview"));
     assert(((struct control *)lookup(s,PREVIEW_LABEL))->shown);
     unsigned int panels=0,blind=0;int modes=0,regen=0,reverse=0,turns=0;
@@ -234,7 +241,7 @@ int main(int argc,char **argv) {
     }
     assert(panels==BODY_ALL && blind==SIDES_ALL && turns==3 && regen && reverse);
     assert(modes==((1<<WAITING)|(1<<PARKED)|(1<<DRIVING)|(1<<CHARGING)));
-    seconds=500+SAMPLE_SCENES*6;subsecond=0;timer(s,TIMER);assert(state.mode==DRIVING);
+    seconds=500+SAMPLE_SCENES*6;subsecond=0;timer(s,TIMER);assert(state.mode==PARKED);
     click(s,preview_button);
     assert(!preview_active && reads==sample_reads+1 && state.mode==WAITING && !state.count);
     assert(!strcmp(preview_button->value,"Preview"));
