@@ -1,103 +1,81 @@
 # Enable Screen Mirroring
 
-The plugin adds **Screen Mirroring** to Dashborne's **Extra** menu. Opening it switches
-the bundled projection service to AirPlay. **Back** closes the viewer, returns
-to Extra, and requests the original CarPlay/Android Auto mode again.
+Screen Mirroring adds a receiver selector to the **Extra** menu. AirPlay is the
+default; Miracast is experimental. Both use the same full-height viewer and
+aspect controls. Back returns to Extra and requests CarPlay/Android Auto again.
 
 ## Use
 
 1. Enable this plugin under **Patches** in Dashborne, then launch the dashboard.
-2. Tap the **star icon** at the bottom right of the dashboard, select **Screen Mirroring**,
-   then tap **Open**.
-3. Join the DASH hotspot on the iPhone. Open **Screen Mirroring** in Control Center and
-   select the DASH.
-4. Tap the **aspect icon at the upper left** to cycle through Full width, 16:9, 4:3, 9:16 and 9:19.5.
-   The last two presets suit portrait screens. Narrower presets center the picture
-   with black space on either side. Each preset uses the full 480-pixel height;
-   Full width fills the 1920×480 display. A two-second hint identifies the preset.
-5. Tap the **back arrow at the lower right** to return to Extra and restore CarPlay/Android Auto.
+2. Tap the star at the bottom right, select **Screen Mirroring**, and tap **Open**.
+3. Choose **AirPlay** or **Miracast (experimental)**, then **Start mirroring**.
+4. For AirPlay, join the DASH hotspot on your iPhone and select the DASH in
+   Control Center's Screen Mirroring list. For Miracast, use your sender's
+   Wireless Display or Miracast control. The DASH switches to Wi-Fi Direct;
+   joining its usual hotspot is not the connection step for this mode.
+5. Use the upper-left aspect icon to cycle through Full width, 16:9, 4:3,
+   9:16, and 9:19.5. Each preset uses the full 480-pixel height. A brief hint
+   identifies the selected ratio.
+6. Tap the lower-right back arrow to restore stock projection and return to Extra.
+   To change protocols, reopen Screen Mirroring.
 
-Aspect changes apply live without reconnecting the iPhone. Choose the display
-proportions to suit the phone's orientation; the plugin does not detect the
-source aspect ratio. The selection survives Retry and reopening the window
-within the same dashboard session, and resets to Full width after the plugin
-reloads.
+Only one receiver runs at a time. Opening the selector does not change projection.
+AirPlay is selected each time the selector opens. The aspect preset lasts until
+the plugin reloads; it can change during playback without reconnecting. Source
+aspect detection is not implemented.
 
-The receiver takes a few seconds to switch modes. The **retry arrow at the upper
-right** appears while disconnected and restarts a failed
-or disconnected mirroring attempt. The screen remains awake while this window
-is open; manual screen-off takes priority. The plugin does not configure Wi-Fi
-or enable ADB. The official projection service manages the hotspot and pairing.
-Touch control of the iPhone and protected-video playback are not provided.
+The upper-right retry arrow appears while disconnected. Network transitions have
+a 30-second timeout. Back waits for the hotspot to return after Miracast before
+requesting stock projection. If restoration fails, the viewer shows an error
+and Back can retry. Miracast stays unavailable when its compatibility checks fail;
+AirPlay can still be used.
 
-Selecting the plugin only adds the Extra entry. The dashboard's existing
-CarPlay/Android Auto widget and projection mode stay unchanged until the
-mirroring window opens.
+The screen stays awake while mirroring is active; manual screen-off takes
+priority. The plugin uses the official network manager and does not enable ADB
+or change saved Wi-Fi settings. Sender touch control and protected-video playback
+are not provided.
 
 ## Implementation
 
-The supported installed app is 6.11.2. The plugin checks full-file size/CRC
-fingerprints for the app, UI runtime, projection library, receiver daemon and
-AirPlay library. It also checks exported function addresses and the original
-startup-mask instruction.
+The supported installed app is **6.11.2**. Full-file fingerprints, exported
+function addresses, and original instruction checks guard the runtime changes.
+Miracast adds checks for the Wi-Fi Display receiver and P2P service.
 
-The plugin registers a title, description and window-open callback through the
-host's Extra registry. It does not hook the stock Settings list. The host removes
-the entry before unloading the plugin or rolling back a failed activation.
+The plugin registers its Extra entry and native Activity through the host API.
+Its microSD layout contains a receiver selector, a `ZKVideoView`, and compact
+Back/Retry/Aspect icons with 80×80 touch targets. During playback, small overlay
+windows keep the icons above the video without a permanent header.
 
-The separate native Activity uses an original microSD layout with compact
-Back/Retry/Aspect icon controls and a `ZKVideoView` that exposes the hardware
-video plane. Each icon has an 80×80 touch target. The Activity creates small
-overlay windows after the video view to keep controls above the transparent
-video opening. The back and aspect controls stay visible; the retry control is
-hidden during playback. The ratio hint hides after two seconds, leaving no
-permanent header. The host registers it through a resident factory trampoline,
-which disables calls into the plugin after unloading. The plugin must finish
-live activities and queued opens before the engine can unload it.
+AirPlay selects startup mask `0x400`; Miracast selects `0x800`. Stock uses `0x12`.
+Miracast also temporarily permits Wi-Fi Direct in the official projection restart
+queue, while retaining the block for station mode. Both changes are guarded,
+aligned instruction writes with cache synchronization and retryable restoration.
 
-On entry, an aligned instruction changes the next receiver startup mask from
-`0x12` to `0x400`. The plugin requests startup and a forced restart through the
-official projection queue, with a 1888×384 viewport. It observes the official
-video status, requests playback after AirPlay connects, and presents only a new
-AirPlay generation with decoded frames and matching dimensions. Old CarPlay
-frames cannot be shown while a restart is pending. The video plane is placed at
-physical `(0, 0, 480, 1920)` for the rotated panel in Full width mode. Aspect
-presets resize both the transparent native view and the hardware plane, leaving
-the negotiated receiver viewport unchanged. The plugin retries a failed plane
-resize on the next tick; the view keeps its previous geometry until success.
+Miracast requests P2P mode through the official network manager, waits for it to
+be active, and then requests the receiver restart. The session accepts only its
+selected protocol and a new, ready decoder generation. AirPlay retains its
+1888×384 geometry check; Miracast accepts negotiated video dimensions. Aspect
+presets resize the native opening and the rotated hardware video plane together.
 
-Back, Activity pause and cleanup hide the video, release the owned display
-inhibitor (`0x80`), restore the original instruction, and request a stock restart
-using the dashboard widget's original size. A rapid Back supersedes the queued
-AirPlay restart. Restore failures remain retryable and block unsafe unloading.
-The plugin leaves vehicle-occupancy flags and saved official settings unchanged.
+Back, pause, and cleanup hide the video, release the owned display inhibitor,
+and restore the instruction changes. Miracast queues hotspot restoration before
+stock projection restarts. Pending restoration or live Activity callbacks prevent
+plugin unloading. Vehicle-occupancy flags and saved official settings are unchanged.
 
 ## Build and validation
 
 ```sh
-# Only needed when regenerating the original icon artwork:
-uv run --with resvg-py==0.5.0 python extensions/screen-mirroring/icons.py
 python3 extensions/screen-mirroring/generate.py
 sh extensions/screen-mirroring/test.sh
-sh extensions/contrast/test.sh
-sh dashborne/extensions/test.sh
-sh dashborne/test.sh
 DASHBORNE_CC=/opt/homebrew/opt/llvm/bin/clang \
 DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld sh dashborne/build.sh
 ```
 
-Host tests cover guarded instruction changes and rollback, stale video,
-protocol/geometry checks, decoder readiness, disconnect/reconnect, rapid Back,
-manual screen-off, failed startup and failed restoration. Aspect tests cover
-live cycling without receiver restarts, resize failures, reconnects, preset
-retention, rotated coordinates, full-height geometry and transient ratio hints.
-Window callback tests cover secondary-base adjustments, duplicate taps, closing
-timers and live-callback cleanup. Engine tests exercise factory lifetime across
-unloading/reactivation and partial activation failures. The tested build passed
-native loader and Contrast regression tests and ARM cross-compilation.
+Host tests cover exclusive protocol selection, stale frames, negotiated geometry,
+network startup and restoration timeouts, early Back, partial patch failures,
+retry, manual screen-off, and Activity cleanup. AirPlay tests cover live aspect
+changes, resize failures, reconnects, and rotated display coordinates.
 
-Deployment checks compared the installed plugin, layout and icon files with
-read-back copies. The loader returned to configuration and ADB reconnected.
-On the DASH, the user confirmed video in the dedicated window, Back restoring
-CarPlay/Android Auto, and navigation through Extra. The full-height icon layout,
-audio and repeated switching still need hardware checks.
+AirPlay playback and Back restoring CarPlay/Android Auto were confirmed on the
+DASH before adding the selector. The combined build still needs hardware testing:
+Miracast discovery, pairing, video, audio, and repeated switching are unverified.

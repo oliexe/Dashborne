@@ -22,9 +22,11 @@ static int show(unsigned int generation,int aspect) {
 }
 static struct video_status get_video(void) {return video;}
 static void play(void) {assert(type==10);++play_requests;}
-static const struct session_ops ops={mode,enable,get_off,get_type,restart_mirror,restart_stock,hide,hold,show,get_video,play};
+static const struct session_ops ops={.mode=mode,.enable=enable,.manual_off=get_off,.type=get_type,
+    .restart_mirror=restart_mirror,.restart_stock=restart_stock,.hide=hide,.hold=hold,
+    .show=show,.video=get_video,.play=play};
 int main(void) {
-    struct mirror_session s={.ops=&ops};
+    struct mirror_session s={.ops=&ops,.protocol=MIRROR_AIRPLAY,.supported=MIRROR_SUPPORT(MIRROR_AIRPLAY)};
     assert(!airplay && !held && !mirror_requests);
     video=(struct video_status){.generation=7,.ready=1,.width=1888,.height=384};
     assert(!session_open(&s) && airplay && held && mirror_requests==1);

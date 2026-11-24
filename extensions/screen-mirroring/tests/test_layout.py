@@ -19,3 +19,23 @@ for name in ('back','aspect','retry'):
         assert (ROOT/'assets'/Path(value).name).is_file()
 assert s['window__z_back']['position']['top']>=380
 assert not s['window__z_hint']['visible']
+
+chooser=s['window__selector']
+assert chooser['button__AirPlay']['selected']
+assert not chooser['button__Miracast'].get('selected')
+assert chooser['button__start']['text']=='Start mirroring'
+ids=set()
+def check(node,parent):
+    if not isinstance(node,dict):return
+    if 'id' in node:
+        assert node['id'] not in ids
+        ids.add(node['id'])
+    if 'position' in node:
+        p=node['position']
+        assert 0<=p['left'] and 0<=p['top']
+        assert p['left']+p['width']<=parent['width']
+        assert p['top']+p['height']<=parent['height']
+        parent=p
+    for key,value in node.items():
+        if '__' in key:check(value,parent)
+check(s,dict(width=1920,height=480))

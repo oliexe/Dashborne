@@ -1,11 +1,12 @@
 {
   "id": "screen-mirroring",
   "title": "Enable Screen Mirroring",
-  "description": "Adds Screen Mirroring to Extra. Open to use AirPlay; Back restores CarPlay/Android Auto.",
+  "description": "Adds AirPlay and experimental Miracast to Extra. Back restores CarPlay/Android Auto.",
   "abi": 1,
   "sources": [
     "extension.c",
     "memory.c",
+    "receiver.c",
     "session.c",
     "window.c"
   ]

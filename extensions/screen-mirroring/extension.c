@@ -1,5 +1,5 @@
 #include "dashborne_extension.h"
-#include "memory.h"
+#include "receiver.h"
 #include "window.h"
 typedef __SIZE_TYPE__ usize;
 typedef __UINTPTR_TYPE__ uintptr;
@@ -13,11 +13,11 @@ extern int fclose(void *), sscanf(const char *, const char *, ...);
 struct image_info { const char *name; void *base; const char *symbol; void *address; };
 extern int dladdr(const void *, struct image_info *);
 static const struct dashborne_host *host;
-static void *page;
-static int page_protection;
+struct memory_page {void *address; int protection;};
+static struct memory_page mask_page,network_page;
 static int (*started)(void);
 static void (*restart)(void);
-static struct instruction_patch patch;
+static struct receiver_patches patches;
 static struct mirror_session session;
 static void *controller;
 static void *(*controller_instance)(void);
@@ -26,7 +26,9 @@ static void (*inhibit)(void *,unsigned int,int),(*request_restart)(unsigned shor
 static void (*video_hide)(void),(*video_play)(void);
 static int (*video_show)(unsigned int,int,int,int,int);
 static struct video_status (*video_status)(void);
-static int mode(int airplay) {return airplay?instruction_apply(&patch):instruction_restore(&patch);}
+static int mode(int protocol) {return receiver_mode(&patches,protocol);}
+static void (*network_change)(int);
+static int (*network_mode)(void);
 static int off(void) {return manual_off(controller);}
 static void hold(int value) {inhibit(controller,0x80,value);}
 static void mirror_restart(void) {request_restart(1888,384,1);}
@@ -35,7 +37,10 @@ static int show(unsigned int generation,int aspect) {
     struct mirror_rect r=aspect_physical_rect(aspect);
     return video_show(generation,r.left,r.top,r.width,r.height);
 }
-static const struct session_ops operations={mode,0,off,0,mirror_restart,stock_restart,0,hold,show,0,0};
+static const struct session_ops operations={
+    .mode=mode,.manual_off=off,.restart_mirror=mirror_restart,.restart_stock=stock_restart,
+    .hold=hold,.show=show
+};
 static void log_message(const char *s) { if (host) host->log(host,s); }
 static int fingerprint(const char *path, unsigned int size, unsigned int expected) {
     int fd=open(path,0); if(fd<0)return 0;
@@ -46,7 +51,7 @@ static int fingerprint(const char *path, unsigned int size, unsigned int expecte
     }
     close(fd);return n==0 && count==size && crc==expected;
 }
-static int map_page(uintptr address) {
+static int map_page(uintptr address,struct memory_page *page) {
     void *file=fopen("/proc/self/maps","r"); if(!file)return 0;
     char line[512],perms[8]; unsigned long start,end;
     uintptr aligned=address&~(uintptr)4095;
@@ -55,13 +60,18 @@ static int map_page(uintptr address) {
         if(sscanf(line,"%lx-%lx %4s",&start,&end,perms)!=3 || aligned<start || aligned+4096>end)continue;
         /* Only a readable, executable private mapping of this verified image. */
         if(perms[0]=='r' && perms[2]=='x' && perms[3]=='p') {
-            page=(void *)aligned; page_protection=5|(perms[1]=='w'?2:0); valid=1;
+            page->address=(void *)aligned; page->protection=5|(perms[1]=='w'?2:0); valid=1;
         }
         break;
     }
     fclose(file);return valid;
 }
-static int protect(int writable) {return mprotect(page,4096,page_protection|(writable?2:0));}
+static int protect_mask(int writable) {
+    return mprotect(mask_page.address,4096,mask_page.protection|(writable?2:0));
+}
+static int protect_network(int writable) {
+    return mprotect(network_page.address,4096,network_page.protection|(writable?2:0));
+}
 static int flush(void *begin,void *end) {
     /* ARM Linux cacheflush: synchronize the modified instruction on all cores. */
     return (int)syscall(0xf0002L,(uintptr)begin,(uintptr)end,0L);
@@ -101,15 +111,31 @@ static int activate(const struct dashborne_host *api) {
     controller=controller_instance();
     if(!controller || (((unsigned char *)controller)[8]&0x80))return -1;
     uintptr address=(uintptr)image.base+0xd10f8u;
-    if(!map_page(address) || *(unsigned int *)address!=0xe3a01012u)return -1;
-    patch=(struct instruction_patch){(unsigned int *)address,0xe3a01012u,0xe3001400u,0,protect,flush};
+    if(!map_page(address,&mask_page) || *(unsigned int *)address!=0xe3a01012u)return -1;
+    patches.mask=(struct instruction_patch){(unsigned int *)address,0xe3a01012u,0xe3001400u,0,protect_mask,flush};
+    /* Miracast is optional: an unavailable receiver must not disable AirPlay. */
+    *(void **)(&network_change)=host->resolve(host->official_library,"_ZN3net11change_modeE10net_mode_e");
+    *(void **)(&network_mode)=host->resolve(host->official_library,"_ZN3net8get_modeEv");
+    uintptr gate=(uintptr)image.base+0x135644u;
+    int miracast=(uintptr)network_change==(uintptr)image.base+0xa1b28u &&
+        (uintptr)network_mode==(uintptr)image.base+0xa1df8u &&
+        fingerprint("/res/lib/libwfd.so",124288u,0xd0db4e86u) &&
+        fingerprint("/res/bin/p2p_supplicant",883552u,0x70c7d50cu) &&
+        map_page(gate,&network_page) && *(unsigned int *)gate==0x13530001u;
+    if(miracast) {
+        /* Permit Wi-Fi Direct in the restart queue; station mode still blocks it. */
+        patches.network_gate=(struct instruction_patch){(unsigned int *)gate,
+            0x13530001u,0x13530000u,0,protect_network,flush};
+    } else log_message("screen-mirroring: Miracast unavailable; AirPlay remains available");
     static struct session_ops bound;
     bound=operations;bound.enable=projection_enable;bound.type=link_type;
     bound.hide=video_hide;bound.video=video_status;bound.play=video_play;
-    session=(struct mirror_session){.ops=&bound};
+    bound.network=network_change;bound.network_mode=network_mode;
+    session=(struct mirror_session){.ops=&bound,.protocol=MIRROR_AIRPLAY,
+        .supported=MIRROR_SUPPORT(MIRROR_AIRPLAY)|(miracast?MIRROR_SUPPORT(MIRROR_MIRACAST):0)};
     if(window_bind(host,&session) || !host->register_extra ||
        host->register_extra(host,"viewer","Screen Mirroring",
-           "Mirror your iPhone. Back restores CarPlay / Android Auto.",window_open))return -1;
+           "AirPlay or experimental Miracast. Back restores CarPlay / Android Auto.",window_open))return -1;
     log_message("screen-mirroring: Extra entry ready; stock CarPlay/Android Auto unchanged");
     return 0;
 }
@@ -117,9 +143,9 @@ static int deactivate(void) {
     if(window_cleanup()) {
         log_message("screen-mirroring: viewer or callback cleanup pending; restart required");return -1;
     }
-    if(instruction_restore(&patch))return -1;
+    if(receiver_mode(&patches,MIRROR_STOCK))return -1;
     session=(struct mirror_session){0};controller=0;
-    host=0;started=0;restart=0;
+    host=0;started=0;restart=0;patches=(struct receiver_patches){0};
     return 0;
 }
 DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *dashborne_extension_v1(void) {

@@ -25,6 +25,18 @@ def screen():
     wait['textview__help']=label(599182,'Control Center  >  Screen Mirroring  >  your DASH',300,205,1320,50,26)
     wait['textview__status']=label(599180,'Starting receiver...',300,270,1320,48,22)
     root['window__waiting']=wait
+    chooser=dict(id=119186,position=pos(350,40,1220,360),backgroundColor=0x101010)
+    chooser['textview__title']=label(599187,'Screen Mirroring',40,20,1140,56,34)
+    for id,name,y in [(299183,'AirPlay',110),(299184,'Miracast (experimental)',210)]:
+        chooser['button__'+name.split()[0]]=dict(label(id,name,40,y,480,80,28),
+            touchable=True,selected=id==299183,
+            picTab={'pic0':'dash/settings/listitem_bg_n.png',
+                    'pic2':'dash/settings/listitem_bg_s.png'})
+    chooser['textview__status']=label(599186,'Mirror your iPhone using AirPlay.',560,110,620,90,24)
+    chooser['button__start']=dict(label(299185,'Start mirroring',670,230,400,80,28),
+        touchable=True,picTab={'pic0':'dash/settings/btn_con_n.png',
+                              'pic1':'dash/settings/btn_con_p.png'})
+    root['window__selector']=chooser
     # Native children are created in member-name order. Small overlay windows
     # sort after the video/standby view, keeping controls visible above both.
     root['window__z_aspect']=control(299182,'aspect',130,14,119181)

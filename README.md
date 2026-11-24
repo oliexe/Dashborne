@@ -38,8 +38,8 @@ See [configuration and operation](dashborne/README.md).
 - [Extra menu](extensions/extra-menu): the core star button opens a stock-style
   **Tweaks** menu where extensions can register pages.
 - [Contrast](extensions/contrast): display contrast and luminance controls in stock Settings.
-- [Screen Mirroring](extensions/screen-mirroring): a dedicated iPhone mirroring
-  window with aspect controls; Back restores CarPlay/Android Auto.
+- [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
+  viewer with aspect controls; Back restores CarPlay/Android Auto.
 - [Dashborne badge](dashborne/patches/definitions/badge.json): an optional dashboard label.
 
 ## Hardware
