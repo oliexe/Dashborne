@@ -7,7 +7,7 @@
 #endif
 #include "../window.c"
 struct control {int id,shown,has_position,has_color;struct rectangle rect;unsigned int color;char value[192],image[192];};
-static struct control controls[200];static int control_count;
+static struct control controls[1000];static int control_count;
 static struct readings fixture;
 static unsigned int seconds;
 static int opens,closes,registered,reads;
@@ -16,7 +16,7 @@ unsigned int source_seconds(void) {return seconds;}
 static void *lookup(void *s,int id) {
     assert(s==live);
     for(int i=0;i<control_count;++i)if(controls[i].id==id)return &controls[i];
-    assert(control_count<200);struct control *c=&controls[control_count++];c->id=id;c->shown=-1;return c;
+    assert(control_count<1000);struct control *c=&controls[control_count++];c->id=id;c->shown=-1;return c;
 }
 static void set_text(void *p,const char *s) {snprintf(((struct control *)p)->value,192,"%s",s);}
 static void set_pic(void *p,const char *s) {snprintf(((struct control *)p)->image,192,"%s",s);}
@@ -56,7 +56,12 @@ int main(int argc,char **argv) {
     cluster_window_open();cluster_window_open();assert(opens==1 && pending && cluster_window_cleanup());
     void *s=create();assert(s && !create());created(s);resumed(s);
     assert(!pending && registered && state.mode==DRIVING);
-    for(seconds=1;seconds<=60;++seconds) {fixture.power_kw=(float)((seconds*17)%75)-15;timer(s,TIMER);}
+    /* A deterministic acceleration/coasting/regen drive, only in test fixtures. */
+    const int power[]={12,16,14,20,38,65,57,29,18,21,16,8,-12,-27,-18,3,14,25,21,18,34};
+    for(seconds=1;seconds<=60;++seconds) {
+        int i=(seconds-1)/3,t=(seconds-1)%3;
+        fixture.power_kw=(float)(power[i]+(power[i+1]-power[i])*t/3);timer(s,TIMER);
+    }
     fixture.power_kw=34;render();
     assert(((struct control *)lookup(s,599309))->shown==0);
     assert(((struct control *)lookup(s,599310))->shown==1);

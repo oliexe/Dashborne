@@ -14,15 +14,20 @@ def picture(id,name,x,y,w,h):
 def screen():
     s=dict(id=0,caption='Tesla UI',backgroundColor=0,position=pos(0,0,1920,480),
            resolution=dict(width=1920,height=480),visible=True,topmost=False,beepEnable=False,hideTimeout=-1)
-    s['textview__energy_title']=label(599300,'ENERGY',185,75,430,32,21,0x8c9095)
-    s['textview__power']=label(599301,'— kW',185,111,440,65,44)
-    s['textview__history_caption']=label(599302,'Last 60 seconds',185,325,430,30,19,0x757a80)
-    s['textview__zero']=dict(id=599303,position=pos(185,257,444,1),backgroundColor=0x272b30,touchable=False)
-    for i in range(60):
-        s[f'textview__history_{i:02}']=dict(id=599400+i,position=pos(185+i*7,257,5,1),
-            backgroundColor=0xbfc4ca,visible=False,touchable=False)
-    s['textview__nav']=label(599304,'',185,366,490,32,23)
-    s['textview__nav_detail']=label(599305,'',185,400,490,26,20,0x8c9095)
+    s['textview__energy_title']=label(599300,'Power',185,82,414,30,23,0xb6b8bc,37)
+    s['textview__power']=label(599301,'— kW',185,328,414,32,24,align=37)
+    s['textview__history_caption']=label(599302,'Past 60 seconds',185,360,414,26,18,0x757a80,37)
+    s['textview__zero']=dict(id=599303,position=pos(185,262,414,1),backgroundColor=0x303236,touchable=False)
+    for i,(value,y) in enumerate((('100',132),('0',252),('−50',312))):
+        s[f'textview__axis_{i}']=label(599330+i,value,612,y,54,20,15,0x65686c)
+    for i in range(414):
+        s[f'textview__graph_fill_{i:03}']=dict(picture(600000+i,'energy-fill',185+i,262,1,1),visible=False)
+        s[f'textview__graph_trace_{i:03}']=dict(id=601000+i,position=pos(185+i,262,1,2),
+            backgroundColor=0xeaa34b,visible=False,touchable=False)
+    for i in range(35):
+        s[f'textview__graph_mean_{i:02}']=dict(id=602000+i,position=pos(185+i*12,262,6,1),
+            backgroundColor=0x85817a,visible=False,touchable=False)
+    s['textview__nav']=label(599304,'',185,395,490,26,21)
     s['textview__car_park']=picture(599306,'park',720,103,500,300)
     s['textview__car_drive']=dict(picture(599307,'drive',865,145,230,260),visible=False)
     s['textview__state']=label(599308,'Connecting to vehicle',745,365,500,38,23,0x92969c,37)
@@ -56,6 +61,12 @@ def assets():
         image=Image.new('RGBA',(76,148));draw=ImageDraw.Draw(image)
         draw.text((38,74),n,font=font,fill='#eeeeef',anchor='mm',stroke_width=0)
         image.save(out/f'digit-{n}.png')
+    for name,color,reverse in (('energy-fill',(200,126,43),False),('regen-fill',(89,174,115),True)):
+        image=Image.new('RGBA',(1,180))
+        for y in range(180):
+            strength=(y/179 if reverse else 1-y/179)
+            image.putpixel((0,y),(*color,round(60*strength)))
+        image.save(out/f'{name}.png')
     for name in ('battery','limit','left','right','back','back-pressed'):
         (out/f'{name}.png').write_bytes(resvg_py.svg_to_bytes(svg_string=(ROOT/'design'/f'{name}.svg').read_text()))
 if __name__=='__main__':

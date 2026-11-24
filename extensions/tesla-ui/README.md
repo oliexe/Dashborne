@@ -9,9 +9,11 @@ time occupy the bottom row. Park and charging use a larger Model 3 Highland rend
 Drive, Reverse and Neutral use the rear view. The layout has no customization
 controls.
 
-The left panel shows signed battery power and a 60-second energy history.
-Regeneration is green. The graph records one reading per second while this view
-is visible; missing intervals remain gaps. Its fixed scale is +100/−50 kW.
+The left panel follows the Model S energy graph: an amber power trace, green
+regeneration, a fading fill and a dashed average line. The average and time span
+sit beneath the plot. It records one reading per second over 60 seconds while
+this view is visible; missing intervals remain gaps. Its fixed scale is
++100/−50 kW. This is a power history, not Tesla's distance-based Wh/km graph.
 The lower power meter uses +400/−100 kW and appears while driving. Both displays
 clip at their bounds; the numeric power reading retains its value.
 
@@ -66,7 +68,7 @@ disconnection. Preview body text uses Inter; on the DASH, supporting labels use
 the stock font. Large speed numerals use the bundled Inter glyph images on both.
 
 Tests cover units, signed power, invalid values, connection loss, history gaps,
-state transitions, bounds, timer cleanup and repeated open/back actions. The
+state transitions, graph interpolation and gaps, bounds, timer cleanup and repeated open/back actions. The
 ARM package is built; installation and visual checks on the DASH are pending.
 
 ## References
@@ -75,3 +77,4 @@ ARM package is built; installation and visual checks on the DASH are pending.
 - [Model S cluster photograph](https://imagecdn.zigwheels.ae/large/gallery/interior/95/1805/tesla-model-s-tachometer-469850.jpg): dark-theme spacing and speed placement.
 - [Inter](https://github.com/google/fonts/tree/main/ofl/inter): numeral typeface, distributed under the [SIL Open Font License](assets/Inter-LICENSE.txt).
 - [Model 3 Highland mesh and render credits](assets/Model3-CREDITS.md): RBLXSupercars, CC BY 4.0.
+- [Model S energy graph photograph](https://www.platinumautohaus.com/2016-tesla-model-s-90d-c-13038.htm): amber trace, shaded area and average-line styling.

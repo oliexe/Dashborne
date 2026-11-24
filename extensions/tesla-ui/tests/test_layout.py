@@ -18,7 +18,7 @@ def check(node,parent):
     for value in [node.get('backgroundPic',''),*node.get('picTab',{}).values()]:
         if value:assert (ROOT/'assets'/Path(value).name).is_file()
 check(s,dict(left=0,top=0,width=1920,height=480))
-assert all(599400+i in ids for i in range(60))
+assert all(600000+i in ids and 601000+i in ids for i in range(414))
 assert s['window__z_back']['button__back']['touchable']
 assert s['textview__limit_0bg']['id']==599314
 assert s['textview__limit_1value']['id']==599315

@@ -3,5 +3,5 @@
   "title": "Tesla UI",
   "description": "Model S inspired instrument view with live vehicle readings and energy history in Extra.",
   "abi": 1,
-  "sources": ["extension.c", "window.c", "source.c", "model.c"]
+  "sources": ["extension.c", "window.c", "source.c", "model.c", "graph.c"]
 }

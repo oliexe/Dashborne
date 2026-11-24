@@ -1,5 +1,6 @@
 #include "window.h"
 #include "source.h"
+#include "graph.h"
 extern void *calloc(__SIZE_TYPE__,__SIZE_TYPE__);
 extern void free(void *);
 extern int snprintf(char *,__SIZE_TYPE__,const char *,...);
@@ -14,6 +15,7 @@ static int pending,closing,paused_state;
 static int rendered_speed=-2,history_drawn,history_count;
 static unsigned int history_second;
 static struct cluster state;
+static struct {void *fill,*trace;int negative;} graph_controls[GRAPH_WIDTH];
 static void (*ctor)(void *),(*dtor)(void *),(*base_created)(void *);
 static void *(*find)(void *,int),*(*context)(void);
 static void (*text)(void *,const char *),(*picture)(void *,const char *),(*visible)(void *,int);
@@ -69,31 +71,54 @@ static void render(void) {
     bar(599317,188,446,d->battery>0?(d->battery*24+99)/100:1,11,
         d->battery<=20?0xd5a242:0x66ba6b,d->battery>0);
     show(599324,d->left);show(599325,d->right);
-    if(d->power_valid) {
-        int kw=(int)(d->power_kw+(d->power_kw<0?-0.5f:0.5f));
-        snprintf(line,sizeof(line),"%d kW",kw);
-    } else snprintf(line,sizeof(line),"— kW");
-    label(599301,line);
-    label(599300,state.mode==CHARGING?"CHARGING":d->power_valid && d->power_kw<-0.5f?"REGENERATION":"ENERGY");
+    label(599300,state.mode==CHARGING?"Charging power":"Power");
     int regen=d->power_kw<0;
     int width=d->power_valid?(int)(regen?-d->power_kw*355/100:d->power_kw*355/400):0;
     if(width>355)width=355;
     bar(599323,regen?1090-width:1090,431,width,3,regen?0x66ba6b:0xd9dce0,width>0 && driving);
     if(!history_drawn || history_second!=state.last_second || history_count!=state.count) {
-        for(int i=0;i<HISTORY;++i) {
-            int v=state.history[i],negative=v<0,h=negative?-v*60/500:v*60/1000;
-            if(h>60)h=60;if(h<1)h=1;
-            bar(599400+i,185+i*7,negative?258:257-h,5,h,negative?0x66ba6b:0xbfc4ca,v!=UNKNOWN);
+        int average=graph_average(state.history);
+        if(average!=UNKNOWN)snprintf(line,sizeof(line),"Avg. %d kW",(average+(average<0?-5:5))/10);
+        else snprintf(line,sizeof(line),"— kW");
+        label(599301,line);
+        for(int x=0;x<GRAPH_WIDTH;++x) {
+            struct graph_column c=graph_column(state.history,x);
+            if(!graph_controls[x].fill) {
+                graph_controls[x].fill=find(live,GRAPH_FILL_ID+x);
+                graph_controls[x].trace=find(live,GRAPH_TRACE_ID+x);
+                graph_controls[x].negative=-1;
+            }
+            void *fill=graph_controls[x].fill,*trace=graph_controls[x].trace;
+            if(fill) {
+                if(c.valid && c.fill_height) {
+                    struct rectangle r={GRAPH_LEFT+x,c.fill_top,1,c.fill_height};position(fill,&r);
+                    if(graph_controls[x].negative!=c.negative) {
+                        picture(fill,c.negative?ASSETS "regen-fill.png":ASSETS "energy-fill.png");
+                        graph_controls[x].negative=c.negative;
+                    }
+                }
+                visible(fill,c.valid && c.fill_height);
+            }
+            if(trace) {
+                if(c.valid) {
+                    struct rectangle r={GRAPH_LEFT+x,c.top,1,c.bottom-c.top+1};position(trace,&r);
+                    color(trace,c.negative?0x66ba80:0xeaa34b);
+                }
+                visible(trace,c.valid);
+            }
         }
+        for(int i=0;i<35;++i)
+            bar(602000+i,GRAPH_LEFT+i*12,average!=UNKNOWN?graph_y(average):GRAPH_ZERO,6,1,
+                0x85817a,average!=UNKNOWN);
         history_drawn=1;history_second=state.last_second;history_count=state.count;
     }
     if(d->nav_valid) {
         int minutes=(int)(d->nav_minutes+0.5f);
         if(minutes>=60)snprintf(line,sizeof(line),"%d hr %d min   ·   %d %s",minutes/60,minutes%60,(int)(d->nav_distance+0.5f),d->miles?"mi":"km");
         else snprintf(line,sizeof(line),"%d min   ·   %d %s",minutes,(int)(d->nav_distance+0.5f),d->miles?"mi":"km");
-        label(599304,line);snprintf(line,sizeof(line),"%d%% battery at destination",(int)(d->nav_battery+0.5f));
-        label(599305,line);
-    } else {label(599304,"");label(599305,"");}
+        char navigation[100];snprintf(navigation,sizeof(navigation),"%s   ·   %d%%",line,(int)(d->nav_battery+0.5f));
+        label(599304,navigation);
+    } else label(599304,"");
 }
 static void back(void *s) {
     (void)s;if(closing)return;
@@ -103,6 +128,7 @@ static int hardware_back(void *s) {back(s);return 1;}
 static void click(void *s,void *c) {if(c && id_of(c)==BACK)back(s);}
 static void created(void *s) {
     base_created(s);pending=0;closing=0;paused_state=0;
+    for(int x=0;x<GRAPH_WIDTH;++x) {graph_controls[x].fill=0;graph_controls[x].trace=0;}
     cluster_reset(&state);rendered_speed=-2;history_drawn=0;render();register_timer(s,TIMER,100);
 }
 static void resumed(void *s) {
