@@ -103,6 +103,8 @@ services to add pages to **Tweaks** or widgets to the stock picker.
 - [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
   viewer with aspect controls; Back restores CarPlay/Android Auto.
 
+See the [extension development guide](dashborne/extensions/README.md) to build your own.
+
 ## Hardware
 
 The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
