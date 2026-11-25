@@ -37,6 +37,7 @@ EXPORT const char *onStartupApp(void *);
 #define NETWORK_TIMER 92002
 #define LOADING_TIMER 92003
 #define CONTINUE_TIMER 92004
+#define UPDATE_ANIMATION_TIMER 92005
 #define STOCK_ONCE "/mnt/extsd/Dashborne/stock.once"
 #define LOADING_DOT_ID 50060
 #define SPLASH_ID 110001
@@ -87,7 +88,8 @@ EXPORT const char *onStartupApp(void *);
 static struct wifi_editor wifi_form;
 static char saved_network[33];
 static int update_selection=-1,update_confirming,update_waiting;
-static unsigned int update_wait_ticks;
+static unsigned int update_wait_ticks,update_dot;
+static int update_progress;
 static int update_confirmation_pending;
 
 static void *stock, *runtime, *external_app;
@@ -222,10 +224,26 @@ static void close_wifi(void *self) {
     wifi_editor_close(&wifi_form);
 }
 static void render(void *self) {
+    int progress=phase==1 && section==4 && (update_busy() || update_waiting);
+    if(progress!=update_progress) {
+        update_progress=progress;
+        if(progress) {update_dot=0;register_timer(self,UPDATE_ANIMATION_TIMER,180);}
+        else unregister_timer(self,UPDATE_ANIMATION_TIMER);
+    }
+    visible(self,110011,progress);
     visible(self, SPLASH_ID, phase == 0);
     visible(self,WIFI_EDITOR_ID,phase==1 && wifi_form.active);
-    visible(self, CONFIG_ID, (phase == 1 || phase == 2) && !wifi_form.active && !update_confirming);
-    visible(self,110009,phase==1 && update_confirming && !wifi_form.active);
+    visible(self, CONFIG_ID, (phase == 1 || phase == 2) && !wifi_form.active && !update_confirming && !progress);
+    visible(self,110009,phase==1 && update_confirming && !wifi_form.active && !progress);
+    if(progress) {
+        label(self,50310,update_selection==-2 ? "Restoring Dashborne" : update_selection>=0 ? "Updating Dashborne" : "Checking for updates");
+        label(self,50311,update_waiting ? "Connecting to Wi-Fi..." : update_status());
+        label(self,50312,update_selection!=-1 ? "Keep the DASH powered on. It will restart when ready." : "");
+        for(int i=0;i<3;++i)visible(self,50320+i,(unsigned int)i==update_dot);
+        static const int ids[]={50310,50311,50312};
+        for(unsigned int i=0;i<sizeof(ids)/sizeof(ids[0]);++i)invalidate(find_control(self,ids[i]),(const void *)0);
+        return;
+    }
     if(phase==1 && wifi_form.active){render_wifi(self);return;}
     if (phase != 1 && phase != 2) return;
     label(self,50014,"v" DASHBORNE_VERSION "  /  https://github.com/oliexe/Dashborne");
@@ -239,11 +257,11 @@ static void render(void *self) {
         const struct update_release *r=update_release((unsigned int)update_selection);
         char network[96]="Wi-Fi: ";unsigned int n=append(network,7,*saved_network ? saved_network : "choose network",sizeof(network));
         append(network,n,"  >",sizeof(network));label(self,20300,network);
-        label(self,20301,update_count() ? "Refresh releases" : "Find releases");
+        label(self,20301,"Check Updates");
         visible(self,80004,update_count()!=0 && !update_waiting);
         visible(self,50207,!update_count() || update_waiting);
         label(self,50207,update_waiting ? "Connecting to Wi-Fi..." : busy ? "Loading releases..." :
-            "Choose Wi-Fi above, then tap Find releases.");
+            "Choose Wi-Fi above, then tap Check Updates.");
         label(self,50203,update_waiting ? "" : update_status());
         if(update_confirming) {
             int restore=update_selection==-2, supported=restore || (r && r->supported);
@@ -571,6 +589,14 @@ static int on_timer(void *self, int id) {
         } else finish_boot(self);
         return 0;
     }
+    if(id==UPDATE_ANIMATION_TIMER) {
+        if(update_progress) {
+            visible(self,50320+update_dot,0);
+            update_dot=(update_dot+1)%3;
+            visible(self,50320+update_dot,1);
+        }
+        return 1;
+    }
     if (id == LOADING_TIMER) {
         if (phase == 0) {
             visible(self, LOADING_DOT_ID + loading_dot, 0);
@@ -686,7 +712,7 @@ static void on_click(void *self, void *control) {
         phase = 1; unregister_timer(self, BOOT_TIMER); unregister_timer(self, LOADING_TIMER); log_line("configuration-entered\n");
         debug_set_enabled(settings.wifi_adb);
     } else if (phase != 1) return;
-    else if(watchdog_pending || update_busy())return;
+    else if(watchdog_pending || update_busy() || update_progress)return;
     else if(update_confirming) {
         const struct update_release *r=update_release((unsigned int)update_selection);
         if(id==20304)update_confirming=0;
@@ -741,6 +767,7 @@ static void on_click(void *self, void *control) {
 }
 
 static void destroy(void *self) {
+    unregister_timer(self,UPDATE_ANIMATION_TIMER);update_progress=0;
     wifi_editor_close(&wifi_form);
     unregister_timer(self, LOADING_TIMER);
     if (list_owner == self) list_owner = (void *)0;

@@ -157,7 +157,6 @@ def screen():
     update = dict(id=110008, position=position(680, 24, 1060, 376), visible=False,
         backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
     update['textview__heading'] = dict(label(50201, 'Update Dashborne', 24, 16, 320, 36, 28, 0xf1f2f4), bold=True)
-    update['textview__installed'] = label(50204, f'Installed: v{VERSION}', 364, 16, 400, 36, 18, 0x858c94)
     def update_button(id, text, x, y, w, h, asset):
         return dict(label(id, text, x, y, w, h, 20, 0xe4e7eb, 37), touchable=True,
                     picTab={'pic0': f'../../../mnt/extsd/Dashborne/ui/update-{asset}.png',
@@ -167,7 +166,7 @@ def screen():
         backgroundColor=0x202228, touchable=False)
     update['button__network'] = dict(update_button(20300, 'Wi-Fi: choose network  >', 24, 76, 680, 44, 'network'),
         alignment=36, textPosition=position(16, 0, 648, 44))
-    update['button__refresh'] = update_button(20301, 'Find releases', 724, 76, 312, 44, 'check')
+    update['button__refresh'] = update_button(20301, 'Check Updates', 724, 76, 312, 44, 'check')
     update['textview__releases_heading'] = label(50206, 'Available releases', 24, 130, 500, 26, 18, 0xa4abb3)
     release_item = label(24030, '', 0, 0, 1060, 56, 21, 0xe4e7eb)
     release_item.update(touchable=True, textPosition=position(24, 0, 380, 56),
@@ -209,6 +208,22 @@ def screen():
     card['button__install'] = update_button(20302, 'Install & restart', 748, 308, 280, 44, 'install')
     confirm['window__card'] = card
     root['window__confirm'] = confirm
+    progress = dict(id=110011, position=position(0, 0, 1920, 480), visible=False,
+                    backgroundColor=0x000000)
+    progress_card = dict(id=110012, position=position(430, 52, 1060, 376),
+                         backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
+    progress_card['textview__title'] = dict(label(50310, '', 32, 48, 996, 44, 28, 0xf1f2f4, 37), bold=True)
+    progress_card['textview__status'] = label(50311, '', 32, 112, 996, 64, 22, 0xd9dde2, 37)
+    for i in range(3):
+        for state in ('off', 'on'):
+            progress_card['textview__loading_'+state+'_'+str(i)] = dict(
+                id=50320+i if state == 'on' else 50323+i,
+                position=position(510+i*15, 208, 10, 10), touchable=False,
+                visible=state == 'off' or i == 0,
+                backgroundPic='../../../mnt/extsd/Dashborne/ui/loading-'+state+'.png')
+    progress_card['textview__notice'] = label(50312, '', 32, 274, 996, 40, 18, 0xa4abb3, 37)
+    progress['window__card'] = progress_card
+    root['window__progress'] = progress
     root['window__1'] = splash
     root['window__2'] = config
     wifi = dict(id=110007, position=position(0, 0, 1920, 480), visible=False,

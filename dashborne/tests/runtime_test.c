@@ -142,7 +142,7 @@ const char *debug_status(void) { return "ADB listening"; }
 const char *debug_ip(void) { return ip; }
 const char *debug_wifi_name(void) { return "TestNetwork"; }
 static void timer(void *p, int id, int interval) {
-    assert(p && ((id == NETWORK_TIMER && interval == 1000) || (id == BOOT_TIMER && interval == 3000) || (id == LOADING_TIMER && interval == 180) || (id==CONTINUE_TIMER && interval==2000))); ++timer_calls;
+    assert(p && ((id == NETWORK_TIMER && interval == 1000) || (id == BOOT_TIMER && interval == 3000) || ((id == LOADING_TIMER || id==UPDATE_ANIMATION_TIMER) && interval == 180) || (id==CONTINUE_TIMER && interval==2000))); ++timer_calls;
 }
 static int is(const char *s) { return !strcmp(scenario, s); }
 static void original_init(void *p) { assert(p == (void *)123); ++init_calls; }
@@ -192,7 +192,7 @@ static void dirty(void *p,const void *rect) {assert(p && !rect);}
 static void selection(void *p, int selected) { ((struct mock_control *)p)->selected = selected; }
 static void text_color(void *p, int rgb) { assert(p && rgb); }
 static int id_of(void *p) { return ((struct mock_control *)p)->id; }
-static void cancel_timer(void *p, int id) { assert(p && (id == BOOT_TIMER || id == NETWORK_TIMER || id == LOADING_TIMER)); ++cancelled; }
+static void cancel_timer(void *p, int id) { assert(p && (id == BOOT_TIMER || id == NETWORK_TIMER || id == LOADING_TIMER || id==UPDATE_ANIMATION_TIMER)); ++cancelled; }
 static void *ui(void) { return (void *)789; }
 static void navigate(void *p, const char *activity, void *intent) {
     assert(p == (void *)789 && !strcmp(activity, "installedActivity") && !intent); ++opened;
@@ -280,7 +280,9 @@ int main(int argc, char **argv) {
         on_click(p,find(p,20301));assert(update_waiting && wifi_connections==2);
         on_click(p,find(p,20301));on_click(p,find(p,20303));release_click(NULL,find(p,80004),0,0);
         assert(wifi_connections==2 && update_selection==-1);
-        assert(!strcmp(((struct mock_control *)find(p,50207))->text,"Connecting to Wi-Fi..."));
+        assert(update_progress && !((struct mock_control *)find(p,CONFIG_ID))->shown);
+        assert(!strcmp(((struct mock_control *)find(p,50311))->text,"Connecting to Wi-Fi..."));
+        for(unsigned int i=0;i<6;++i){on_timer(p,UPDATE_ANIMATION_TIMER);assert(update_dot==(i+1)%3);assert(((struct mock_control *)find(p,50320+update_dot))->shown);}
         ip="192.0.2.42";on_timer(p,NETWORK_TIMER);assert(!update_waiting && updater_calls==1 && !strcmp(updater_action,"list"));
         int refreshes=list_refreshes;on_timer(p,NETWORK_TIMER);assert(list_refreshes==refreshes);
         release_click(NULL,find(p,80004),0,0);assert(update_selection==0 && update_confirming);
@@ -292,8 +294,11 @@ int main(int argc, char **argv) {
         test_release.supported=1;
         release_click(NULL,find(p,80004),0,0);assert(update_confirming);
         on_click(p,find(p,20302));assert(!update_confirming && updater_calls==2 && !strcmp(updater_action,"install"));
-        updater_active=1;on_click(p,find(p,LAUNCH_ID));on_click(p,find(p,ADB_TAB_ID));assert(!opened && section==4);
-        updater_active=0;on_click(p,find(p,20303));assert(update_confirming);
+        updater_active=1;on_timer(p,NETWORK_TIMER);assert(update_progress);
+        assert(!strcmp(((struct mock_control *)find(p,50310))->text,"Updating Dashborne"));
+        on_timer(p,UPDATE_ANIMATION_TIMER);assert(update_dot==1);
+        on_click(p,find(p,LAUNCH_ID));on_click(p,find(p,ADB_TAB_ID));assert(!opened && section==4);
+        updater_active=0;on_timer(p,NETWORK_TIMER);assert(!update_progress && ((struct mock_control *)find(p,CONFIG_ID))->shown);on_click(p,find(p,20303));assert(update_confirming);
         on_click(p,find(p,20302));assert(updater_calls==3 && !strcmp(updater_action,"rollback"));
         destroy(p);onEasyUIDeinit((void *)123);puts("PASS: updates share Wi-Fi, require confirmation and block conflicting actions");return 0;
     }

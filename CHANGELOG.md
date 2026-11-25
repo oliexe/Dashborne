@@ -5,6 +5,10 @@ tracked separately in their source history.
 
 ## Unreleased
 
+- Show update progress in a modal with animated loading dots and separate status
+  messages for verification, file preservation and microSD writes.
+- Rename the release check to Check Updates and remove the duplicate version label.
+
 ## 0.1.2 — 2026-11-25
 
 Target stock OS: 6.11.4.

@@ -40,7 +40,7 @@ Configuration includes:
 ## Update from the boot menu
 
 1. Open **Update Dashborne**. Tap the network name to set up Wi-Fi if needed.
-2. Tap **Find releases**, then select a release to see its target OS and notes.
+2. Tap **Check Updates**, then select a release to see its target OS and notes.
 3. Review the confirmation dialog and tap **Install & restart**. Dashborne verifies the
    download, installs it on microSD and restarts into the boot menu.
 

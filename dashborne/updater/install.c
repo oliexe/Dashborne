@@ -227,6 +227,7 @@ cJSON *extract_release(const char *archive, const char *dir, const char *version
         }
     }
     fclose(z);
+    status("Verifying extracted files...");
     cJSON *m = read_manifest(dir), *files = cJSON_GetObjectItemCaseSensitive(m, "files");
     if (strcmp(json_string(m, "version"), version) || strcmp(json_string(m, "stock_os"), stock))
         fail("Release version or stock OS target mismatch");
@@ -316,6 +317,7 @@ static int skip_preserved(const char *p, void *data) {
     return !p[n] && strcmp(first, "licenses") && exists(dst);
 }
 void preserve(const char *stage, cJSON *manifest) {
+    status("Preserving settings and community files...");
     char p[PATH_CAP];
     path_join(p, stage, "previous.cfg");
     if (exists(p) && unlink(p))
@@ -443,9 +445,12 @@ void apply(const char *stage) {
     }
     path_join(p, stage, "config.once");
     atomic_write(p, "", 0, 0644);
+    status("Finishing microSD writes...");
     sync_tree(stage);
+    status("Removing older backup...");
     location(p, "previous");
     remove_tree(p);
+    status("Activating update...");
     unsigned char *encoded = allocate(size * 2 + 8);
     size_t n;
     if (mbedtls_base64_encode(encoded, size * 2 + 8, &n, (unsigned char *)startup, size))
