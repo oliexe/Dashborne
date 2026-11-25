@@ -19,7 +19,7 @@ static void load_list(void){
     while(*p && count<100){struct update_release r={0};char supported[8];
         if(!field(&p,r.id,sizeof(r.id)) || !field(&p,r.version,sizeof(r.version)) || !field(&p,r.os,sizeof(r.os)) || !field(&p,supported,sizeof(supported)))break;
         unsigned int i=0;while(*p && *p!='\n'){if(i+1<sizeof(r.notes))r.notes[i++]=*p;++p;}r.notes[i]=0;if(*p)++p;
-        r.supported=equal(supported,"true");releases[count++]=r;
+        r.supported=equal(supported,"true");if(r.supported)releases[count++]=r;
     }
 }
 int update_start(const char *action,const char *id){

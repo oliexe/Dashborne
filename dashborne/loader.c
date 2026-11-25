@@ -252,9 +252,9 @@ static void render(void *self) {
             label(self,50300,restore ? "Restore previous version?" : title);
             label(self,50301,restore ? "Return to your last Dashborne installation" : target);
             update_notes(self,restore ? "The current installation will be replaced with your saved previous version." :
-                r ? (r->supported ? r->notes : "Install this release on your microSD using a computer.\nDownload: github.com/oliexe/Dashborne") : "");
+                r ? r->notes : "");
             label(self,50303,supported ? "Your settings and community extensions are kept. The DASH will restart." : "");
-            label(self,20304,supported ? "Cancel" : "Close");
+            label(self,20304,"Cancel");
             label(self,20302,restore ? "Restore & restart" : "Install & restart");
             visible(self,20302,supported && !busy);
         }
@@ -370,12 +370,11 @@ static int release_count(void *self,void *list){(void)self;(void)list;return (in
 static void release_data(void *self,void *list,void *item,int index) {
     (void)self;(void)list;const struct update_release *r=update_release((unsigned int)index);if(!r)return;
     char title[64]="Dashborne ";append(title,10,r->version,sizeof(title));set_text(item,title);
-    char detail[96]="Stock OS ";unsigned int n=append(detail,9,r->os,sizeof(detail));
-    if(!r->supported)append(detail,n,"  /  Computer install only",sizeof(detail));
+    char detail[96]="Stock OS ";append(detail,9,r->os,sizeof(detail));
     void *value=find_subitem(item,24031);if(value)set_text(value,detail);set_selected(item,index==update_selection);
 }
 static void release_click(void *self,void *list,int index,int subitem) {
-    (void)self;(void)subitem;if(phase!=1 || section!=4 || update_busy() || update_waiting || index<0 || !update_release((unsigned int)index))return;
+    (void)self;(void)subitem;if(phase!=1 || section!=4 || update_busy() || update_waiting || index<0 || !update_release((unsigned int)index) || !update_release((unsigned int)index)->supported)return;
     update_selection=index;update_confirming=1;refresh_list(list);render(list_owner);
     invalidate(find_control(list_owner,110009),(const void *)0);
 }

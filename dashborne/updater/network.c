@@ -305,7 +305,7 @@ cJSON *filter_releases(cJSON *releases) {
                 supported = 1;
         }
         long long size = json_integer(archive, "size");
-        if (!archive || !checksum || !allowed_url(json_string(archive, "browser_download_url")) ||
+        if (!supported || !archive || !checksum || !allowed_url(json_string(archive, "browser_download_url")) ||
             !allowed_url(json_string(checksum, "browser_download_url")) || size <= 0 ||
             size > 256 * (long long)MIB)
             continue;
@@ -364,7 +364,7 @@ void download_release(const char *id) {
     if (!c)
         fail("Release list changed; refresh it");
     if (!cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(c, "supported")))
-        fail("This older release requires manual installation");
+        fail("Release metadata is incomplete; refresh the list");
     const char *stock = installed_os(), *version = json_string(c, "version");
     if (strcmp(stock, json_string(c, "stock_os")))
         fail("Release targets stock OS %s; installed OS is %s", json_string(c, "stock_os"), stock);

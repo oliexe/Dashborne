@@ -287,9 +287,9 @@ int main(int argc, char **argv) {
         on_click(p,find(p,LAUNCH_ID));assert(!opened && update_confirming);
         on_click(p,find(p,20304));assert(!update_confirming && updater_calls==1);
         test_release.supported=0;release_click(NULL,find(p,80004),0,0);
-        assert(update_confirming && !((struct mock_control *)find(p,20302))->shown);
-        on_click(p,find(p,20302));assert(updater_calls==1 && update_confirming);
-        on_click(p,find(p,20304));test_release.supported=1;
+        assert(!update_confirming && updater_calls==1);
+        on_click(p,find(p,20302));assert(updater_calls==1);
+        test_release.supported=1;
         release_click(NULL,find(p,80004),0,0);assert(update_confirming);
         on_click(p,find(p,20302));assert(!update_confirming && updater_calls==2 && !strcmp(updater_action,"install"));
         updater_active=1;on_click(p,find(p,LAUNCH_ID));on_click(p,find(p,ADB_TAB_ID));assert(!opened && section==4);

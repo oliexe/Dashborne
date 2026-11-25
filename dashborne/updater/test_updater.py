@@ -197,6 +197,8 @@ class UpdaterTests(unittest.TestCase):
                     releases[0]['assets'][0]['digest'] = 'sha256:' + '0' * 64
                 self.put(http / 'releases', json.dumps(releases).encode())
                 self.run_updater('list', UPDATER_TEST_HTTP=str(http))
+                if fault == 'legacy':
+                    self.assertEqual((self.card / 'list.tsv').read_text(), '')
                 if fault == 'HTTP':
                     (http / 'archive').unlink()
                 self.run_updater('install', '1', ok=False, UPDATER_TEST_HTTP=str(http))
