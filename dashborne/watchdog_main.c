@@ -27,7 +27,8 @@ static int equal(const char *a,const char *b){while(*a && *a==*b){++a;++b;}retur
 static int number(const char *s){int n=0;while(*s>='0' && *s<='9')n=n*10+*s++-'0';return n;}
 static void decimal(char *out,unsigned long n) {
     char tmp[24];unsigned int at=0;do{tmp[at++]=(char)('0'+n%10);n/=10;}while(n);
-    while(at)*out++=tmp[--at];*out=0;
+    while(at)*out++=tmp[--at];
+    *out=0;
 }
 static void join(char *out,const char *a,const char *b) {while(*a)*out++=*a++;while((*out++=*b++)){} }
 static long now(void) {
@@ -57,7 +58,8 @@ static int identity(const char *pid,char *out) {
     char *p=s,*end=0;while(*p){if(*p==')')end=p;++p;}if(!end)return 0;
     p=end+1;int field=3;
     while(field<=22) {
-        while(*p==' ')++p;if(!*p)return 0;
+        while(*p==' ')++p;
+        if(!*p)return 0;
         char *start=p;while(*p && *p!=' ')++p;
         if(field++==22){unsigned int n=(unsigned int)(p-start);if(n>30)return 0;for(unsigned int i=0;i<n;++i)out[i]=start[i];out[n]=0;return 1;}
     }
@@ -95,7 +97,9 @@ static void capture(const char *pid,const char *reason,unsigned int slot) {
     }
 }
 int main(int argc,char **argv) {
-    if(argc!=2)return 2;int pid=number(argv[1]);if(pid<=1)return 2;
+    if(argc!=2)return 2;
+    int pid=number(argv[1]);
+    if(pid<=1)return 2;
     char pid_text[32];decimal(pid_text,(unsigned int)pid);
     int lock=open(WD_ROOT "/lock",2|0100,0600);if(lock<0 || flock(lock,2|4))return 3;
     char count[32],owner[64],beat[96],last[96]={0},initial[32],current[32];

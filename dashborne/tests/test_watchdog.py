@@ -1,5 +1,6 @@
 """Run the real supervisor against disposable processes and a fake proc tree."""
 from pathlib import Path
+import os
 import signal
 import subprocess
 import tempfile
@@ -38,7 +39,7 @@ int wd_open(const char *path,int flags,...) {
     return open(path,native,mode);
 }
 """)
-        subprocess.run(['cc','-Dopen=wd_open', '-std=c11', '-Wall', '-Wextra', '-Werror',
+        subprocess.run([os.environ.get('HOST_CC', 'cc'), '-Dopen=wd_open', '-std=c11', '-Wall', '-Wextra', '-Werror',
                         '-fsanitize=address,undefined', '-DWD_TIMEOUT=2',
                         f'-DWD_ROOT="{self.state}"', f'-DWD_CARD="{self.card}"',
                         f'-DWD_PROC="{self.proc}"', str(ROOT/'watchdog_main.c'), str(shim),

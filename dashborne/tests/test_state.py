@@ -1,6 +1,7 @@
 import ctypes
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import struct
@@ -36,7 +37,7 @@ class StateTests(unittest.TestCase):
         output = cls.root/'state.so'
         # Keep test mounts separate from libc symbols on ELF hosts, where
         # Python's already-loaded libc can otherwise override these stubs.
-        subprocess.run(['cc','-shared','-fPIC','-std=c11', '-Wall','-Wextra','-Werror',
+        subprocess.run([os.environ.get('HOST_CC', 'cc'), '-shared','-fPIC','-std=c11', '-Wall','-Wextra','-Werror',
                         '-Dmount=test_mount', '-Dumount2=test_umount2',
                         '-DCONFIG_CARD=\"'+str(cls.root/'card')+'\"',
                         '-DCONFIG_LEGACY=\"'+str(cls.root/'card')+'\"',
