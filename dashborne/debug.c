@@ -391,6 +391,11 @@ void debug_connect_wifi(void) {
     debug_set_enabled(0);network_only=1;active=1;config_ok=load_config();step=STOP;
     poll_stop();
 }
+int debug_wifi_failed(void) {return active && step==FAILED;}
+void debug_cancel_wifi_request(void) {
+    /* Update-only connections belong to this request; existing ADB does not. */
+    if(network_only)debug_set_enabled(0);
+}
 void debug_release(void) {
     (void)debug_set_forced(0);
     lan_reset();

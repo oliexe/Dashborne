@@ -88,6 +88,23 @@ static struct wifi_editor wifi_form;
 static char saved_network[33];
 static int update_selection=-1,update_confirming,update_waiting;
 static unsigned int update_wait_ticks,update_dot;
+struct loader_time {long seconds,nanoseconds;};
+extern int clock_gettime(int,struct loader_time *);
+static long update_wait_started;
+static char update_connection_error[160];
+static long monotonic_seconds(void) {
+    struct loader_time now;
+    return clock_gettime(1,&now)==0 ? now.seconds : -1;
+}
+static void stop_update_connection(const char *error) {
+    unsigned int n=0;
+    while(error && error[n] && n+1<sizeof(update_connection_error)) {
+        update_connection_error[n]=error[n];++n;
+    }
+    update_connection_error[n]=0;
+    update_waiting=0;
+    debug_cancel_wifi_request();
+}
 static int update_progress,developer_confirming;
 static int update_confirmation_pending;
 
@@ -244,6 +261,7 @@ static void render(void *self) {
     if(progress) {
         label(self,50310,update_selection==-2 ? "Restoring Dashborne" : update_selection>=0 ? "Updating Dashborne" : "Checking for updates");
         label(self,50311,update_waiting ? "Connecting to Wi-Fi..." : update_status());
+        visible(self,20305,update_waiting);
         label(self,50312,update_selection!=-1 ? "Keep the DASH powered on. It will restart when ready." : "");
         for(int i=0;i<3;++i)label(self,50320+i,(unsigned int)i==update_dot ? "1" : "0");
         redraw_update_progress(self);
@@ -267,7 +285,7 @@ static void render(void *self) {
         visible(self,50207,!update_count() || update_waiting);
         label(self,50207,update_waiting ? "Connecting to Wi-Fi..." : busy ? "Loading releases..." :
             "Choose Wi-Fi above, then tap Check Updates.");
-        label(self,50203,update_waiting ? "" : update_status());
+        label(self,50203,update_waiting ? "" : *update_connection_error ? update_connection_error : update_status());
         if(update_confirming) {
             int restore=update_selection==-2, supported=restore || (r && r->supported);
             char title[96]="Dashborne ",target[96]="Target stock OS: ";
@@ -632,7 +650,12 @@ static int on_timer(void *self, int id) {
         }
         if(update_waiting) {
             if(*debug_ip()){update_waiting=0;(void)update_start("list",(const char *)0);}
-            else if(++update_wait_ticks>=180){update_waiting=0;launch_error="Wi-Fi connection failed. Check network settings and retry.";}
+            else if(debug_wifi_failed())stop_update_connection(debug_status());
+            else {
+                long now=monotonic_seconds();
+                if(++update_wait_ticks>=60 || (now>=0 && update_wait_started>=0 && now-update_wait_started>=60))
+                    stop_update_connection("Wi-Fi timed out. Check the network settings and retry.");
+            }
         }
     }
     if(id==NETWORK_TIMER && watchdog_pending) {
@@ -725,6 +748,9 @@ static void on_click(void *self, void *control) {
         phase = 1; unregister_timer(self, BOOT_TIMER); unregister_timer(self, LOADING_TIMER); log_line("configuration-entered\n");
         debug_set_enabled(settings.wifi_adb);
     } else if (phase != 1) return;
+    else if(update_waiting && id==20305) {
+        stop_update_connection("Wi-Fi connection cancelled.");render(self);return;
+    }
     else if(watchdog_pending || update_busy() || update_progress)return;
     else if(developer_confirming) {
         if(id==20304)developer_confirming=0;
@@ -749,7 +775,7 @@ static void on_click(void *self, void *control) {
     else if(id==20018){section=4;update_confirming=0;}
     else if(section==4 && id==20300 && !update_waiting){if(!wifi_editor_open(&wifi_form))launch_error="Could not read dashborne.conf";}
     else if(section==4 && id==20301 && !update_waiting){
-        update_selection=-1;update_confirming=0;launch_error=0;debug_connect_wifi();update_waiting=1;update_wait_ticks=0;
+        update_selection=-1;update_confirming=0;launch_error=0;debug_connect_wifi();update_waiting=1;update_wait_ticks=0;update_wait_started=monotonic_seconds();update_connection_error[0]=0;
     }
     else if(section==4 && id==20303 && !update_waiting){update_selection=-2;update_confirming=1;}
     else if (id == LAUNCH_ID) { update_waiting=0;continue_boot(self); return; }

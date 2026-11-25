@@ -41,6 +41,7 @@ Configuration includes:
 
 1. Open **Update Dashborne**. Tap the network name to set up Wi-Fi if needed.
 2. Tap **Check Updates**, then select a release to see its target OS and notes.
+   Wi-Fi connection attempts time out after 60 seconds and can be cancelled.
 3. Review the confirmation dialog and tap **Install & restart**. Dashborne verifies the
    download, installs it on microSD and restarts into the boot menu.
 

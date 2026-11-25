@@ -539,6 +539,12 @@ static void test_cancellation_and_stress(void) {
     cancelled();
 }
 static void test_wifi_only(void) {
+    reset();debug_connect_wifi();debug_cancel_wifi_request();advance(100);
+    assert(!network_only && !wanted && !*debug_ip() && starts==0);
+    ready();int old_starts=starts;debug_cancel_wifi_request();advance(5);
+    assert(wanted && *debug_ip() && starts==old_starts);
+    fail("Test connection failure");assert(debug_wifi_failed());
+
     reset();debug_connect_wifi();advance(80);
     assert(*debug_ip() && starts==0 && !wanted && network_only && !debug_is_forced());
     assert(!strcmp(debug_status(),"Wi-Fi connected"));

@@ -5,6 +5,7 @@
 #define RUNTIME_SIZE 7u
 #define RUNTIME_HASH 0x44c0392bu
 #define DASHBORNE_VERSION "9.8.7-test"
+#define clock_gettime fake_clock_gettime
 #define dlopen fake_dlopen
 #define dlsym fake_dlsym
 #define open fake_open
@@ -38,6 +39,11 @@ static char config_ssid[33]="TestNetwork",config_password[64]="testpassword";
 static char pending_ssid[33],pending_password[64];
 static int wifi_commits;
 static int updater_active,updater_calls,wifi_connections;
+static long test_seconds;
+static int wifi_failed,wifi_cancelled;
+int fake_clock_gettime(int clock,struct loader_time *out){assert(clock==1);out->seconds=test_seconds;out->nanoseconds=0;return 0;}
+int debug_wifi_failed(void){return wifi_failed;}
+void debug_cancel_wifi_request(void){++wifi_cancelled;}
 static const char *updater_action;
 static struct update_release test_release={"123","0.2.0","6.11.4","Test release notes",1};
 int config_load(void) {strcpy(pending_ssid,config_ssid);strcpy(pending_password,config_password);return strcmp(scenario,"wifi-read-failure")!=0;}
@@ -272,6 +278,21 @@ int main(int argc, char **argv) {
     onEasyUIInit((void *)123);
     const char *selected = onStartupApp((void *)123);
     assert(init_calls == 1 && start_calls == 1);
+    if(is("wifi-timeout")) {
+        void *p=registered();on_click(p,find(p,TAP_ID));on_click(p,find(p,20018));
+        on_click(p,find(p,20301));assert(update_waiting && update_progress);
+        test_seconds=59;on_timer(p,NETWORK_TIMER);assert(update_waiting);
+        test_seconds=60;on_timer(p,NETWORK_TIMER);
+        assert(!update_waiting && !update_progress && !updater_calls && wifi_cancelled==1);
+        assert(strstr(update_connection_error,"timed out"));
+        on_click(p,find(p,20301));assert(update_waiting && !*update_connection_error);
+        on_click(p,find(p,20305));assert(!update_waiting && !update_progress && wifi_cancelled==2 && !updater_calls);
+        on_click(p,find(p,20301));wifi_failed=1;on_timer(p,NETWORK_TIMER);
+        assert(!update_waiting && !update_progress && wifi_cancelled==3 && !updater_calls);
+        wifi_failed=0;on_click(p,find(p,20301));ip="192.0.2.42";on_timer(p,NETWORK_TIMER);
+        assert(!update_waiting && updater_calls==1 && !strcmp(updater_action,"list"));
+        destroy(p);onEasyUIDeinit((void *)123);puts("PASS: Wi-Fi timeout, cancellation, immediate failure and successful retry");return 0;
+    }
     if(is("developer-mode")) {
         void *p=registered();on_click(p,find(p,TAP_ID));on_click(p,find(p,ADB_TAB_ID));
         on_click(p,find(p,DEVELOPER_ID));assert(!developer_confirming);

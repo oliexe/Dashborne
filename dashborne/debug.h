@@ -7,6 +7,8 @@ int debug_is_forced(void);
 void debug_poll(void);
 /* Connect for updates without granting developer access. */
 void debug_connect_wifi(void);
+int debug_wifi_failed(void);
+void debug_cancel_wifi_request(void);
 void debug_release(void);
 const char *debug_status(void);
 const char *debug_ip(void);

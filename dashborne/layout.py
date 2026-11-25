@@ -222,6 +222,7 @@ def screen():
                              size=dict(width=10, height=10))
                         for j, state in enumerate(('off', 'on'))])
     progress_card['textview__notice'] = label(50312, '', 32, 274, 996, 40, 18, 0xa4abb3, 37)
+    progress_card['button__cancel'] = update_button(20305, 'Cancel', 390, 274, 280, 44, 'install')
     progress['window__card'] = progress_card
     root['window__progress'] = progress
     root['window__1'] = splash

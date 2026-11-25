@@ -5,6 +5,9 @@ tracked separately in their source history.
 
 ## Unreleased
 
+- Limit updater Wi-Fi connection waits to 60 seconds, allow cancellation and show
+  connection failures immediately without interrupting an existing ADB connection.
+
 - Combine persistent ADB and automatic crash recovery into Developer Mode, with
   a confirmation dialog explaining Wi-Fi behavior and recovery.
 
