@@ -4,6 +4,7 @@ extern unsigned long crc32(unsigned long,const unsigned char *,unsigned int);
 extern void *dlopen(const char *,int);extern int dlclose(void *);
 static void *library,*helper;
 static int (*stock_brightness)(const void *);
+static int (*screen_on)(const void *);
 static int captured,touched,base_min,base_black;
 static float base_scale;
 /* This helper layout is checked against the live 6.11.4 hardware library.
@@ -24,7 +25,8 @@ int display_hardware_bind(const struct dashborne_host *h) {
     library=dlopen("/lib/libzkhardware.so",2);if(!library)return -1;
     void *(*instance)(void)=h->resolve(library,"_ZN16BrightnessHelper11getInstanceEv");
     stock_brightness=h->resolve(library,"_ZNK16BrightnessHelper13getBrightnessEv");
-    if(!instance||!stock_brightness)return -1;
+    screen_on=h->resolve(library,"_ZNK16BrightnessHelper10isScreenOnEv");
+    if(!instance||!stock_brightness||!screen_on)return -1;
     helper=instance();if(!helper)return -1;
     int min=*(int *)helper,max=((int *)helper)[1];float scale=*(float *)((char *)helper+12);
     if(min<0||min>254||max!=100||scale<0.009f||scale>2.56f)return -1;
@@ -36,8 +38,7 @@ int display_hardware_restore(void) {
     *(int *)helper=base_min;*(float *)((char *)helper+12)=base_scale;
     int ok=command(0x190,base_black)>=0 && command(0x191,0)==base_black;
     /* Keep the most recent stock requested level, and never wake a sleeping LCD. */
-    int current=command(0x103,0);if(current<0)ok=0;
-    if(current>0) {
+    if(screen_on(helper)) {
         int value=stock_brightness(helper);if(value<0)value=0;if(value>100)value=100;
         int raw=base_min+(int)(value*base_scale);
         if(command(0x102,raw)<0||command(0x103,0)!=raw)ok=0;
@@ -54,10 +55,11 @@ int display_hardware_apply(int brightness,int black) {
     /* Stock updates and wake-up now map to this raw level, without periodic
        competing writes. Stock screenOff/backlightOff still write zero. */
     *(int *)helper=brightness;*(float *)((char *)helper+12)=0.0f;
-    /* The native helper can report asleep while the live backlight is on
-       after opening a custom Activity. Use the driver value as the authority. */
+    /* The driver retains a nonzero brightness even with the LCD disabled.
+       Only the native screen state establishes that the panel is awake. */
+    if(!screen_on(helper))return 0;
     int current=command(0x103,0),ok=current>=0;
-    if(current>0 && current!=brightness)
+    if(current>=0 && current!=brightness)
         ok=command(0x102,brightness)>=0 && command(0x103,0)==brightness;
     if(command(0x191,0)!=black)ok=(command(0x190,black)>=0 && command(0x191,0)==black) && ok;
     if(!ok){display_hardware_restore();return -1;}return 0;

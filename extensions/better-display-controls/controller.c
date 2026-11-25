@@ -3,6 +3,8 @@
 #include "stock_compat.h"
 #include "../../dashborne/core/widget-runtime/memory.h"
 extern long time(long *);
+struct display_timespec { long sec,nsec; };
+extern int clock_gettime(int,struct display_timespec *);
 struct native_tm {int sec,min,hour,mday,mon,year,wday,yday,isdst;long gmtoff;const char *zone;};
 extern struct native_tm *localtime_r(const long *,struct native_tm *);
 struct display_settings display_settings;
@@ -10,6 +12,24 @@ int display_minute=-1,display_active=-1,display_dirty;
 const char *display_status="Stock display controls";
 static const struct dashborne_host *host;
 static const char *error;
+static struct display_settings before_preview;
+static int preview_pending,before_dirty;
+static long preview_deadline;
+static long monotonic(void) {struct display_timespec t;return clock_gettime(1,&t)?-1:t.sec;}
+int display_preview_seconds(void) {
+    if(!preview_pending)return 0;
+    long now=monotonic();return now<0?0:now<preview_deadline?(int)(preview_deadline-now):0;
+}
+int display_preview_begin(void) {
+    long now=monotonic();if(now<0){error=display_status="Preview timer unavailable; changes were not applied.";return 0;}
+    if(!preview_pending){before_preview=display_settings;before_dirty=display_dirty;}
+    preview_pending=1;preview_deadline=now+15;return 1;
+}
+void display_preview_cancel(void) {
+    if(!preview_pending)return;
+    display_settings=before_preview;display_dirty=before_dirty;preview_pending=0;
+    error="Preview reverted. Keep changes to confirm.";display_tick();
+}
 static void *dashboard;
 static struct memory_edit hooks[5];
 static void (*old_create)(void *),(*old_destroy)(void *),(*old_delete)(void *);
@@ -17,6 +37,7 @@ static int (*old_timer)(void *,int),(*old_secondary)(void *,int);
 static void (*add_timer)(void *,int,int),(*remove_timer)(void *,int);
 #define TIMER 97520
 void display_tick(void) {
+    if(preview_pending && !display_preview_seconds()){display_preview_cancel();return;}
     long now=time(0);struct native_tm t;display_minute=-1;
     if(now>=1577836800L && localtime_r(&now,&t) && t.hour>=0&&t.hour<24&&t.min>=0&&t.min<60)
         display_minute=t.hour*60+t.min;
@@ -38,8 +59,10 @@ void display_tick(void) {
 }
 void display_changed(void) {error=0;display_dirty=1;display_tick();}
 int display_save(void) {
+    /* A wall-clock correction must not extend a potentially unreadable preview. */
+    display_tick();
     if(!display_settings_save(&display_settings)){error=display_status="Could not save to microSD. Retry Save.";return 0;}
-    display_dirty=0;error=0;display_tick();return 1;
+    preview_pending=0;display_dirty=0;error=0;display_tick();return 1;
 }
 static void created(void *s) {old_create(s);dashboard=s;display_tick();add_timer(s,TIMER,1000);}
 static int timer(void *s,int id) {if(id==TIMER){display_tick();return 1;}return old_timer(s,id);}

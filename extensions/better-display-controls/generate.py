@@ -33,7 +33,7 @@ def screen():
         panel['button__minus']=button(299530+i*10,'-15m',400,289,110,52)
         panel['button__plus']=button(299531+i*10,'+15m',530,289,110,52)
         root['window__'+title.lower()]=panel
-    root['textview__help']=label(599522,'Black level shifts image luminance; 50 is neutral. Brightness controls the backlight.',450,391,1280,30,20)
+    root['textview__help']=label(599522,'Sliders preview Day or Night immediately. Tap Keep changes within 15 seconds.',450,391,1280,30,20)
     root['textview__status']=label(599520,'Stock display controls',450,430,1280,32,20)
     root['button__back']=button(299529,'Back',1745,414,140,52)
     return root

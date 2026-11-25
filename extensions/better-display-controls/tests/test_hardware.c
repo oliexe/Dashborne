@@ -19,6 +19,7 @@
 #undef dlclose
 static int level=32,luma=50,fail_op,fail_count,writes;
 static union {float f[8];int i[8];} native;
+static int get_screen(const void *p){assert(p==&native);return native.i[4];}
 static int get_brightness(const void *p){assert(p==&native);return native.i[2];}
 int fake_open(const char *p,int mode,...){(void)p;(void)mode;return 3;}
 int fake_read(int f,void *p,unsigned int n){(void)f;(void)p;(void)n;return -1;}
@@ -33,17 +34,18 @@ int fake_ioctl(int f,unsigned long op,...){
  case 0x190:luma=(int)a[1];writes++;return 0;default:assert(0);return -1;}
 }
 int main(void){
- helper=&native;stock_brightness=get_brightness;native.i[0]=32;native.i[1]=100;native.i[2]=0;native.f[3]=2.23f;
+ helper=&native;stock_brightness=get_brightness;screen_on=get_screen;native.i[0]=32;native.i[1]=100;native.i[2]=0;native.f[3]=2.23f;
  assert(!display_hardware_restore()&&!writes);
  assert(display_hardware_apply(0,50)==-1&&!writes);
- native.i[4]=0; /* stale helper sleep flag must not suppress a live backlight */
+ native.i[4]=1;
  assert(!display_hardware_apply(1,40)&&level==1&&luma==40&&native.i[0]==1&&native.f[3]==0);
  int n=writes;assert(!display_hardware_apply(1,40)&&writes==n);
  /* Subsequent stock requests still map to our absolute level, sleep stays off. */
  native.i[2]=75;assert(native.i[0]+(int)(native.i[2]*native.f[3])==1);
- level=0;assert(!display_hardware_apply(255,50)&&level==0);
- assert(!display_hardware_restore()&&level==0&&native.i[0]==32&&native.f[3]>2.2f);
- native.i[2]=20;level=76;
+ native.i[4]=0;level=78; /* LCD disable retains a nonzero brightness cache. */
+ n=writes;assert(!display_hardware_apply(255,50)&&level==78&&writes==n);
+ assert(!display_hardware_restore()&&level==78&&native.i[0]==32&&native.f[3]>2.2f);
+ native.i[4]=1;native.i[2]=20;level=76;
  assert(!display_hardware_apply(2,49));assert(!display_hardware_restore()&&level==76&&luma==50);
  fail_op=0x190;fail_count=1;assert(display_hardware_apply(1,30)==-1&&level==76&&luma==50&&!touched);
  fail_count=2;assert(display_hardware_apply(1,30)==-1&&touched);assert(!display_hardware_restore()&&!touched);

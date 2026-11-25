@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#define clock_gettime fake_clock_gettime
 #define time fake_time
 #define localtime_r fake_localtime
 #define open fake_open
@@ -8,13 +9,16 @@
 #define read fake_read
 #define crc32 fake_crc32
 #include "../controller.c"
+#undef clock_gettime
 #undef time
 #undef localtime_r
 #undef open
 #undef close
 #undef read
 #undef crc32
-static long epoch;static int minute,apply_fail,restore_fail,save_fail,applied,restores,brightness,black;
+static long epoch,ticks;static int clock_fail;
+int fake_clock_gettime(int id,struct display_timespec *out){assert(id==1);out->sec=ticks;out->nsec=0;return clock_fail?-1:0;}
+static int minute,apply_fail,restore_fail,save_fail,applied,restores,brightness,black;
 long fake_time(long *p){(void)p;return epoch;}
 struct native_tm *fake_localtime(const long *p,struct native_tm *out){(void)p;*out=(struct native_tm){.hour=minute/60,.min=minute%60};return out;}
 int fake_open(const char *p,int f,...){(void)p;(void)f;return -1;}
@@ -43,6 +47,21 @@ int main(void){
  display_changed();assert(!strcmp(display_status,"Stock display controls"));
  save_fail=1;assert(!display_save());display_tick();assert(strstr(display_status,"save"));
  save_fail=0;assert(display_save()&&!display_dirty);assert(!strcmp(display_status,"Stock display controls"));
+ /* Preview expiry uses monotonic time, restores the preceding profile and dirty state. */
+ display_settings.mode=1;display_settings.enabled=0;ticks=100;
+ assert(display_preview_begin());display_settings.enabled=1;display_settings.day.brightness=1;display_changed();
+ assert(display_preview_seconds()==15&&brightness==1);
+ ticks=114;epoch=0;display_tick();assert(display_settings.enabled);
+ ticks=115;display_tick();assert(!display_settings.enabled&&display_settings.day.brightness==160&&!display_dirty);
+ assert(strstr(display_status,"reverted"));
+ assert(display_preview_begin());display_settings.enabled=1;display_changed();assert(display_save());
+ ticks=200;display_tick();assert(display_settings.enabled&&!display_preview_seconds());
+ assert(display_preview_begin());display_settings.day.brightness=255;display_changed();
+ display_preview_cancel();assert(display_settings.day.brightness==160&&!display_dirty);
+ clock_fail=1;assert(!display_preview_begin());clock_fail=0;
+ assert(display_preview_begin());display_settings.day.brightness=1;display_changed();
+ save_fail=1;assert(!display_save()&&display_preview_seconds());save_fail=0;
+ ticks+=16;display_tick();assert(display_settings.day.brightness==160);
  restore_fail=1;assert(display_controller_stop()==-1);restore_fail=0;assert(!display_controller_stop());
  puts("display controller: unsynced clock, transitions, clock reset, sticky errors and cleanup retry passed");
 }

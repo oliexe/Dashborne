@@ -6,14 +6,18 @@ Display Controls → Open**.
 
 ## Controls
 
-- **Enable controls** applies your selected profile. It starts off on a fresh install.
+- **Enable controls** previews your selected profile. If Auto has no valid clock,
+  it selects Day so the preview takes effect. It starts off on a fresh install.
 - **Mode** cycles between Auto, Day and Night. Auto follows the DASH's local clock;
   Day and Night apply a profile manually.
 - Each profile has a **Brightness** slider, a **Black level** slider and a start
   time adjustable in 15-minute steps. Day runs until Night starts, including
   schedules that cross midnight.
-- **Save changes** writes the settings to the card's root `dashborne.conf`. Back
-  also saves changes; a failed save keeps the page open for retry.
+- Moving a slider immediately previews that profile and selects manual Day or
+  Night mode. **Keep changes** confirms and saves it within 15 seconds; otherwise
+  the previous settings return. Back also cancels an unconfirmed preview.
+- **Save changes** stores other edits in the card's root `dashborne.conf`. Back
+  saves these edits too; a failed save keeps the page open for retry.
 - **Restore stock** stops the override and restores stock display control.
   Save or Back remembers that choice.
 
@@ -62,6 +66,11 @@ Gamma-table readback returned an error on the tested DASH, so the extension does
 not replace its gamma table. Display changes are volatile; settings are stored
 only on the microSD card.
 
+While this page is visible, it refreshes the stock display timeout. The native
+LCD state governs hardware writes: a nonzero brightness readback does not mean
+the panel is on. Preview rollback uses monotonic time, so clock synchronization
+cannot extend an unconfirmed adjustment.
+
 A native UI timer checks the clock once per second. Control changes run on the
 UI thread, without a polling worker competing with the stock brightness writer.
 Unloading removes its timers and hooks and restores the captured display state.
@@ -70,7 +79,9 @@ Run `sh extensions/better-display-controls/test.sh` for the local tests. Regener
 the panel with `python3 extensions/better-display-controls/generate.py` after
 editing its layout source.
 
-On the 6.11.4 test device, slider changes reached raw level 1, Day applied 160,
-and Night applied 16. Black-level readback matched the slider, and Restore stock
-returned to the captured 78/255 brightness and luminance 35. Save/reopen and the
-unsynchronized-clock fallback passed; schedule boundaries are covered by host tests.
+Testing on 6.11.4 confirmed changes in the PWM hardware registers for brightness
+and the output color-conversion registers for black level. Unconfirmed previews
+returned to the original brightness and color coefficients after 15 seconds,
+and the LCD remained enabled through repeated slider tests. A display-engine
+screenshot did not capture the black-level difference; physical panel verification
+is still needed before claiming the visible result is correct.
