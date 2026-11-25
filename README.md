@@ -114,8 +114,6 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 
 ![Tesla-themed dashboard with animated doors, forward and reverse transitions, and the stock widget editor on the S3XY DASH](docs/images/tesla-dashboard.gif)
 
-*Recorded on a S3XY DASH: Tesla Skin and the Tesla Model Widget, with simulated door and gear states, followed by the stock widget editor.*
-
 | Name | Description | OS Version |
 | --- | --- | --- |
 | [Tesla Skin](extensions/tesla-skin) | Tesla-inspired light and dark styling for the stock dashboard, Settings and widget picker. | 6.11.2 |
