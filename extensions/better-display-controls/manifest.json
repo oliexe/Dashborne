@@ -1,0 +1,7 @@
+{
+  "id": "better-display-controls",
+  "title": "Better Display Controls",
+  "description": "Direct backlight and black-level controls with scheduled day/night profiles in Extra.",
+  "abi": 1,
+  "sources": ["extension.c", "model.c", "settings.c", "hardware.c", "controller.c", "memory.c", "window.c"]
+}

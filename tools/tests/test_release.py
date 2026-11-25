@@ -43,7 +43,7 @@ class ReleaseTests(unittest.TestCase):
                 for folder in (package/'card/Dashborne/assets/widget-runtime',
                                bundles/'widget-example/assets'):
                     self.assertTrue((folder/f'preview-{size}.png').read_bytes().startswith(b'\x89PNG\r\n\x1a\n'))
-            self.assertEqual({p.name for p in bundles.iterdir()}, {'widget-example','screen-mirroring','tesla-model','development-menu','tesla-skin'})
+            self.assertEqual({p.name for p in bundles.iterdir()}, {'widget-example','screen-mirroring','tesla-model','development-menu','tesla-skin','better-display-controls'})
             self.assertFalse((bundles/'tesla-model/models').exists())
             self.assertEqual(list((package/'card/Dashborne/patches').glob('*.dbp')), [])
             config = release.install.configuration.parse((package / 'card/dashborne.conf').read_bytes())
