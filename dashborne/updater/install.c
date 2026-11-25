@@ -96,6 +96,8 @@ static void unpack(FILE *zip, const struct entry *e, const char *dst, uint32_t c
                 z.next_out = output;
                 z.avail_out = sizeof(output);
                 result = inflate(&z, Z_NO_FLUSH);
+                if (result == Z_BUF_ERROR && !z.avail_in)
+                    break; /* Refill at an exact input/output buffer boundary. */
                 if (result != Z_OK && result != Z_STREAM_END)
                     fail("Corrupt ZIP stream");
                 size_t produced = sizeof(output) - z.avail_out;

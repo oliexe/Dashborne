@@ -49,11 +49,13 @@ class UpdaterTests(unittest.TestCase):
     def manifest(self, files, version='0.2.0'):
         return {'format': 1, 'version': version, 'stock_os': '6.11.4', 'files': {p: hashlib.sha256(data).hexdigest() for p, data in files.items()}}
 
-    def archive(self, extra=None, corrupt=False, version='0.2.0', compression=zipfile.ZIP_DEFLATED):
+    def archive(self, extra=None, corrupt=False, version='0.2.0', compression=zipfile.ZIP_DEFLATED, large=False):
         elf = bytearray(52)
         elf[:6] = b'\x7fELF\x01\x01'
         elf[18] = 40
         files = {'lib/libdashborne.so': bytes(elf), 'ui/loader.ftu': b'layout', 'bin/updater': b'helper', 'lib/update-recovery.so': b'shim', 'patches/catalog.tsv': b'bundled\tBundled\tNew\tnative\n'}
+        if large:
+            files['assets/large.bin'] = bytes(range(256)) * 8192 + os.urandom(131072) + b'0' * 131072
         manifest = self.manifest(files, version)
         if corrupt:
             files['ui/loader.ftu'] = b'wrong'
@@ -136,6 +138,15 @@ class UpdaterTests(unittest.TestCase):
             archive.writestr(link, '/etc/passwd')
         shutil.rmtree(dest, ignore_errors=True)
         self.run_updater('extract', z, dest, '0.2.0', '6.11.4', ok=False)
+
+    def test_streaming_and_truncated_zip(self):
+        archive = self.archive(large=True)
+        dest = self.card / 'large'
+        self.run_updater('extract', archive, dest, '0.2.0', '6.11.4')
+        data = archive.read_bytes()
+        for length in [0, 22, len(data) // 2, len(data) - 1]:
+            self.put(archive, data[:length])
+            self.run_updater('extract', archive, self.card / 'invalid', '0.2.0', '6.11.4', ok=False)
 
     def test_url_and_utf8(self):
         for url in ['http://github.com/a', 'https://github.com.evil/a', 'https://user@github.com/a', 'https://github.com:443/a', 'file:///etc/passwd', 'https://github.com/\r\nevil', 'https://github.com\\@evil/a']:
