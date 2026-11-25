@@ -116,17 +116,18 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 
 *Recorded on a S3XY DASH: Tesla Skin and the Tesla Model Widget, with simulated door and gear states, followed by the stock widget editor.*
 
-| Name | Description | Stock OS version target |
+| Name | Description | OS Version |
 | --- | --- | --- |
 | [Tesla Skin](extensions/tesla-skin) | Tesla-inspired light and dark styling for the stock dashboard, Settings and widget picker. | 6.11.2 |
 | [Development Menu](extensions/development-menu) | Opens the hidden stock Settings category without a password. | 6.11.2 |
-| [Widget Example](extensions/widget-example) | Boilerplate for adding widgets to any stock picker category. | 6.11.2 via the core widget runtime |
 | [Tesla Model Widget](extensions/tesla-model) | A 2×2 animated car-state widget with tap-to-change model variants. Requires a separately installed model pack. | 6.11.2 |
 | [Screen Mirroring](extensions/screen-mirroring) | AirPlay and experimental Miracast in a shared viewer with aspect controls; Back restores CarPlay/Android Auto. | 6.11.2 |
 
 Version targets refer to the stock DASH application version.
 
 See the [extension development guide](dashborne/extensions/README.md) to build your own.
+The [Widget Example](extensions/widget-example) provides boilerplate for adding
+custom widgets to any stock picker category.
 
 If you'd like to publish an extension you've built, open a pull request adding it
 to [`/extensions`](extensions).
