@@ -207,19 +207,6 @@ identified as a placeholder template rather than final product documentation.
 | [TESLASY T9 Gen 2](https://www.teslasy.com/products/model-3-y-model-3-highland-t9-9-6-inch-gen-2-carplay-instrument-cluster-head-up-touch-display) | 9.6-inch Linux cluster with CarPlay, Android Auto, OTA updates and magnetic mounting; the listing does not identify its processor. |
 | [TESERY 9.6-inch cluster](https://www.tesery.com/products/9-6-inch-instrument-cluster-dashboard-display-for-tesla-model-3-y) | Linux, 1920 × 480 IPS display, CarPlay and Android Auto; the listing does not identify its processor. |
 
-In a clarification shared with this project, Enhance's CEO says the DASH uses
-Enhance's own casing design and a board improved by its engineers, with a
-dedicated chip for Commander communication and additional wiring and pads for
-robustness. This replaces our earlier description of the DASH as a slightly
-modified T9 rebrand.
-
-The submitted [FCC manual][manual] shares content with the
-[T9 manual linked by Yeslak](https://drive.google.com/file/d/1kAx3nM93lCkuczWnp6HKOUSXhaLoSg5Z/view).
-According to the CEO, their partner filed that placeholder before the final
-software and packaging were ready, and Enhance initially missed it. The manual
-overlap therefore does not establish that the production devices use identical
-hardware.
-
 ## Software
 
 The DASH runs Linux 5.4.61 with ARMv7 hard-float userspace and the
