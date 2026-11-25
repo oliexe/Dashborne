@@ -33,13 +33,13 @@ Configuration includes:
   details, memory, uptime, display mode and storage serials/capacities. Values are
   read when the page opens; **Refresh** updates the snapshot. Missing values show
   **Unavailable**, and unrecognized dashboard binaries are identified as such.
-- Update: connect using the saved Wi-Fi network, browse releases and install a
+- Update Dashborne: connect using the saved Wi-Fi network, browse releases and install a
   version that targets the installed stock OS. ADB can stay disabled.
 - Continue booting: save selections, load the extensions, open the official UI.
 
 ## Update from the boot menu
 
-1. Open **Update**. Tap the network name to set up Wi-Fi if needed.
+1. Open **Update Dashborne**. Tap the network name to set up Wi-Fi if needed.
 2. Tap **Check releases**, then select a release to see its target OS and notes.
 3. Tap **Install release**, then **Confirm restart**. Dashborne verifies the
    download, installs it on microSD and restarts into the boot menu.
