@@ -69,6 +69,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          RELEASE_TITLE=$(cat release/release-title.txt)
           gh release create "$RELEASE_TAG" release/*.zip release/SHA256SUMS \
-            --verify-tag --title "Dashborne ${RELEASE_TAG#v}" \
+            --verify-tag --title "$RELEASE_TITLE" \
             --notes-file release/release-notes.md

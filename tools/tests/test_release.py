@@ -19,12 +19,18 @@ class ReleaseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             archive = release.release(root / 'output')
+            version = (ROOT / 'VERSION').read_text().strip()
+            stock_os = (ROOT / 'STOCK_OS_VERSION').read_text().strip()
+            self.assertEqual((archive.parent / 'release-title.txt').read_text(),
+                             f'Dashborne {version} (Stock OS {stock_os})\n')
             self.assertEqual((archive.parent / 'SHA256SUMS').read_text(),
                              f'{hashlib.sha256(archive.read_bytes()).hexdigest()}  {archive.name}\n')
             package = root / 'extracted'
             with zipfile.ZipFile(archive) as zipped:
                 self.assertIsNone(zipped.testzip())
                 zipped.extractall(package)
+            self.assertEqual((package / 'STOCK_OS_VERSION').read_text().strip(), stock_os)
+            self.assertIn(f'Target stock OS: {stock_os}.', (package / 'README.md').read_text())
             bundles=package/'card/Dashborne/extensions'
             for size in ('1x1','2x1','1x2','2x2','3x2','4x2','5x2','6x2'):
                 for folder in (package/'card/Dashborne/assets/widget-runtime',

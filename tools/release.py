@@ -14,6 +14,8 @@ import install
 
 INSTRUCTIONS = """# Install Dashborne {version}
 
+Target stock OS: {stock_os}.
+
 1. Prepare a microSD card with an MBR partition table and a FAT32 partition.
    An 8 GB FAT32 partition has been tested. Formatting erases the card.
 2. For a fresh card, copy the contents of `card/` to its root:
@@ -38,6 +40,9 @@ def release(output, tag=None):
         raise ValueError('VERSION must contain a release version, such as 0.1.0')
     if tag is not None and tag != 'v' + version:
         raise ValueError('Release tag must match VERSION')
+    stock_os = (ROOT / 'STOCK_OS_VERSION').read_text().strip()
+    if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', stock_os):
+        raise ValueError('STOCK_OS_VERSION must contain a stock OS version, such as 6.11.4')
     changelog = (ROOT / 'CHANGELOG.md').read_text()
     match = re.search(r'^## ' + re.escape(version) + r' — [^\n]+\n(.*?)(?=^## |\Z)',
                       changelog, re.M | re.S)
@@ -53,9 +58,9 @@ def release(output, tag=None):
         install.stage(card)
         for name in ('install.py', 'configuration.py', 'files.py'):
             shutil.copyfile(ROOT / 'dashborne' / name, package / name)
-        for name in ('VERSION', 'CHANGELOG.md'):
+        for name in ('VERSION', 'STOCK_OS_VERSION', 'CHANGELOG.md'):
             shutil.copyfile(ROOT / name, package / name)
-        (package / 'README.md').write_text(INSTRUCTIONS.format(version=version))
+        (package / 'README.md').write_text(INSTRUCTIONS.format(version=version, stock_os=stock_os))
         with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zipped:
             for path in sorted(package.rglob('*')):
                 if path.is_file():
@@ -67,6 +72,7 @@ def release(output, tag=None):
         'Use the installer when upgrading to preserve your settings. '
         '`SHA256SUMS` contains the archive checksum.\n')
     (output / 'release-notes.md').write_text(notes)
+    (output / 'release-title.txt').write_text(f'Dashborne {version} (Stock OS {stock_os})\n')
     return archive
 
 

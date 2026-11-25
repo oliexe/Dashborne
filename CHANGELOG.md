@@ -3,7 +3,9 @@
 This changelog tracks Dashborne core, starting with 0.1.0. Extension changes are
 tracked separately in their source history.
 
-## Unreleased
+## 0.1.1 — 2026-11-25
+
+Target stock OS: 6.11.4.
 
 - Support stock OS 6.11.4 in the core widget runtime and Force ADB adapter.
 
