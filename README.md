@@ -116,13 +116,15 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 
 *Recorded on a S3XY DASH: Tesla Skin and the Tesla Model Widget, with simulated door and gear states, followed by the stock widget editor.*
 
-- [Tesla Skin](extensions/tesla-skin): Tesla-inspired light and dark styling for the stock dashboard, Settings and widget picker.
-- [Development Menu](extensions/development-menu): opens the hidden stock Settings category without a password.
-- [Widget Example](extensions/widget-example): boilerplate for adding widgets to any stock picker category.
-- [Tesla Model Widget](extensions/tesla-model): a 2×2 animated car-state widget with tap-to-change
-  model variants. Requires a separately installed model pack.
-- [Screen Mirroring](extensions/screen-mirroring): AirPlay and experimental Miracast in a shared
-  viewer with aspect controls; Back restores CarPlay/Android Auto.
+| Name | Description | Stock OS version target |
+| --- | --- | --- |
+| [Tesla Skin](extensions/tesla-skin) | Tesla-inspired light and dark styling for the stock dashboard, Settings and widget picker. | 6.11.2 |
+| [Development Menu](extensions/development-menu) | Opens the hidden stock Settings category without a password. | 6.11.2 |
+| [Widget Example](extensions/widget-example) | Boilerplate for adding widgets to any stock picker category. | 6.11.2 via the core widget runtime |
+| [Tesla Model Widget](extensions/tesla-model) | A 2×2 animated car-state widget with tap-to-change model variants. Requires a separately installed model pack. | 6.11.2 |
+| [Screen Mirroring](extensions/screen-mirroring) | AirPlay and experimental Miracast in a shared viewer with aspect controls; Back restores CarPlay/Android Auto. | 6.11.2 |
+
+Version targets refer to the stock DASH application version.
 
 See the [extension development guide](dashborne/extensions/README.md) to build your own.
 
