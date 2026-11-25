@@ -197,22 +197,28 @@ The S3XY DASH is an Enhance Ltd. instrument cluster, registered under
 | Power | USB-C. | [Enhance product FAQ](https://www.enhauto.com/pages/dash) |
 | Expansion | microSD mounted at `/mnt/extsd`; application loading from FAT32 verified on our unit. | [On-device research](docs/research.md) |
 
-Other aftermarket Tesla clusters have similar specifications:
+Other aftermarket Tesla clusters have similar published specifications. The
+comparisons below include the DASH's FCC manual, which Enhance's CEO has since
+identified as a placeholder template rather than final product documentation.
 
 | Product | Published similarities |
 | --- | --- |
-| [Yeslak T9](https://www.yeslak.com/products/9-6-carplay-instrument-cluster-for-tesla-model-3-y-ly) | T113-S dual-core 1.2 GHz, Linux, 9.6-inch 1920 × 480 IPS display, 258 × 75 × 15 mm and 323 g—all match the DASH's submitted [manual, p. 3][manual]. |
+| [Yeslak T9](https://www.yeslak.com/products/9-6-carplay-instrument-cluster-for-tesla-model-3-y-ly) | T113-S dual-core 1.2 GHz, Linux, 9.6-inch 1920 × 480 IPS display, 258 × 75 × 15 mm and 323 g, also listed in the DASH's placeholder [FCC manual, p. 3][manual]. |
 | [TESLASY T9 Gen 2](https://www.teslasy.com/products/model-3-y-model-3-highland-t9-9-6-inch-gen-2-carplay-instrument-cluster-head-up-touch-display) | 9.6-inch Linux cluster with CarPlay, Android Auto, OTA updates and magnetic mounting; the listing does not identify its processor. |
 | [TESERY 9.6-inch cluster](https://www.tesery.com/products/9-6-inch-instrument-cluster-dashboard-display-for-tesla-model-3-y) | Linux, 1920 × 480 IPS display, CarPlay and Android Auto; the listing does not identify its processor. |
 
-Our working hypothesis is that the S3XY DASH is a slightly modified and rebranded
-[Yeslak T9](https://www.yeslak.com/products/9-6-carplay-instrument-cluster-for-tesla-model-3-y-ly)
-or a similar device.
+In a clarification shared with this project, Enhance's CEO says the DASH uses
+Enhance's own casing design and a board improved by its engineers, with a
+dedicated chip for Commander communication and additional wiring and pads for
+robustness. This replaces our earlier description of the DASH as a slightly
+modified T9 rebrand.
 
-Enhance's submitted [manual][manual] reproduces the 24-page
-[T9 manual linked by Yeslak](https://drive.google.com/file/d/1kAx3nM93lCkuczWnp6HKOUSXhaLoSg5Z/view),
-including its specifications, wiring diagrams, UI illustrations and installation
-photos, with "S3XY Dash" added to the cover and an extra FCC compliance page.
+The submitted [FCC manual][manual] shares content with the
+[T9 manual linked by Yeslak](https://drive.google.com/file/d/1kAx3nM93lCkuczWnp6HKOUSXhaLoSg5Z/view).
+According to the CEO, their partner filed that placeholder before the final
+software and packaging were ready, and Enhance initially missed it. The manual
+overlap therefore does not establish that the production devices use identical
+hardware.
 
 ## Software
 
