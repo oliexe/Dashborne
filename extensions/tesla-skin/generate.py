@@ -13,12 +13,43 @@ def draw_asset(name,size):
     mode,tail=name.split('/',1);p=PALETTES[mode];w,h=size;scale=2
     im=Image.new('RGBA',(w*scale,h*scale));d=ImageDraw.Draw(im)
     def box(b,fill,r=0,outline=None,width=1):
+        if fill is None and outline is None:return
         b=tuple(round(x*scale) for x in b)
         d.rounded_rectangle(b,radius=r*scale,fill=fill,outline=outline,width=width*scale)
     def line(points,fill,width=2):d.line([(int(x*scale),int(y*scale)) for x,y in points],fill=fill,width=width*scale,joint='curve')
     def poly(points,fill):d.polygon([(int(x*scale),int(y*scale)) for x,y in points],fill=fill)
     def text(x,y,t,size=24,color=None,anchor='mm'):
         d.text((int(x*scale),int(y*scale)),t,font=ImageFont.truetype(str(FONT),size*scale),fill=color or p['text'],anchor=anchor)
+    def car(cx,cy,cw,ch):
+        # Preserve the rendered body's proportions and genuine transparency.
+        sprite=Image.open(ROOT/'artwork/tpms-car.png').convert('RGBA')
+        bounds=sprite.getchannel('A').point(lambda a:255 if a>32 else 0).getbbox()
+        sprite=sprite.crop(bounds)
+        ratio=min(cw*scale/sprite.width,ch*scale/sprite.height)
+        sprite=sprite.resize((round(sprite.width*ratio),round(sprite.height*ratio)),Image.Resampling.LANCZOS)
+        im.alpha_composite(sprite,(round(cx*scale-sprite.width/2),round(cy*scale-sprite.height/2)))
+    def instrument(style,preview=False,config=False,face=False):
+        cx=w/2;cy=229*h/458;rx=199*w/510;ry=199*h/458
+        if face:cx=w/2;cy=h/2;rx=ry=199
+        if style in ('B','C'):
+            bounds=((cx-rx)*scale,(cy-ry)*scale,(cx+rx)*scale,(cy+ry)*scale)
+            d.arc(bounds,135,405,fill=p['line'],width=3*scale)
+            for i in range(37):
+                a=math.radians(135+i*7.5);r0=.91 if i%3==0 else .965
+                line([(cx+rx*r0*math.cos(a),cy+ry*r0*math.sin(a)),(cx+rx*math.cos(a),cy+ry*math.sin(a))],p['muted'] if i%3==0 else p['line'],2 if i%3==0 else 1)
+            if style=='C':
+                # Signed power: regeneration left, consumption right.
+                d.arc(bounds,155,265,fill=GREEN,width=3*scale)
+                line([(cx,cy-ry-5),(cx,cy-ry+12)],p['text'],2)
+            if preview:d.arc(bounds,135 if style=='B' else 270,225 if style=='B' else 310,fill=BLUE if style=='B' else p['text'],width=5*scale)
+        elif style=='D':
+            for yy in (96,354):line([(w*.18,h*yy/458),(w*.82,h*yy/458)],p['line'],1)
+        if preview:
+            if style!='D':text(cx,116*h/458,'CHILL',22,p['muted'])
+            if not (style=='C' and config):
+                text(cx,218*h/458,'0',128 if style in ('A','D') else 94)
+                text(cx,292*h/458,'kW' if style=='C' else 'km/h',23,p['muted'])
+            if style in ('A','B'):text(cx,337*h/458,'P',24)
     if tail.startswith('projection/'):
         d.rectangle((0,0,w*scale,h*scale),fill=p['bg'])
     stem=Path(tail).stem;pressed=stem.endswith('_p');selected=stem.endswith('_s') or '_s_nobg' in stem
@@ -29,9 +60,7 @@ def draw_asset(name,size):
     if tail.startswith('preview/'):
         card()
         if stem.startswith('gauge'):
-            if stem!='gaugeC_cfg':
-                text(w/2,h*.44,'0',int(h*.30));text(w/2,h*.64,'km/h',25,p['muted'])
-            line([(w*.12,h*.85),(w*.88,h*.85)],p['line'],1)
+            instrument(stem[5],True,stem.endswith('_cfg'))
         elif stem in ('tripPreview','vals2x1_size'):
             # The native editor draws the changing values over these backgrounds.
             for y in (78,148):line([(w*.47 if stem=='tripPreview' else 24,y),(w-24,y)],p['line'],1)
@@ -51,9 +80,14 @@ def draw_asset(name,size):
             poly([(w*.1,h*.25),(w*.14,h*.21),(w*.14,h*.29)],p['text'])
             text(w*.62,h*.3,'200 m',28);text(w/2,h*.6,'Next turn',22,p['muted'])
         elif stem.startswith('pressure'):
-            for xx in (.24,.76):
-                for yy in (.25,.75):text(w*xx,h*yy,'2.8',24)
-            box((w*.43,h*.22,w*.57,h*.78),p['line'],r=14,outline=p['muted'],width=2)
+            small='1x1' in stem
+            car(w/2,h/2,66 if small else 170,150 if small else 348)
+            for xx in (.19,.81):
+                for yy in (.27,.73):text(w*xx,h*yy,'2.8',25 if small else 42)
+            if small:text(w/2,h-18,'bar',18,p['muted'])
+            if not small:
+                for xx in (.19,.81):
+                    for yy in (.36,.82):text(w*xx,h*yy,'bar',22,p['muted'])
         elif 'clock' in stem.lower():
             text(w/2,h*.48,'12:45',min(80,int(w*.15)));text(w/2,h*.73,'Tuesday',22,p['muted'])
         elif stem.startswith('warn'):
@@ -160,6 +194,7 @@ def draw_asset(name,size):
         elif stem=='list_bg':pass
         else:
             box((1,1,w-2,h-2),p['pressed'] if pressed else p['card'],r=min(8,h/4),outline=p['line'] if 'btn' in stem else None)
+    elif stem=='g3_face':instrument('C',face=True)
     elif tail.startswith('btn_bg') or tail.startswith(('trip/trip_','projection/cpaa','clock/d2_','clock/a1_','tpms/tpms','gauges/1/g1_','gauges/2/g2_','gauges/4/g4_')) and not any(v in tail for v in ('_inds','_ind.','_pin','_thumb')):
         card()
         if 'valcomb' in stem:
@@ -180,15 +215,9 @@ def draw_asset(name,size):
                 a=n*math.pi/6;text(cx+math.sin(a)*(r-39),cy-math.cos(a)*(r-39),str(n),27)
         elif tail.startswith('tpms/'):
             small='1x1' in tail
-            cx=w/2;cy=h/2;cw=38 if small else 108;ch=90 if small else 258
-            box((cx-cw/2,cy-ch/2,cx+cw/2,cy+ch/2),p['line'],r=cw*.38,outline=p['muted'],width=2)
-            box((cx-cw*.36,cy-ch*.27,cx+cw*.36,cy+ch*.23),p['bg'],r=cw*.18)
-            for x in (cx-cw*.57,cx+cw*.43):
-                for y in (cy-ch*.31,cy+ch*.23):box((x,y,x+cw*.14,y+ch*.16),p['muted'],r=2)
-            if not small:text(cx,h-27,'TIRE PRESSURE',16,p['muted'])
+            car(w/2,h/2,66 if small else 170,150 if small else 348)
         elif '/gauges/' in '/'+tail:
-            # Quiet digital instrument; values and drive state remain native controls.
-            line([(44,h-64),(w-44,h-64)],p['line'],1)
+            instrument('A' if '/1/' in tail else 'B' if '/2/' in tail else 'D')
     elif tail.startswith('stats/media/btn_'):
         color=BLUE if pressed else p['text'];cx,cy=w/2,h/2
         if 'pause' in tail:
@@ -206,18 +235,19 @@ def draw_asset(name,size):
         elif stem in ('gear_ind','gear_ind_nobg','gears_line'):
             for i,c in enumerate('PRND'):text(w/2+(i-1.5)*30 if stem.startswith('gear_ind') else w*(i+.5)/4,h/2,c,max(12,int(h*.85)))
         elif stem=='gear_wnd':box((1,1,w-2,h-2),None,r=5,outline=p['muted'],width=2)
-        elif 'bg' in stem:box((0,0,w-1,h-1),p['card'],r=4)
+        elif 'bg' in stem:pass
     elif tail.startswith('gauges/'):
         if 'bluering' in stem:
             # Autopilot state retains a blue outline, with no decorative glow.
             d.ellipse((4,4,w*scale-5,h*scale-5),outline=BLUE,width=2*scale)
-        elif '/3/' in tail or 'arc' in stem:
-            if 'pin' in stem:box((0,0,w-1,h-1),p['text'],r=2)
-            else:
-                bounds=(3,3,w*scale-4,h*scale-4)
-                for begin,end,color in [(135,267,GREEN),(273,405,p['text']),(47,133,BLUE)]:
-                    d.arc(bounds,begin,end,fill=color,width=3*scale)
-        # Speed rings/needles remain transparent: native digital speed is primary.
+        elif stem in ('g1_inds','g2_speed_ind','g3_inds'):
+            if stem!='g1_inds':
+                d.arc((3*scale,3*scale,(w-4)*scale,(h-4)*scale),0,360,fill=p['text'] if stem=='g3_inds' else BLUE,width=5*scale)
+        elif stem=='g3_pin':box((1,0,w-2,13),p['text'],r=2)
+        elif stem=='g2_arc_ind':
+            # Native resource is a cropped lower section of a 416px dial.
+            d.arc((-60*scale,-348*scale,356*scale,68*scale),47,133,fill=GREEN,width=3*scale)
+        # Digital A deliberately has no needle or decorative speed ring.
     elif tail.startswith('clock/') and 'pointer' in stem:
         line([(12,h/2),(w-3,h/2)],p['text'],max(2,min(h-2,5)))
         d.ellipse((8*scale,(h/2-4)*scale,16*scale,(h/2+4)*scale),fill=p['text'])

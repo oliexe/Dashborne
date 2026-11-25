@@ -74,6 +74,24 @@ class EngineTests(unittest.TestCase):
         at = result.index(b'IDAT'); n = struct.unpack_from('>I', result, at-4)[0]
         self.assertEqual(zlib.decompress(result[at+4:at+4+n]), b'\0\xf4\xf4\xf4\xff\x17\x18\x1a\xff')
 
+    def test_borderless_tiles_and_edit_selection(self):
+        for path in (ROOT / 'assets/ui').rglob('*_n_nobg.png'):
+            if path.parent.name == 'projection':continue  # Video-plane backing remains opaque.
+            result = self.convert(path.read_bytes())
+            self.assertIsNotNone(result, str(path))
+            w, h = struct.unpack_from('>II', result, 16)
+            at = result.index(b'IDAT'); n = struct.unpack_from('>I', result, at-4)[0]
+            raw = zlib.decompress(result[at+4:at+4+n])
+            for x, y in ((1,h//2),(w-2,h//2),(w//2,1),(w//2,h-2)):
+                self.assertEqual(raw[y*(w*4+1)+1+x*4+3], 0, str(path))
+        for mode in ('dash','light'):
+            path = ROOT / 'assets/ui' / mode / 'gauges/1/g1_s_nobg.png'
+            result = self.convert(path.read_bytes())
+            w, h = struct.unpack_from('>II', result, 16)
+            at = result.index(b'IDAT'); n = struct.unpack_from('>I', result, at-4)[0]
+            raw = zlib.decompress(result[at+4:at+4+n])
+            self.assertGreater(raw[(h//2)*(w*4+1)+1+4+3], 0)
+
     def test_theme_schema_rejects_behavior_changes(self):
         spec = importlib.util.spec_from_file_location('theme', ROOT / 'theme.py')
         module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)

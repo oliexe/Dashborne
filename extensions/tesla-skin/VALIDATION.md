@@ -35,12 +35,31 @@ light-mode action icons, and low-contrast Restore defaults text.
 
 After ADB reconnected, the final build, including the Knob fallback expansion,
 was installed and activated on the device. Switching from light to dark mode
-preserved readable Action-picker icons and media previews. Twelve page swipes
+preserved readable Action-picker icons and media previews. Twelve swipe inputs
 completed without a process restart or loss of ADB; available memory afterward
 was about 96 MiB. This is a short navigation check, not a long-duration soak.
 
 Dark mode was restored, Production mode remained disabled, and the temporary
 media widget was removed from the dashboard.
+
+## Widget artwork revision
+
+The TPMS picker was checked on the DASH in both sizes with a rendered top-down
+car. The 1×1 widget was also placed on the dashboard; its unit label needed to
+move below the car. The corrected label was checked in light and dark modes.
+Gauge A–D picker previews now have distinct digital, radial
+speed, power and secondary-data layouts, with separate bands for labels and
+values. The power preview's configurable value remains a native control. All four gauges
+were checked on the dashboard, with B, C and D added and removed on page 3.
+Gauge C's dial is attached to its circle control because stock replaces its
+button background with gauge A's artwork at runtime. Its pointer no longer
+crosses the driving-mode label. Vertical navigation through the three pages
+was checked, and temporary widgets were removed afterward.
+
+The white outlines in background-free mode came from a drawing call with both
+fill and outline unset. The generator now skips that call. A device screenshot
+confirmed the outlines disappeared; regression tests check transparent tile
+edges while retaining editor selection outlines.
 
 ## Remaining device checks
 

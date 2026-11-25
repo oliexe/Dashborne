@@ -1,0 +1,15 @@
+TPMS car sprite
+
+Generated with the built-in image generation tool on 25 November 2026.
+Reference: the user's photograph of Tesla's tire-pressure screen.
+Used by generate.py for both widget sizes and their picker previews.
+
+Prompt:
+Generate a clean production UI asset inspired by the top-down car in the user's
+attached tire-pressure screen reference. Output only the isolated car sprite,
+not the screen or pressure readings. Photorealistic automotive configurator
+render, exact orthographic top view of graphite gray Tesla Model 3 sedan, front
+pointing upward, full vehicle including mirrors visible, realistic proportions
+and black panoramic roof, subtle studio highlights defining bodywork. No visible
+interior clutter. Transparent background with alpha, no backdrop, glow, floor,
+shadow, text or labels. Legible at 150 pixels wide; centered with a small margin.

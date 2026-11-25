@@ -39,6 +39,17 @@ class LayoutTests(unittest.TestCase):
   self.assertNotIn('family',preview['window__27']['textview__1'])
   settings=prepare.transform({'id':1,'fontSize':28},'awlsettings','light',set())
   self.assertEqual(settings['family'],'Inter-Regular')
+ def test_widget_value_bands_and_tpms_unit_clear_the_artwork(self):
+  controls={}
+  for i,cap in enumerate(('PT_G1_BTN','PT_G1_SPEED_VAL','PT_G1_SPEED_UNIT','PT_TPMS_BTN_1x1')):
+   controls[str(i)]={'id':i+1,'caption':cap,'position':{},'fontSize':30}
+  result=prepare.transform(controls,'dash1act','dash',set())
+  mode=result['0']['textPosition'];value=result['1']['position'];unit=result['2']['position']
+  self.assertLessEqual(mode['top']+mode['height'],value['top'])
+  self.assertLessEqual(value['top']+value['height'],unit['top'])
+  pressure_unit=result['3']['textPosition']
+  self.assertGreaterEqual(pressure_unit['top'],190)
+  self.assertLessEqual(pressure_unit['top']+pressure_unit['height'],224)
  def test_light_buttons_do_not_keep_black_fill(self):
   changed=prepare.transform({'id':1,'bgColorTab':{'color0':0,'color1':0xffffff}},'awlsettings','light',set())
   self.assertEqual(changed['bgColorTab'],{'color0':0xf1f2f3,'color1':0x171a20})

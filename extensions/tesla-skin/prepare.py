@@ -55,20 +55,45 @@ def transform(original,page,mode,resources):
                 node['item']['textPosition'].update(left=24,width=392)
             if cap=='MENU_LBL':node['backgroundPic']='';node['visible']=False
             if cap=='BTN_BACK':node['text']='Back';node['fontSize']=26
+        if page=='widgetEdit':
+            if cap=='GAUGE_C':node['position'].update(left=0,top=0)
+            if cap=='GC_MAIN_VAL':
+                node['fontSize']=94;node['position'].update(left=60,top=152,width=390,height=126)
+            if cap=='GC_MAIN_UNIT':
+                node['fontSize']=23;node['position'].update(left=155,top=278,width=200,height=32)
         if page=='pageEdit' and cap in ('LBL_PC_InfoText','LBL_PA_InfoText'):
             node['fontSize']=22
         if page=='dash1act':
-            if re.match(r'P[TMB]_G[12]_SPEED_VAL',cap):
-                node['fontSize']=104;node['bold']=False
-                node['position'].update(left=70,top=158,width=370,height=108)
-                node['textPosition']={'left':0,'top':0,'width':370,'height':108}
-            if re.match(r'P[TMB]_G[12]_SPEED_UNIT',cap):
-                node['fontSize']=24;node['position'].update(left=155,top=256,width=200,height=36)
-            if re.match(r'P[TMB]_GAUGE4_SPEED_VAL',cap):
-                node['fontSize']=120;node['bold']=False
-                node['position'].update(left=24,top=156,width=462,height=128)
-            if re.match(r'P[TMB]_GAUGE4_SPEED_UNIT',cap):
-                node['fontSize']=24;node['position'].update(left=155,top=288,width=200,height=32)
+            # Reserve separate bands for mode, value, units, gear and secondary data.
+            if re.match(r'P[TMB]_G[123]_BTN$',cap):
+                node['fontSize']=22
+                node['textPosition']={'left':40,'top':96,'width':430,'height':40}
+            if re.match(r'P[TMB]_G3_ARC$',cap):
+                node['backgroundPic']='../../../mnt/extsd/Dashborne/extensions/tesla-skin/assets/ui/'+mode+'/gauges/3/g3_face.png'
+            if re.match(r'P[TMB]_G[123]_(SPEED|POWER)_VAL$',cap):
+                node['fontSize']=128 if '_G1_' in cap else 94;node['bold']=False
+                node['position'].update(left=60,top=152,width=390,height=126)
+                node['textPosition']={'left':0,'top':0,'width':390,'height':126}
+                node['family']=THEME['font']
+            if re.match(r'P[TMB]_G[123]_(SPEED|POWER)_UNIT$',cap):
+                node['fontSize']=23;node['position'].update(left=155,top=278,width=200,height=32)
+            if re.match(r'P[TMB]_G[12]_GEAR_(ROLL|STRIP)$',cap):
+                node['position']['top']=322
+            if re.match(r'P[TMB]_GAUGE4_SPEED_VAL$',cap):
+                node['fontSize']=128;node['bold']=False
+                node['position'].update(left=24,top=152,width=462,height=126)
+                node['textPosition']={'left':0,'top':0,'width':462,'height':126}
+            if re.match(r'P[TMB]_GAUGE4_SPEED_UNIT$',cap):
+                node['fontSize']=23;node['position'].update(left=155,top=278,width=200,height=32)
+            if re.match(r'P[TMB]_TPMS_(FL|FR|RL|RR)_1x1$',cap):
+                right=('_FR_' in cap or '_RR_' in cap);rear=('_RL_' in cap or '_RR_' in cap)
+                node['fontSize']=28
+                node['position'].update(left=158 if right else 8,top=140 if rear else 38,width=84,height=44)
+            if re.match(r'P[TMB]_TPMS_BTN_1x1$',cap):
+                node['fontSize']=18
+                node['textPosition']={'left':0,'top':192,'width':250,'height':28}
+            if re.match(r'P[TMB]_TPMS_VAL_',cap):node['fontSize']=42
+            if re.match(r'P[TMB]_TPMS_UNIT_',cap):node['fontSize']=22
             if re.match(r'P[TMB]_Value1x[12]_',cap):node['fontSize']=56
             if re.match(r'P[TMB]_Unit1x[12]_',cap):node['fontSize']=22
             if '_ARTIST_MEDIA_' in cap:node['fontSize']=22
@@ -160,7 +185,7 @@ def write_styles(pages):
             out.append('static const struct style '+page+'_'+mode+'[] = {')
             for id,path,n in styles(layout,page):
                 if page=='dash1act':
-                    n={k:v for k,v in n.items() if k=='colorTab' or (k=='backgroundPic' and '_DEST_ICO_NAV' in n.get('caption',''))}
+                    n={k:v for k,v in n.items() if k=='colorTab' or (k=='backgroundPic' and any(tag in n.get('caption','') for tag in ('_DEST_ICO_NAV','_G3_ARC')))}
                 ct=n.get('colorTab',{});pt=n.get('picTab',{})
                 colors=[str(ct.get('color'+str(i),ct.get('color0',0)))+'u' for i in range(5)]
                 pics=[cstring(pt.get('pic'+str(i),'')) for i in range(5)]

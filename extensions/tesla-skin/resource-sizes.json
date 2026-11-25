@@ -2218,5 +2218,13 @@
   "light/preview/actions/act_bg.png": [
     250,
     224
+  ],
+  "dash/gauges/3/g3_face.png": [
+    404,
+    404
+  ],
+  "light/gauges/3/g3_face.png": [
+    404,
+    404
   ]
 }
