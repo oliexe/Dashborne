@@ -112,9 +112,9 @@ its UI, features, and behavior. Dashborne includes the
 [widget runtime](dashborne/core/widget-runtime), which extensions can use to add
 entries to the floating Extra menu or build custom widgets for the stock widget picker.
 
-![Rotating cube proof of concept running in a custom widget on the S3XY DASH](docs/images/cube-widget.png)
+![Tesla-themed dashboard with animated doors, forward and reverse transitions, and the stock widget editor on the S3XY DASH](docs/images/tesla-dashboard.gif)
 
-*Proof of concept: a rotating 3D cube running alongside stock dashboard widgets.*
+*Recorded on a S3XY DASH: Tesla Skin and the Tesla Model Widget, with simulated door and gear states, followed by the stock widget editor.*
 
 - [Tesla Skin](extensions/tesla-skin): Tesla-inspired light and dark styling for the stock dashboard, Settings and widget picker.
 - [Development Menu](extensions/development-menu): opens the hidden stock Settings category without a password.
