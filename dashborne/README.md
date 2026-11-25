@@ -40,14 +40,13 @@ Configuration includes:
 ## Update from the boot menu
 
 1. Open **Update Dashborne**. Tap the network name to set up Wi-Fi if needed.
-2. Tap **Check releases**, then select a release to see its target OS and notes.
-3. Tap **Install release**, then **Confirm restart**. Dashborne verifies the
+2. Tap **Find releases**, then select a release to see its target OS and notes.
+3. Review the confirmation dialog and tap **Install & restart**. Dashborne verifies the
    download, installs it on microSD and restarts into the boot menu.
 
 The updater replaces bundled components and extensions, keeps `dashborne.conf`
-unchanged, and carries over community extensions. **Rollback**, then **Restore previous** and **Confirm restart**, restores the previous installation with your current settings.
-An incompatible or unrecognized stock OS blocks installation. Releases published
-before the updater was introduced are listed as requiring manual installation.
+unchanged, and carries over community extensions. **Restore previous**, then **Restore & restart**, restores the previous installation with your current settings.
+An incompatible or unrecognized stock OS blocks installation. Only releases packaged for the updater appear in the list.
 
 Downloads use HTTPS and SHA256 verification. The card needs at least 768 MB of
 free space plus the download size. Staging happens before the active files are

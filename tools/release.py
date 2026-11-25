@@ -28,7 +28,7 @@ Target stock OS: {stock_os}.
    Tap the splash within three seconds to open the boot menu.
 
 ADB is off by default. Set up Wi-Fi from the boot menu, then enable ADB when needed.
-Use Update to choose a compatible GitHub release and install it on the card.
+Use Update Dashborne to choose a compatible GitHub release and install it on the card.
 Power off and remove the card to boot without Dashborne.
 
 Documentation: https://github.com/oliexe/Dashborne/tree/v{version}
@@ -72,7 +72,7 @@ def release(output, tag=None):
     (output / 'SHA256SUMS').write_text(f'{digest}  {archive.name}\n')
     notes = match[1].strip() + '\n\n' + (
         f'Download **{archive.name}** below and follow its `README.md`. '
-        'Use the installer when upgrading to preserve your settings. '
+        'To update from Dashborne, open **Update Dashborne**, select this release and confirm **Install & restart**. '
         '`SHA256SUMS` contains the archive checksum.\n')
     (output / 'release-notes.md').write_text(notes)
     (output / 'release-title.txt').write_text(f'Dashborne {version} (Stock OS {stock_os})\n')

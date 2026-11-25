@@ -5,10 +5,14 @@ tracked separately in their source history.
 
 ## Unreleased
 
+## 0.1.2 — 2026-11-25
+
+Target stock OS: 6.11.4.
+
 - Update from the boot menu over Wi-Fi, with release selection, checksum and
   stock OS checks, interrupted-install recovery and rollback. Settings and
   community extensions are preserved; connecting for updates does not enable ADB.
-- Clarify the Update page with a Wi-Fi selector, installed version, release list
+- Clarify the Update Dashborne page with a Wi-Fi selector, installed version, release list
   and explicit install/restart confirmation.
 - Build the updater in C with the existing Clang toolchain; no Go runtime or SDK.
 
