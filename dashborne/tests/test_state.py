@@ -73,6 +73,36 @@ class StateTests(unittest.TestCase):
     def load(self):
         s=Settings();self.lib.state_load(ctypes.byref(s));return s
 
+    def test_fresh_install_disables_all_extension_kinds(self):
+        with (self.card/'patches/catalog.tsv').open('a') as catalog:
+            catalog.write('native\tNative module\tExample\tnative\n')
+        for existing_config in (False, True):
+            with self.subTest(existing_config=existing_config):
+                if existing_config:
+                    (self.card/'dashborne.conf').write_text('format=1\nadb.enabled=0\n')
+                s=self.load()
+                self.assertTrue(s.config_ok)
+                self.assertEqual(s.count,3)
+                self.assertTrue(all(s.patches[i].compatible for i in range(s.count)))
+                self.assertEqual([s.patches[i].enabled for i in range(s.count)],[0,0,0])
+                self.assertEqual(self.lib.state_rejected_count(),0)
+
+    def test_upgrade_preserves_choices_and_leaves_new_extensions_disabled(self):
+        s=self.load()
+        s.patches[0].enabled=1
+        self.assertEqual(self.lib.state_save(ctypes.byref(s)),1)
+        with (self.card/'patches/catalog.tsv').open('a') as catalog:
+            catalog.write('native\tNew native module\tExample\tnative\n')
+            catalog.write('new-layout\tNew layout\tExample\n')
+        shutil.copyfile(self.card/'patches/one.dbp',self.card/'patches/new-layout.dbp')
+        s=self.load()
+        self.assertEqual(s.count,4)
+        self.assertTrue(all(s.patches[i].compatible for i in range(s.count)))
+        self.assertEqual([s.patches[i].enabled for i in range(s.count)],[1,0,0,0])
+        self.assertEqual(self.lib.state_save(ctypes.byref(s)),1)
+        s=self.load()
+        self.assertEqual([s.patches[i].enabled for i in range(s.count)],[1,0,0,0])
+
     def test_settings_roundtrip_and_composed_patches(self):
         s=self.load(); self.assertEqual(s.count,2)
         self.assertTrue(all(s.patches[i].compatible for i in range(2)))

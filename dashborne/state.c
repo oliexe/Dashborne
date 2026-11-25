@@ -88,6 +88,7 @@ static unsigned int rejected;
 unsigned int state_rejected_count(void){return rejected;}
 void state_load(struct settings *state) {
     rejected=0;
+    /* Extensions are opt-in: only a saved selection below enables an entry. */
     *state = (struct settings){0};
     /* Clear a previous Dashborne file override when reloading the SD app. */
     (void)umount2(DASHBORNE_TARGET, 2);
