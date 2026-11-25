@@ -202,7 +202,8 @@ def screen():
                 backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
     card['textview__title'] = dict(label(50300, '', 32, 24, 996, 40, 28, 0xf1f2f4), bold=True)
     card['textview__target'] = label(50301, '', 32, 72, 996, 28, 20, 0xa4abb3)
-    card['textview__notes'] = label(50302, '', 32, 112, 996, 112, 19, 0xd9dde2)
+    for index, control_id in enumerate((50302, 50304, 50305)):
+        card['textview__notes_'+str(index)] = label(control_id, '', 32, 112+36*index, 996, 32, 19, 0xd9dde2)
     card['textview__notice'] = label(50303, '', 32, 236, 996, 48, 18, 0xa4abb3)
     card['button__cancel'] = update_button(20304, 'Cancel', 32, 308, 280, 44, 'install')
     card['button__install'] = update_button(20302, 'Install & restart', 748, 308, 280, 44, 'install')

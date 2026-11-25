@@ -182,6 +182,23 @@ static unsigned int number(char *to, unsigned int at, unsigned int value) {
     to[at++] = (char)('0' + value % 10); to[at] = 0;
     return at;
 }
+/* The stock text control is single-line. Bound and wrap release excerpts into
+   separate controls instead of letting long GitHub notes run off the dialog. */
+static void update_notes(void *self,const char *text) {
+    static const int ids[]={50302,50304,50305};
+    for(unsigned int row=0;row<3;++row) {
+        char line[82];unsigned int n=0,space=0;
+        while(text[n] && text[n]!='\n' && n<76){if(text[n]==' ')space=n;++n;}
+        if(text[n] && text[n]!='\n') {
+            if(space)n=space;
+            else while(n && ((unsigned char)text[n]&0xc0)==0x80)--n;
+        }
+        for(unsigned int i=0;i<n;++i)line[i]=text[i];
+        line[n]=0;text+=n;while(*text==' ' || *text=='\n')++text;
+        if(row==2 && *text){line[n++]='.';line[n++]='.';line[n++]='.';line[n]=0;}
+        label(self,ids[row],line);
+    }
+}
 static void render_wifi(void *self) {
     char text[65];
     wifi_editor_display(&wifi_form,0,text);label(self,WIFI_SSID_ID,text);
@@ -234,8 +251,8 @@ static void render(void *self) {
             if(r){append(title,10,r->version,sizeof(title));append(target,17,r->os,sizeof(target));}
             label(self,50300,restore ? "Restore previous version?" : title);
             label(self,50301,restore ? "Return to your last Dashborne installation" : target);
-            label(self,50302,restore ? "The current installation will be replaced with your saved previous version." :
-                r ? (r->supported ? r->notes : "This release requires a computer. Download it from github.com/oliexe/Dashborne and install it on your microSD card.") : "");
+            update_notes(self,restore ? "The current installation will be replaced with your saved previous version." :
+                r ? (r->supported ? r->notes : "Install this release on your microSD using a computer.\nDownload: github.com/oliexe/Dashborne") : "");
             label(self,50303,supported ? "Your settings and community extensions are kept. The DASH will restart." : "");
             label(self,20304,supported ? "Cancel" : "Close");
             label(self,20302,restore ? "Restore & restart" : "Install & restart");
