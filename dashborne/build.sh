@@ -29,7 +29,5 @@ python3 package.py
 
 "$clang" --target=armv7-linux-gnueabihf -march=armv7-a -mfloat-abi=hard -fPIC -ffreestanding -fno-stack-protector -Os -Wall -Wextra -Werror -c update_recovery.c -o build/update_recovery.o
 "$linker" -shared -z noexecstack build/update_recovery.o -o build/card/Dashborne/lib/update-recovery.so
-(cd updater && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -trimpath -ldflags "-s -w -X main.buildDate=$(date -u +%Y-%m-%d)" -o ../build/card/Dashborne/bin/updater .)
-mkdir -p build/card/Dashborne/licenses/updater
-cp updater/GO*LICENSE updater/MPL-2.0 updater/NOTICE build/card/Dashborne/licenses/updater/
+python3 updater/build.py
 python3 update_manifest.py

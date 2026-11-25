@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")"
-(cd dashborne/updater && go test ./...)
+sh dashborne/updater/test.sh
 python3 -m unittest discover -s tools/tests
 sh dashborne/patches/test.sh
 sh dashborne/extensions/test.sh

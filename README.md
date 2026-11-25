@@ -155,7 +155,9 @@ extensions/            Bundled extensions
 docs/                  Platform and SD loading research
 ```
 
-Build with Python 3.10+, Go 1.23+, Clang and LLD; host tests also need a C compiler and zlib.
+Build with Python 3.10+, Clang/LLVM, LLD, CMake, Ninja and Make; host tests also need zlib.
+The first build downloads checksum-pinned C dependencies for the updater and caches them
+in `dashborne/build/`.
 From the repository root:
 
 ```sh

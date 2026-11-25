@@ -1,4 +1,8 @@
-The updater includes the Go runtime and standard library under the BSD license
-in GO-LICENSE; Go module licenses are in GO-X-*-LICENSE. Its embedded Mozilla root certificate bundle (roots.pem) was
-retrieved from https://curl.se/ca/cacert.pem on 2026-11-25 and is distributed
-under MPL-2.0. Certificate bundle source: https://curl.se/docs/caextract.html.
+The native C updater statically links musl, LLVM compiler-rt builtins, libcurl,
+Mbed TLS, zlib and cJSON. Their license files are included in this directory.
+Pinned source URLs and SHA256 checksums are maintained in
+Dashborne/dashborne/updater/dependencies.json.
+
+Its embedded Mozilla root certificate bundle (roots.pem) was retrieved from
+https://curl.se/ca/cacert.pem on 2026-11-25 and is distributed under MPL-2.0.
+Certificate bundle source: https://curl.se/docs/caextract.html.
