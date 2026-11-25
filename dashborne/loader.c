@@ -320,6 +320,12 @@ static void render(void *self) {
     void *notice=find_control(self, NOTICE_ID);
     if(notice)set_color(notice,0xff6369);
     label(self, NOTICE_ID, launch_error ? launch_error : settings_ok ? "" : "Could not read or save dashborne.conf");
+    if(section==4 && update_confirming) {
+        static const int controls[]={50300,50301,50302,50304,50305,50303,20304,20302};
+        for(unsigned int i=0;i<sizeof(controls)/sizeof(controls[0]);++i) {
+            void *control=find_control(self,controls[i]);if(control)invalidate(control,(const void *)0);
+        }
+    }
     if(section==4 && !update_confirming) {
         /* Refresh each cached navigation control after list/page damage. */
         static const int tabs[]={PATCHES_TAB_ID,ADB_TAB_ID,BROWSER_TAB_ID,DEVICE_TAB_ID,20018};
