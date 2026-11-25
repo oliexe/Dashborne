@@ -302,7 +302,22 @@ static int skip_preserved(const char *p, void *data) {
             fail("Extension ID too long");
         memcpy(key, id, k);
         key[k] = 0;
-        return cJSON_GetObjectItemCaseSensitive(c->owned, key) != NULL;
+        if (!cJSON_GetObjectItemCaseSensitive(c->owned, key))
+            return 0;
+        /* Tesla model packs are installed separately from the bundled widget.
+           Keep that user data on upgrades and rollback, but never resurrect a
+           retired widget or replace files owned by either release. */
+        if (strcmp(key, "tesla-model") ||
+            !cJSON_GetObjectItemCaseSensitive(c->new_files,
+                                             "extensions/tesla-model/libextension.so"))
+            return 1;
+        const char *rest = id + k;
+        if (!*rest)
+            return 0;
+        if (strncmp(rest, "/models", 7) || (rest[7] && rest[7] != '/'))
+            return 1;
+        return cJSON_GetObjectItemCaseSensitive(c->new_files, p) ||
+               cJSON_GetObjectItemCaseSensitive(c->old_files, p);
     }
     if (!strcmp(first, "patches"))
         return !strcmp(p, "patches/catalog.tsv") ||

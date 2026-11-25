@@ -36,7 +36,10 @@ static int original_timer(void *p,int id){(void)p;assert(id!=TIMER);return 7;}
 static void original_pause(void *p){(void)p;assert(view_paused);++pauses;}
 static void original_resume(void *p){(void)p;++resumes;}
 static void original_destroy(void *p){assert(p==(void *)1 && !live && detaches);++destructs;}
-static int owns(const struct dashborne_host *h,const void *p){(void)h;return p==(void *)original_timer || p==(void *)original_created;}
+static int display_destroyed,display_deleted;
+static void display_destroy(void *p){++display_destroyed;original_destroy(p);}
+static void display_delete(void *p){++display_deleted;original_destroy(p);}
+static int owns(const struct dashborne_host *h,const void *p){(void)h;return p==(void *)original_timer || p==(void *)original_created || p==(void *)display_destroy || p==(void *)display_delete;}
 static void log_message(const struct dashborne_host *h,const char *s){(void)h;assert(strstr(s,"widgets:"));}
 static void register_tick(void *p,int id,int ms){assert(p==(void *)1 && id==TIMER && ms==16);++registered;}
 static void unregister_tick(void *p,int id){assert(p==(void *)1 && id==TIMER);++unregistered;}
@@ -66,5 +69,23 @@ int main(void) {
     protect_fail=0;native_activity[4]=(void *)original_timer;assert(runtime_unbind()==-1 && installed);
     native_activity[4]=(void *)clicked;registry_fail=1;assert(runtime_unbind()==-1 && installed && native_activity[4]==(void *)original_click);
     registry_fail=0;assert(!runtime_unbind() && !installed && !host);
+    /* Better Display Controls owns the two primary destructor slots before the
+       first widget registers. Both cleanup callbacks must remain in the chain. */
+    host=&h;activity_table=native_activity;hook_count=0;
+    stock_destroy=stock_delete=original_destroy;
+    native_activity[2]=(void *)display_destroy;native_activity[3]=(void *)display_delete;
+    native_activity[4]=(void *)stock_click;native_activity[6]=(void *)stock_create;
+    native_activity[7]=(void *)stock_timer;native_activity[9]=(void *)stock_resume;
+    native_activity[10]=(void *)stock_pause;native_activity[24]=(void *)stock_timer_secondary;
+    assert(!prepare_activity_hooks());
+    assert(hooks[0].before==(void *)display_destroy && hooks[1].before==(void *)display_delete);
+    destroy((void *)1);deleting((void *)1);
+    assert(display_destroyed==1 && display_deleted==1);
+    for(int i=0;i<hook_count;++i)native_activity[hooks[i].index]=hooks[i].after;
+    installed=1;assert(!map_table() && !runtime_unbind());
+    assert(native_activity[2]==(void *)display_destroy && native_activity[3]==(void *)display_delete);
+    host=&h;hook_count=0;stock_destroy=stock_delete=original_destroy;
+    native_activity[2]=(void *)original_click; /* Unowned code is still rejected. */
+    assert(prepare_activity_hooks()==-1 && !hook_count);
     puts("Widget runtime: native callback delegation, pause/resume, live-unload refusal, hook conflicts and cleanup retries passed");
 }

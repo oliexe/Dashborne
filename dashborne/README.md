@@ -46,7 +46,8 @@ Configuration includes:
    download, installs it on microSD and restarts into the boot menu.
 
 The updater replaces bundled components and extensions, keeps `dashborne.conf`
-unchanged, and carries over community extensions. **Restore previous**, then **Restore & restart**, restores the previous installation with your current settings.
+unchanged, and carries over community extensions and separately installed Tesla
+Model Widget packs. **Restore previous**, then **Restore & restart**, restores the previous installation with your current settings and model packs.
 An incompatible or unrecognized stock OS blocks installation. Only releases packaged for the updater appear in the list.
 
 Downloads use HTTPS and SHA256 verification. The card needs at least 768 MB of

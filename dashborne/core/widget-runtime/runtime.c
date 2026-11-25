@@ -96,6 +96,20 @@ static int map_table(void) {
     }
     fclose(file);return found?0:-1;
 }
+static int prepare_activity_hooks(void) {
+    if(add_hook(2,(void *)stock_destroy,(void *)destroy,1) || add_hook(3,(void *)stock_delete,(void *)deleting,1) ||
+       add_hook(4,(void *)stock_click,(void *)clicked,1) || add_hook(6,(void *)stock_create,(void *)created,1) ||
+       add_hook(7,(void *)stock_timer,(void *)timer,1) || add_hook(9,(void *)stock_resume,(void *)resume_view,0) ||
+       add_hook(10,(void *)stock_pause,(void *)pause_view,0) || add_hook(24,(void *)stock_timer_secondary,(void *)timer_secondary,1))return -1;
+    /* Earlier extensions may own teardown as well as create/timer callbacks. */
+    *(void **)(&stock_destroy)=hooks[0].before;
+    *(void **)(&stock_delete)=hooks[1].before;
+    *(void **)(&stock_click)=hooks[2].before;
+    *(void **)(&stock_create)=hooks[3].before;
+    *(void **)(&stock_timer)=hooks[4].before;
+    *(void **)(&stock_timer_secondary)=hooks[7].before;
+    return 0;
+}
 int runtime_bind(void) {
     if(installed)return 0;
     const struct dashborne_host *api=runtime_host;
@@ -117,14 +131,7 @@ int runtime_bind(void) {
 #undef UI
 #undef BIND
     if(registry_bind(api) || views_bind(api))return -1;
-    if(add_hook(2,(void *)stock_destroy,(void *)destroy,0) || add_hook(3,(void *)stock_delete,(void *)deleting,0) ||
-       add_hook(4,(void *)stock_click,(void *)clicked,1) || add_hook(6,(void *)stock_create,(void *)created,1) ||
-       add_hook(7,(void *)stock_timer,(void *)timer,1) || add_hook(9,(void *)stock_resume,(void *)resume_view,0) ||
-       add_hook(10,(void *)stock_pause,(void *)pause_view,0) || add_hook(24,(void *)stock_timer_secondary,(void *)timer_secondary,1))return -1;
-    *(void **)(&stock_click)=hooks[2].before;
-    *(void **)(&stock_create)=hooks[3].before;
-    *(void **)(&stock_timer)=hooks[4].before;
-    *(void **)(&stock_timer_secondary)=hooks[7].before;
+    if(prepare_activity_hooks())return -1;
     const int offsets[]={4,24,28,32,36,40,44,48};
     for(int n=0;n<8;++n)for(int deleting_flag=0;deleting_flag<2;++deleting_flag) {
         char symbol[80];snprintf(symbol,sizeof(symbol),"_ZThn%d_N16dash1actActivityD%dEv",offsets[n],deleting_flag?0:1);

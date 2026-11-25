@@ -5,6 +5,11 @@ tracked separately in their source history.
 
 ## Unreleased
 
+- Preserve separately installed Tesla Model Widget packs during boot-menu updates
+  and rollback, so the widget continues to load after an update.
+- Allow custom widgets to load alongside Better Display Controls while preserving
+  both extensions' dashboard cleanup callbacks.
+
 - Limit updater Wi-Fi connection waits to 60 seconds, allow cancellation and show
   connection failures immediately without interrupting an existing ADB connection.
 

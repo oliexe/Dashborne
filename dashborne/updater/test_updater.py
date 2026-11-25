@@ -49,11 +49,12 @@ class UpdaterTests(unittest.TestCase):
     def manifest(self, files, version='0.2.0'):
         return {'format': 1, 'version': version, 'stock_os': '6.11.4', 'files': {p: hashlib.sha256(data).hexdigest() for p, data in files.items()}}
 
-    def archive(self, extra=None, corrupt=False, version='0.2.0', compression=zipfile.ZIP_DEFLATED, large=False):
+    def archive(self, extra=None, corrupt=False, version='0.2.0', compression=zipfile.ZIP_DEFLATED, large=False, extension_files=None):
         elf = bytearray(52)
         elf[:6] = b'\x7fELF\x01\x01'
         elf[18] = 40
         files = {'lib/libdashborne.so': bytes(elf), 'ui/loader.ftu': b'layout', 'bin/updater': b'helper', 'lib/update-recovery.so': b'shim', 'patches/catalog.tsv': b'bundled\tBundled\tNew\tnative\n'}
+        files.update(extension_files or {})
         if large:
             files['assets/large.bin'] = bytes(range(256)) * 8192 + os.urandom(131072) + b'0' * 131072
         manifest = self.manifest(files, version)
@@ -118,6 +119,64 @@ class UpdaterTests(unittest.TestCase):
         self.assertEqual((self.stage / 'previous.cfg').read_bytes(), b'original startup')
         self.assertFalse((self.stage / 'licenses/updater/GO-LICENSE').exists())
         self.assertEqual((self.card / 'dashborne.conf').read_bytes(), self.config)
+
+    def test_model_pack_survives_update_and_rollback(self):
+        library = 'extensions/tesla-model/libextension.so'
+        pack = {'extensions/tesla-model/models/index': b'tesla-model-v1\nhighland-gray\n',
+                'extensions/tesla-model/models/highland-gray/P_N0.png': b'private model frame'}
+        self.put(self.active / library, b'old widget')
+        self.put(self.active / 'update-manifest.json', json.dumps(self.manifest({library: b'old widget'})).encode())
+        for name, data in pack.items():
+            self.put(self.active / name, data)
+        self.put(self.active / 'extensions/tesla-model/stale.so', b'obsolete')
+        self.put(self.active / 'extensions/tesla-model/models-old/index', b'obsolete')
+        http = self.card / 'http'
+        archive = self.archive(extension_files={library: b'new widget'}).read_bytes()
+        self.put(http / 'archive', archive)
+        self.put(http / 'sum', (hashlib.sha256(archive).hexdigest() + '  Dashborne-0.2.0-microSD.zip\n').encode())
+        self.put(http / 'releases', json.dumps(self.releases(len(archive))).encode())
+        self.run_updater('list', UPDATER_TEST_HTTP=str(http))
+        self.run_updater('install', '1', UPDATER_TEST_HTTP=str(http))
+        self.run_updater('recover')
+        self.run_updater('confirm')
+        self.assertEqual((self.active / library).read_bytes(), b'new widget')
+        for name, data in pack.items():
+            self.assertEqual((self.active / name).read_bytes(), data)
+        self.assertFalse((self.active / 'extensions/tesla-model/stale.so').exists())
+        self.assertFalse((self.active / 'extensions/tesla-model/models-old').exists())
+        # Rollback keeps the user's current pack, even if it changed after updating.
+        pack['extensions/tesla-model/models/highland-gray/P_N0.png'] = b'updated private frame'
+        for name, data in pack.items():
+            self.put(self.active / name, data)
+        self.run_updater('rollback')
+        self.run_updater('recover')
+        self.run_updater('confirm')
+        self.assertEqual((self.active / library).read_bytes(), b'old widget')
+        for name, data in pack.items():
+            self.assertEqual((self.active / name).read_bytes(), data)
+        self.assertEqual((self.card / 'dashborne.conf').read_bytes(), self.config)
+
+    def test_model_pack_preservation_respects_release_files(self):
+        library = 'extensions/tesla-model/libextension.so'
+        model = 'extensions/tesla-model/models/gray/P_N0.png'
+        retired = 'extensions/tesla-model/models/gray/retired.png'
+        for included in (True, False):
+            with self.subTest(widget_in_release=included):
+                shutil.rmtree(self.stage)
+                self.put(self.active / model, b'local frame')
+                self.put(self.active / retired, b'old packaged frame')
+                self.put(self.active / 'update-manifest.json', json.dumps(self.manifest({library: b'old', retired: b'old packaged frame'})).encode())
+                files = {library: b'new', model: b'new packaged frame'} if included else {'lib/libdashborne.so': b'new'}
+                for name, data in files.items():
+                    self.put(self.stage / name, data)
+                self.put(self.stage / 'patches/catalog.tsv', b'')
+                self.put(self.stage / 'update-manifest.json', json.dumps(self.manifest(files)).encode())
+                self.run_updater('preserve', self.stage)
+                if included:
+                    self.assertEqual((self.stage / model).read_bytes(), b'new packaged frame')
+                    self.assertFalse((self.stage / retired).exists())
+                else:
+                    self.assertFalse((self.stage / 'extensions/tesla-model').exists())
 
     def test_archives(self):
         cases = ['card/Dashborne/../escape', '/absolute', 'card/Dashborne/ui/LOADER.ftu', 'card/Dashborne/UI/another', 'card/Dashborne/unlisted', 'card/Dashborne/bad\\path', 'card/Dashborne/trailing.', 'card/Dashborne/ui']
