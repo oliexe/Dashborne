@@ -193,6 +193,11 @@ def screen():
     config['button__43'].update(touchable=True,
         picTab={'pic0': '../../../mnt/extsd/Dashborne/ui/continue.png',
                 'pic1': '../../../mnt/extsd/Dashborne/ui/continue-pressed.png'})
+    # Draw navigation after page contents: native list damage can extend into
+    # the sidebar while a page is refreshed.
+    for key in list(config):
+        if key.startswith(('button__nav_', 'textview__active_')):
+            config[key] = config.pop(key)
     root['window__1'] = splash
     root['window__2'] = config
     wifi = dict(id=110007, position=position(0, 0, 1920, 480), visible=False,
