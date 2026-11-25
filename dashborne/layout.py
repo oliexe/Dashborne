@@ -174,13 +174,11 @@ def screen():
         bgColorTab={'color0': 0x07080a, 'color1': 0x1c2025, 'color2': 0x242930},
         subItem=[label(24031, '', 420, 0, 616, 56, 17, 0xa4abb3, 38),
                  dict(id=24032, position=position(24, 55, 1012, 1), backgroundColor=0x202228, touchable=False)])
-    update['listview__releases'] = dict(id=80004, position=position(0, 160, 1060, 112),
-        rows=2, cols=1, rowSpacing=0, colSpacing=0, item=release_item,
+    update['listview__releases'] = dict(id=80004, position=position(0, 160, 1060, 168),
+        rows=3, cols=1, rowSpacing=0, colSpacing=0, item=release_item,
         hasScrollbar=True, scrollbarColor=0x626a73, autoRollback=True, dragMaxDis=12)
     update['textview__empty'] = label(50207, '', 24, 176, 1012, 64, 21, 0x858c94, 37)
-    update['textview__notes'] = label(50202, '', 24, 280, 1012, 40, 17, 0xa4abb3)
-    update['textview__status'] = label(50203, '', 24, 328, 712, 40, 17, 0xc2c9d1)
-    update['button__install'] = update_button(20302, 'Install & restart', 756, 324, 280, 44, 'install')
+    update['textview__status'] = label(50203, '', 24, 328, 1012, 40, 17, 0xc2c9d1)
     config['window__update'] = update
     config['window__device'] = device
     config['window__browser'] = browser
@@ -198,6 +196,18 @@ def screen():
     for key in list(config):
         if key.startswith(('button__nav_', 'textview__active_')):
             config[key] = config.pop(key)
+    confirm = dict(id=110009, position=position(0, 0, 1920, 480), visible=False,
+                   backgroundColor=0x000000)
+    card = dict(id=110010, position=position(430, 52, 1060, 376),
+                backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
+    card['textview__title'] = dict(label(50300, '', 32, 24, 996, 40, 28, 0xf1f2f4), bold=True)
+    card['textview__target'] = label(50301, '', 32, 72, 996, 28, 20, 0xa4abb3)
+    card['textview__notes'] = label(50302, '', 32, 112, 996, 112, 19, 0xd9dde2)
+    card['textview__notice'] = label(50303, '', 32, 236, 996, 48, 18, 0xa4abb3)
+    card['button__cancel'] = update_button(20304, 'Cancel', 32, 308, 280, 44, 'install')
+    card['button__install'] = update_button(20302, 'Install & restart', 748, 308, 280, 44, 'install')
+    confirm['window__card'] = card
+    root['window__confirm'] = confirm
     root['window__1'] = splash
     root['window__2'] = config
     wifi = dict(id=110007, position=position(0, 0, 1920, 480), visible=False,

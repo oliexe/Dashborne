@@ -207,7 +207,8 @@ static void close_wifi(void *self) {
 static void render(void *self) {
     visible(self, SPLASH_ID, phase == 0);
     visible(self,WIFI_EDITOR_ID,phase==1 && wifi_form.active);
-    visible(self, CONFIG_ID, (phase == 1 || phase == 2) && !wifi_form.active);
+    visible(self, CONFIG_ID, (phase == 1 || phase == 2) && !wifi_form.active && !update_confirming);
+    visible(self,110009,phase==1 && update_confirming && !wifi_form.active);
     if(phase==1 && wifi_form.active){render_wifi(self);return;}
     if (phase != 1 && phase != 2) return;
     label(self,50014,"v" DASHBORNE_VERSION "  /  https://github.com/oliexe/Dashborne");
@@ -226,15 +227,20 @@ static void render(void *self) {
         visible(self,50207,!update_count() || update_waiting);
         label(self,50207,update_waiting ? "Connecting to Wi-Fi..." : busy ? "Loading releases..." :
             "Choose Wi-Fi above, then tap Find releases.");
-        label(self,50203,update_waiting ? "Releases will load once connected." :
-            update_confirming ? "Your DASH will restart. Tap again to confirm." :
-            !busy && update_selection==-2 ? "Tap Restore & restart to continue." :
-            !busy && r ? (r->supported ? "Ready to install the selected release." : "This release cannot be installed from the boot menu.") : update_status());
-        label(self,50202,update_selection==-2 ? "Restore the last installation. Your current settings will be kept." :
-            r ? (r->supported ? r->notes : "Install this release manually from GitHub using a computer.") :
-            "Updates include Dashborne and bundled extensions. Your settings are kept.");
-        visible(self,20302,!busy && !update_waiting && (update_selection==-2 || (r && r->supported)));
-        label(self,20302,update_confirming ? "Confirm & restart" : update_selection==-2 ? "Restore & restart" : "Install & restart");
+        label(self,50203,update_waiting ? "" : update_status());
+        if(update_confirming) {
+            int restore=update_selection==-2, supported=restore || (r && r->supported);
+            char title[96]="Dashborne ",target[96]="Target stock OS: ";
+            if(r){append(title,10,r->version,sizeof(title));append(target,17,r->os,sizeof(target));}
+            label(self,50300,restore ? "Restore previous version?" : title);
+            label(self,50301,restore ? "Return to your last Dashborne installation" : target);
+            label(self,50302,restore ? "The current installation will be replaced with your saved previous version." :
+                r ? (r->supported ? r->notes : "This release requires a computer. Download it from github.com/oliexe/Dashborne and install it on your microSD card.") : "");
+            label(self,50303,supported ? "Your settings and community extensions are kept. The DASH will restart." : "");
+            label(self,20304,supported ? "Cancel" : "Close");
+            label(self,20302,restore ? "Restore & restart" : "Install & restart");
+            visible(self,20302,supported && !busy);
+        }
 
     }
     visible(self, PATCHES_PANEL_ID, section == 0);
@@ -297,6 +303,13 @@ static void render(void *self) {
     void *notice=find_control(self, NOTICE_ID);
     if(notice)set_color(notice,0xff6369);
     label(self, NOTICE_ID, launch_error ? launch_error : settings_ok ? "" : "Could not read or save dashborne.conf");
+    if(section==4 && !update_confirming) {
+        /* Refresh each cached navigation control after list/page damage. */
+        static const int tabs[]={PATCHES_TAB_ID,ADB_TAB_ID,BROWSER_TAB_ID,DEVICE_TAB_ID,20018};
+        for(unsigned int i=0;i<sizeof(tabs)/sizeof(tabs[0]);++i) {
+            void *tab=find_control(self,tabs[i]);if(tab)invalidate(tab,(const void *)0);
+        }
+    }
 }
 /* Independent C adapters for the runtime's list interfaces. The first two
    virtual slots are destructors; the installed ARM ABI dispatches count at
@@ -340,8 +353,8 @@ static void release_data(void *self,void *list,void *item,int index) {
 }
 static void release_click(void *self,void *list,int index,int subitem) {
     (void)self;(void)subitem;if(phase!=1 || section!=4 || update_busy() || update_waiting || index<0 || !update_release((unsigned int)index))return;
-    update_selection=index;update_confirming=0;refresh_list(list);render(list_owner);
-    invalidate(find_control(list_owner,CONFIG_ID),(const void *)0);
+    update_selection=index;update_confirming=1;refresh_list(list);render(list_owner);
+    invalidate(find_control(list_owner,110009),(const void *)0);
 }
 static void *release_adapter_table[]={0,0,(void *)list_noop,(void *)list_noop,(void *)release_count,(void *)release_data};
 static void *release_listener_table[]={0,0,(void *)list_noop,(void *)list_noop,(void *)release_click};
@@ -549,7 +562,7 @@ static int on_timer(void *self, int id) {
         watchdog_beat();
         if(update_confirmation_pending){update_confirmation_pending=0;update_confirm();}
         update_poll();
-        if(phase==1 && section==4 && displayed_release_count!=update_count()) {
+        if(phase==1 && section==4 && !update_confirming && displayed_release_count!=update_count()) {
             displayed_release_count=update_count();
             void *list=find_control(self,80004);if(list)refresh_list(list);
             /* Native list damage is relative to its parent; repaint the containing
@@ -652,19 +665,21 @@ static void on_click(void *self, void *control) {
         debug_set_enabled(settings.wifi_adb);
     } else if (phase != 1) return;
     else if(watchdog_pending || update_busy())return;
+    else if(update_confirming) {
+        const struct update_release *r=update_release((unsigned int)update_selection);
+        if(id==20304)update_confirming=0;
+        else if(id==20302 && !update_waiting && (update_selection==-2 || (r && r->supported))) {
+            watchdog_stop();(void)update_start(update_selection==-2 ? "rollback" : "install",r ? r->id : (const char *)0);
+            update_confirming=0;
+        }
+        render(self);return;
+    }
     else if(id==20018){section=4;update_confirming=0;}
     else if(section==4 && id==20300 && !update_waiting){if(!wifi_editor_open(&wifi_form))launch_error="Could not read dashborne.conf";}
     else if(section==4 && id==20301 && !update_waiting){
         update_selection=-1;update_confirming=0;launch_error=0;debug_connect_wifi();update_waiting=1;update_wait_ticks=0;
     }
-    else if(section==4 && id==20303 && !update_waiting){update_selection=-2;update_confirming=0;}
-    else if(section==4 && id==20302){
-        const struct update_release *r=update_release((unsigned int)update_selection);
-        if(!update_waiting && (update_selection==-2 || (r && r->supported))) {
-            if(!update_confirming)update_confirming=1;
-            else {watchdog_stop();(void)update_start(update_selection==-2 ? "rollback" : "install",r ? r->id : (const char *)0);update_confirming=0;}
-        }
-    }
+    else if(section==4 && id==20303 && !update_waiting){update_selection=-2;update_confirming=1;}
     else if (id == LAUNCH_ID) { update_waiting=0;continue_boot(self); return; }
     else if (id == PATCHES_TAB_ID) section = 0;
     else if (id == ADB_TAB_ID) section = 1;

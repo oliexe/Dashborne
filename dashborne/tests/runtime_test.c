@@ -39,7 +39,7 @@ static char pending_ssid[33],pending_password[64];
 static int wifi_commits;
 static int updater_active,updater_calls,wifi_connections;
 static const char *updater_action;
-static const struct update_release test_release={"123","0.2.0","6.11.4","Test release notes",1};
+static struct update_release test_release={"123","0.2.0","6.11.4","Test release notes",1};
 int config_load(void) {strcpy(pending_ssid,config_ssid);strcpy(pending_password,config_password);return strcmp(scenario,"wifi-read-failure")!=0;}
 int config_get(const char *key,char *out,unsigned int capacity) {
     snprintf(out,capacity,"%s",!strcmp(key,"wifi.ssid") ? pending_ssid : pending_password);return 1;
@@ -283,11 +283,17 @@ int main(int argc, char **argv) {
         assert(!strcmp(((struct mock_control *)find(p,50207))->text,"Connecting to Wi-Fi..."));
         ip="192.0.2.42";on_timer(p,NETWORK_TIMER);assert(!update_waiting && updater_calls==1 && !strcmp(updater_action,"list"));
         int refreshes=list_refreshes;on_timer(p,NETWORK_TIMER);assert(list_refreshes==refreshes);
-        release_click(NULL,find(p,80004),0,0);assert(update_selection==0);
-        on_click(p,find(p,20302));assert(update_confirming && updater_calls==1);
+        release_click(NULL,find(p,80004),0,0);assert(update_selection==0 && update_confirming);
+        on_click(p,find(p,LAUNCH_ID));assert(!opened && update_confirming);
+        on_click(p,find(p,20304));assert(!update_confirming && updater_calls==1);
+        test_release.supported=0;release_click(NULL,find(p,80004),0,0);
+        assert(update_confirming && !((struct mock_control *)find(p,20302))->shown);
+        on_click(p,find(p,20302));assert(updater_calls==1 && update_confirming);
+        on_click(p,find(p,20304));test_release.supported=1;
+        release_click(NULL,find(p,80004),0,0);assert(update_confirming);
         on_click(p,find(p,20302));assert(!update_confirming && updater_calls==2 && !strcmp(updater_action,"install"));
         updater_active=1;on_click(p,find(p,LAUNCH_ID));on_click(p,find(p,ADB_TAB_ID));assert(!opened && section==4);
-        updater_active=0;on_click(p,find(p,20303));on_click(p,find(p,20302));assert(update_confirming);
+        updater_active=0;on_click(p,find(p,20303));assert(update_confirming);
         on_click(p,find(p,20302));assert(updater_calls==3 && !strcmp(updater_action,"rollback"));
         destroy(p);onEasyUIDeinit((void *)123);puts("PASS: updates share Wi-Fi, require confirmation and block conflicting actions");return 0;
     }
