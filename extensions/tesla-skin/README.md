@@ -19,9 +19,16 @@ matching palette. Disable the extension and restart to return to the stock style
 The skin adapts the Model 3/Y visual style to the DASH's wide display, using
 Inter and original artwork. The dashboard layout remains the stock DASH layout.
 
+## Theme framework
+
+Colors, typography and per-control overrides live in [`theme.json`](theme.json).
+The engine supports authored PNG overrides and derives matching neutral colors
+from installed images when a replacement is absent. See [Building themes](THEMES.md)
+for the schema, build steps and device validation.
+
 ## Implementation
 
-The adapter supports stock apps **6.11.2 and 6.11.4** and its verified FlyThings runtime.
+The theme engine targets stock OS **6.11.4** and its verified FlyThings runtime.
 Binary and layout fingerprints reject other builds. It compiles small layout
 deltas against the installed resources at startup, then redirects layout reads
 and theme pointers in the UI process. Shared picker and navigation artwork uses
@@ -29,7 +36,7 @@ a theme-aware image loader in the same process. Activity names, control IDs, cal
 vehicle-data sources stay native.
 
 `generate.py` draws the PNG resources from the palette and geometry definitions.
-`prepare.py` builds the deltas from a fresh ADB capture of the seven named `.ftu`
+`prepare.py` builds the deltas from a fresh ADB capture of the twelve stock `.ftu`
 layouts. Run these from the repository root:
 
 ```sh

@@ -4,10 +4,12 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT.parents[1]/'dashborne'))
 from ui_codec import decode
-PALETTES={
-    'dash':dict(bg=0x17181a,text=0xf4f4f4,muted=0xa2a5a9,disabled=0x686b70,card=0x242528,selected=0x3c3e42,line=0x3b3d41),
-    'light':dict(bg=0xf1f2f3,text=0x171a20,muted=0x62666d,disabled=0xa4a7ac,card=0xffffff,selected=0xffffff,line=0xd7d9dc)}
-BLUE=0x3e6ae1
+sys.path.insert(0,str(ROOT))
+from theme import THEME, color, write_runtime_tokens
+PALETTES={mode:{k:color(v) for k,v in palette.items()} for mode,palette in THEME['palettes'].items()}
+BLUE=color(THEME['accent'])
+PAGES=['dash1act','awlsettings','widgetEdit','pageEdit','dialog','btCommanderPair','UserIme',
+       'queryUser','production','phoneupdate','blefailure','screensaver']
 
 def walk(node,path=()):
     if isinstance(node,dict):
@@ -27,7 +29,7 @@ def transform(original,page,mode,resources):
             node['bold']=False
             # Native data labels can contain private unit glyphs in the stock font.
             if not native_preview and (page!='dash1act' or any(tag in cap for tag in ('SPEED_VAL','SPEED_UNIT','_TITLE_MEDIA_','_ARTIST_MEDIA_'))):
-                node['family']='Inter-Regular'
+                node['family']=THEME['font']
         # Recolor only neutral UI text; preserve warnings, status and semantic colors.
         for key,value in list(node.get('colorTab',{}).items()):
             red=value>>16&255;green=value>>8&255;blue=value&255
@@ -37,7 +39,8 @@ def transform(original,page,mode,resources):
             if value in (0,0xff000000):node['bgColorTab'][key]=p['bg']
             elif value in (0xffffff,0xffffffff):node['bgColorTab'][key]=p['text']
         if any('btn_ok_bg' in str(v) or 'btn_dlg_confirm' in str(v) for v in node.get('picTab',{}).values()):
-            node['colorTab']={key:0xffffff for key in node.get('colorTab',{'color0':0xffffff})}
+            node['colorTab']={key:color(THEME['on_accent']) for key in node.get('colorTab',{'color0':0xffffff})}
+        if cap=='RESTORE_DEFAULTS_BTN':node['colorTab']={'color0':p['text'],'color1':p['muted']}
         if 'backgroundColor' in node and node['backgroundColor'] in (0,0xff000000):node['backgroundColor']=p['bg']
         for key,value in list(node.items()):
             if isinstance(value,str) and value.startswith(('dash/','light/')):
@@ -56,20 +59,25 @@ def transform(original,page,mode,resources):
             node['fontSize']=22
         if page=='dash1act':
             if re.match(r'P[TMB]_G[12]_SPEED_VAL',cap):
-                node['fontSize']=128;node['bold']=False
-                node['position'].update(left=70,top=102,width=370,height=150)
-                node['textPosition']={'left':0,'top':0,'width':370,'height':150}
+                node['fontSize']=104;node['bold']=False
+                node['position'].update(left=70,top=158,width=370,height=108)
+                node['textPosition']={'left':0,'top':0,'width':370,'height':108}
             if re.match(r'P[TMB]_G[12]_SPEED_UNIT',cap):
                 node['fontSize']=24;node['position'].update(left=155,top=256,width=200,height=36)
             if re.match(r'P[TMB]_GAUGE4_SPEED_VAL',cap):
-                node['fontSize']=144;node['bold']=False
-                node['position'].update(left=24,top=108,width=462,height=162)
+                node['fontSize']=120;node['bold']=False
+                node['position'].update(left=24,top=156,width=462,height=128)
             if re.match(r'P[TMB]_GAUGE4_SPEED_UNIT',cap):
-                node['fontSize']=24;node['position'].update(left=155,top=276,width=200,height=36)
+                node['fontSize']=24;node['position'].update(left=155,top=288,width=200,height=32)
             if re.match(r'P[TMB]_Value1x[12]_',cap):node['fontSize']=56
             if re.match(r'P[TMB]_Unit1x[12]_',cap):node['fontSize']=22
             if '_ARTIST_MEDIA_' in cap:node['fontSize']=22
             if '_TITLE_MEDIA_' in cap:node['fontSize']=28;node['bold']=True
+        overrides=THEME.get('controls',{}).get(page,{}) if ('id' in node or 'caption' in node) else {}
+        for selector in ('*',cap,str(node.get('id',''))):
+            for key,value in overrides.get(selector,{}).items():
+                if isinstance(value,dict) and isinstance(node.get(key),dict):node[key].update(copy.deepcopy(value))
+                else:node[key]=copy.deepcopy(value)
     return layout
 
 def object_spans(text):
@@ -120,7 +128,7 @@ def compile_delta(blob, changed):
         added={k:v for k,v in b.items() if k not in a}
         if added:
             pos,length=spans[path]
-            edits.append((pos+length-1,0,(','+json.dumps(added,separators=(',',':'))[1:-1]).encode()))
+            edits.append((pos+length-1,0,((',' if a else '')+json.dumps(added,separators=(',',':'))[1:-1]).encode()))
         for k,v in b.items():
             if k not in a or v==a[k]:continue
             if isinstance(v,(dict,list)):diff(a[k],v,path+(k,))
@@ -152,7 +160,7 @@ def write_styles(pages):
             out.append('static const struct style '+page+'_'+mode+'[] = {')
             for id,path,n in styles(layout,page):
                 if page=='dash1act':
-                    n={k:v for k,v in n.items() if k in ('colorTab',)}
+                    n={k:v for k,v in n.items() if k=='colorTab' or (k=='backgroundPic' and '_DEST_ICO_NAV' in n.get('caption',''))}
                 ct=n.get('colorTab',{});pt=n.get('picTab',{})
                 colors=[str(ct.get('color'+str(i),ct.get('color0',0)))+'u' for i in range(5)]
                 pics=[cstring(pt.get('pic'+str(i),'')) for i in range(5)]
@@ -164,7 +172,7 @@ def write_styles(pages):
 def prepare(directory):
     resources=set(json.loads((ROOT/'resource-sizes.json').read_text()))
     pages={}
-    for page in ['dash1act','awlsettings','widgetEdit','pageEdit','dialog','btCommanderPair','UserIme']:
+    for page in PAGES:
         blob=(directory/(page+'.ftu')).read_bytes();original=decode(blob);pages[page]={}
         for mode in PALETTES:
             changed=transform(original,page,mode,resources);pages[page][mode]=changed
@@ -172,6 +180,7 @@ def prepare(directory):
             (ROOT/'assets'/(page+'-'+mode+'.atp')).write_bytes(patch)
             print(page,mode,count,'edits',len(patch),'bytes')
     write_styles(pages)
+    write_runtime_tokens()
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('adb_capture',type=Path)

@@ -16,7 +16,7 @@ def decode(blob):
         raise ValueError("Invalid FTU envelope")
     offset, plain_size, packed_size = struct.unpack_from("<III", blob, 6)
     start, end = offset + 8, offset + 8 + packed_size - 16
-    if start < 26 or end != len(blob) - 6 or plain_size < 8:
+    if start < 25 or end != len(blob) - 6 or plain_size < 8:
         raise ValueError("Invalid FTU lengths")
     plain = zlib.decompress(blob[start:end])
     if len(plain) != plain_size - 8:

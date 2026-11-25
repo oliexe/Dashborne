@@ -1,7 +1,9 @@
 #include "stock_compat.h"
-/* Stock 6.11.2 / FlyThings theme adapter. State belongs to this UI process. */
+/* Stock 6.11.4 / FlyThings theme adapter. State belongs to this UI process. */
 #include "dashborne_extension.h"
 #include "layout_patch.h"
+#include "theme_engine.h"
+#include "theme_tokens.inc"
 typedef __SIZE_TYPE__ usize;
 typedef __UINTPTR_TYPE__ uptr;
 extern int open(const char *,int,...),read(int,void *,unsigned int),write(int,const void *,unsigned int),close(int),fsync(int);
@@ -51,11 +53,11 @@ static int patch_font(void *base){
  *(void **)(&font_create)=host->resolve(host->ui_runtime,"zk_font_create");
  *(void **)(&font_destroy)=host->resolve(host->ui_runtime,"zk_font_destroy");
  if(!font_create||!font_destroy)return 0;
- void *probe=font_create("Inter-Regular",24,0);
+ void *probe=font_create(THEME_FONT,24,0);
  if(!probe){
-  if(snprintf(path,sizeof(path),"%s/assets/Inter-Regular.ttf",host->extension_directory)>=(int)sizeof(path))return 0;
+  if(snprintf(path,sizeof(path),"%s/assets/%s.ttf",host->extension_directory,THEME_FONT)>=(int)sizeof(path))return 0;
   void (*register_font)(const char *)=(void (*)(const char *))((unsigned char *)base+0x86464);
-  register_font(path);probe=font_create("Inter-Regular",24,0);
+  register_font(path);probe=font_create(THEME_FONT,24,0);
  }
  if(!probe)return 0;font_destroy(probe);
  return 1;
@@ -83,9 +85,7 @@ static int patch_theme(void *base){
  for(unsigned int t=0;t<4;t++){
   for(unsigned int i=0;i<145;i++)if(paths[t][i][0])*(const char **)(table+t*580+i*4)=paths[t][i];
   unsigned int *colors=(unsigned int *)(table+t*580+0x208);
-  const unsigned int dark[]={0xff17181a,0xf4f4f4,0xffffff,0xa2a5a9,0xa2a5a9,0xa2a5a9,0x686b70};
-  const unsigned int light[]={0xfff1f2f3,0x171a20,0x171a20,0x62666d,0x62666d,0x62666d,0xa4a7ac};
-  copy(colors,(t&1)?light:dark,sizeof(dark));
+  copy(colors,theme_colors[t&1],sizeof(theme_colors[0]));
  }
  copy(applied_table,table,TABLE_BYTES);
  return !protect(table,TABLE_BYTES,table_prot);
@@ -110,17 +110,27 @@ static struct page pages[]={
  PAGE(dialog,"_ZTV14dialogActivity",8,9),
  PAGE(btCommanderPair,"_ZTV23btCommanderPairActivity",8,9),
  /* The keyboard vtable orders resume/pause before intent. */
- PAGE(UserIme,"_ZTV15UserImeActivity",10,8)
+ PAGE(UserIme,"_ZTV15UserImeActivity",10,8),
+ PAGE(queryUser,"_ZTV17queryUserActivity",8,9),
+ PAGE(production,"_ZTV18productionActivity",8,9),
+ PAGE(phoneupdate,"_ZTV19phoneupdateActivity",8,9),
+ PAGE(blefailure,"_ZTV18blefailureActivity",8,9),
+ PAGE(screensaver,"",8,9)
 };
 #define PAGE_COUNT (sizeof(pages)/sizeof(pages[0]))
 static void *(*active_theme)(void),*(*find)(void *,int);
 static void (*background_color)(void *,unsigned int),(*background_pic)(void *,const char *);
 static void (*text_color)(void *,int,unsigned int),(*button_pic)(void *,int,const char *);
 static void (*progress_pic)(void *,const char *);
-static int light(void) {const unsigned char *c=active_theme();return c && (*(const unsigned int *)(c+0x208)&0xffffffu)>0x808080u;}
+static int light(void) {
+ const unsigned char *c=active_theme();
+ if(table && (uptr)c>=(uptr)table && (uptr)c<(uptr)table+TABLE_BYTES)
+  return (int)(((uptr)c-(uptr)table)/580u)&1;
+ return c && (*(const unsigned int *)(c+0x208)&0xffffffu)>0x808080u;
+}
 static struct page *page_for(void *self) {
  if(!self)return 0;void **v=*(void ***)self;
- for(unsigned int i=0;i<PAGE_COUNT;i++)if(v==pages[i].vtable+2)return &pages[i];
+ for(unsigned int i=0;i<PAGE_COUNT;i++)if(pages[i].vtable && v==pages[i].vtable+2)return &pages[i];
  return 0;
 }
 static void **file_got;
@@ -142,6 +152,7 @@ static int install_file_route(void *base) {
  *file_got=(void *)load_layout;file_changed=1;
  return !protect(file_got,sizeof(void *),file_prot);
 }
+static const char *image_path(const char *path);
 static void apply_styles(struct page *p,void *self) {
  const void *theme=active_theme();if(p->last_theme==theme)return;
  int mode=light();
@@ -149,7 +160,7 @@ static void apply_styles(struct page *p,void *self) {
   const struct style *s=&p->styles[mode][i];void *control=find(self,s->id);if(!control)continue;
   if(s->has_bg)background_color(control,s->bg);
   if(s->has_text)for(int status=0;status<5;status++)text_color(control,status,s->text[status]);
-  if(s->background[0])background_pic(control,s->background);
+  if(s->background[0])background_pic(control,image_path(s->background));
   for(int status=0;status<5;status++)if(s->pics[status][0])button_pic(control,status,s->pics[status]);
   if(s->progress[0])progress_pic(control,s->progress);
  }
@@ -182,17 +193,41 @@ static const char *image_path(const char *path) {
  if(starts(tail,"/res/ui/"))tail+=8;
  if(starts(tail,"dash/"))tail+=5;
  else if(starts(tail,"light/"))tail+=6;
- else return path;
+ else return theme_resource(path,light());
  int mode=light();
  for(unsigned int i=0;i<IMAGE_COUNT;i++) {
   const char *name=image_assets[i];
   if((starts(name,"light/")?1:0)!=mode)continue;
   if(equal(tail,name+(mode?6:5)))return image_paths[i];
  }
- return path;
+ return theme_resource(path,mode);
 }
 static int load_image(void *self,const char *path,int scale,int flags) {
  return image_load(self,image_path(path),scale,flags);
+}
+/* Charset icons bypass BitmapWrapper. Route both BitmapHelper overloads before
+   its filename-keyed cache, so light and dark variants cannot share a bitmap. */
+static void **bitmap_got[2];
+static int bitmap_prot[2],bitmap_changed[2];
+static int (*bitmap_load)(void **,const char *,int);
+static int (*bitmap_load_plain)(void **,const char *);
+static int load_bitmap(void **out,const char *path,int scale){return bitmap_load(out,image_path(path),scale);}
+static int load_bitmap_plain(void **out,const char *path){return bitmap_load_plain(out,image_path(path));}
+static int install_bitmap_routes(void *base){
+ *(void **)(&bitmap_load)=host->resolve(host->ui_runtime,"_ZN12BitmapHelper18loadBitmapFromFileERP9_bitmap_tPKci");
+ *(void **)(&bitmap_load_plain)=host->resolve(host->ui_runtime,"_ZN12BitmapHelper18loadBitmapFromFileERP9_bitmap_tPKc");
+ void *originals[]={(void *)bitmap_load,(void *)bitmap_load_plain};
+ void *replacements[]={(void *)load_bitmap,(void *)load_bitmap_plain};
+ unsigned int offsets[]={0xd0e40,0xd1a2c};
+ for(int i=0;i<2;i++){
+  bitmap_got[i]=(void **)((unsigned char *)base+offsets[i]);
+  if(!originals[i]||*bitmap_got[i]!=originals[i])return 0;
+  bitmap_prot[i]=permissions(bitmap_got[i],sizeof(void *));
+  if(bitmap_prot[i]<0||protect(bitmap_got[i],sizeof(void *),bitmap_prot[i]|2))return 0;
+  *bitmap_got[i]=replacements[i];bitmap_changed[i]=1;
+  if(protect(bitmap_got[i],sizeof(void *),bitmap_prot[i]))return 0;
+ }
+ return 1;
 }
 static int install_image_route(void *base) {
  for(unsigned int i=0;i<IMAGE_COUNT;i++) {
@@ -244,7 +279,7 @@ static int owned_callback(void *callback) {
 static int install_pages(void *base) {
  (void)base;
  for(unsigned int i=0;i<PAGE_COUNT;i++) {
-  struct page *p=&pages[i];p->vtable=host->resolve(host->official_library,p->vtable_name);
+  struct page *p=&pages[i];if(!p->vtable_name[0])continue;p->vtable=host->resolve(host->official_library,p->vtable_name);
   const unsigned int slots[]={6,7,p->resume_slot,p->intent_slot};
   if(!p->vtable || permissions(p->vtable,44)<0)return 0;
   for(int k=0;k<4;k++) {
@@ -276,6 +311,14 @@ static int deactivate(void) {
   p->vtable[7]=(void *)p->old_timer;p->vtable[p->intent_slot]=(void *)p->old_intent;p->vtable[p->resume_slot]=(void *)p->old_resume;
   if(protect(p->vtable,44,mode))return -1;p->installed=0;p->live=0;p->last_theme=0;
  }
+ for(int i=1;i>=0;i--)if(bitmap_changed[i]){
+  void *original=i?(void *)bitmap_load_plain:(void *)bitmap_load;
+  void *replacement=i?(void *)load_bitmap_plain:(void *)load_bitmap;
+  if(*bitmap_got[i]!=replacement&&*bitmap_got[i]!=original)return -1;
+  if(protect(bitmap_got[i],sizeof(void *),bitmap_prot[i]|2))return -1;
+  *bitmap_got[i]=original;
+  if(protect(bitmap_got[i],sizeof(void *),bitmap_prot[i]))return -1;bitmap_changed[i]=0;
+ }
  if(image_changed){
   if(*image_got!=(void *)load_image && *image_got!=(void *)image_load)return -1;
   if(protect(image_got,sizeof(void *),image_prot|2))return -1;
@@ -294,12 +337,12 @@ static int deactivate(void) {
   copy(table,original_table,TABLE_BYTES);
   if(protect(table,TABLE_BYTES,table_prot))return -1;table_changed=0;
  }
- host=0;return 0;
+ theme_resources_clear();host=0;return 0;
 }
 static int activate(const struct dashborne_host *api) {
  if(!api||api->abi_version!=DASHBORNE_EXTENSION_ABI||api->struct_size<sizeof(*api)||!api->resolve||!api->log||host)return -1;
  host=api;unsigned int n;struct dl_info official={0},runtime={0};
- if(!db_stock_version()||
+ if(db_stock_version()!=6114||
  file_crc("/lib/libeasyui.so",&n)!=0xece0feecu||n!=826052u){host->log(host,"tesla-skin: unsupported app/runtime fingerprint");return -1;}
  void *config=host->resolve(host->official_library,"_ZN12ThemeManager9getConfigEj");
  void *font=host->resolve(host->ui_runtime,"zk_font_create");
@@ -312,12 +355,14 @@ static int activate(const struct dashborne_host *api) {
 #undef UI
  *(void **)(&active_theme)=host->resolve(host->official_library,"_ZN12ThemeManager9getActiveEv");
  if(!active_theme||!prepare_pages()){host->log(host,"tesla-skin: layout compatibility check failed");return -1;}
+ theme_resources_init(host->extension_directory,theme_colors);
  if(!patch_theme(official.base)){host->log(host,"tesla-skin: theme table rejected");return -1;}
  if(!patch_font(runtime.base)){host->log(host,"tesla-skin: font registration failed");return -1;}
  if(!install_file_route(runtime.base)){host->log(host,"tesla-skin: layout route rejected");return -1;}
  if(!install_pages(official.base)){host->log(host,"tesla-skin: activity hooks rejected");return -1;}
  if(!install_image_route(runtime.base)){host->log(host,"tesla-skin: image route rejected");return -1;}
- host->log(host,"tesla-skin: stock dashboard, settings and picker skin active");return 0;
+ if(!install_bitmap_routes(runtime.base)){host->log(host,"tesla-skin: bitmap cache route rejected");return -1;}
+ host->log(host,"tesla-skin: theme engine active (12 layouts; authored and palette-derived resources)");return 0;
 }
 DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *dashborne_extension_v1(void) {
  static const struct dashborne_extension extension={DASHBORNE_EXTENSION_ABI,sizeof(struct dashborne_extension),"tesla-skin",activate,deactivate};return &extension;

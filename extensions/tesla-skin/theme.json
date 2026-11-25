@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "id": "tesla",
+  "target_os": "6.11.4",
+  "font": "Inter-Regular",
+  "accent": "#3e6ae1",
+  "positive": "#39b96d",
+  "palettes": {
+    "dash": {
+      "bg": "#17181a",
+      "text": "#f4f4f4",
+      "muted": "#a2a5a9",
+      "disabled": "#686b70",
+      "card": "#242528",
+      "selected": "#3c3e42",
+      "pressed": "#3c3e42",
+      "line": "#3b3d41",
+      "navigation": "#85898f",
+      "info": "#7d8188"
+    },
+    "light": {
+      "bg": "#f1f2f3",
+      "text": "#171a20",
+      "muted": "#62666d",
+      "disabled": "#a4a7ac",
+      "card": "#ffffff",
+      "selected": "#ffffff",
+      "pressed": "#e0e2e5",
+      "line": "#d7d9dc",
+      "navigation": "#85898f",
+      "info": "#7d8188"
+    }
+  },
+  "controls": {},
+  "accent_pressed": "#2854bd",
+  "on_accent": "#ffffff",
+  "switch_thumb": "#ffffff"
+}

@@ -13,7 +13,7 @@ int tesla_layout(const unsigned char *base,unsigned int size,const unsigned char
  *out=0;*out_size=0;
  if(size<32||length<28||!eq(base,"ZKSW\xaa\x55",6)||!eq(base+size-6,"\x55\xaaZKSW",6)||!eq(patch,"ATP1",4))return 0;
  unsigned int offset=u32(base+6),plain_n=u32(patch+12),count=u32(patch+20);
- if(offset<18||offset>256||offset+8>size-6||u32(base+10)!=plain_n+8||plain_n>2097152||count>8192||
+ if(offset<17||offset>256||offset+8>size-6||u32(base+10)!=plain_n+8||plain_n>2097152||count>8192||
  u32(base+14)!=size-offset+2||u32(patch+4)!=size||u32(patch+8)!=(unsigned int)crc32(0,base,size)||
  u32(patch+24)!=(unsigned int)crc32(0,patch+28,length-28))return 0;
  unsigned char *plain=malloc(plain_n+1),*changed=0,*packed=0;int ok=0;

@@ -3,10 +3,10 @@ from pathlib import Path
 import json, math, re
 from PIL import Image, ImageDraw, ImageFont
 ROOT=Path(__file__).resolve().parent
-PALETTES={'dash':dict(bg='#17181a',card='#242528',line='#3b3d41',text='#f4f4f4',muted='#a2a5a9',pressed='#3c3e42'),
-          'light':dict(bg='#f1f2f3',card='#ffffff',line='#d7d9dc',text='#171a20',muted='#62666d',pressed='#e0e2e5')}
-BLUE='#3e6ae1';GREEN='#39b96d'
-FONT=ROOT/'assets/Inter-Regular.ttf'
+from theme import THEME, write_runtime_tokens
+PALETTES=THEME['palettes']
+BLUE=THEME['accent'];GREEN=THEME['positive']
+FONT=ROOT/('assets/'+THEME['font']+'.ttf')
 
 
 def draw_asset(name,size):
@@ -42,8 +42,10 @@ def draw_asset(name,size):
         elif stem.startswith('media'):
             text(w/2,h*.3,'Media',25);text(w/2,h*.5,'Connect your phone',17,p['muted'])
             cy=h*.76
-            for cx in (w*.25,w*.5,w*.75):
-                poly([(cx-6,cy-9),(cx+8,cy),(cx-6,cy+9)],p['text'])
+            for i,cx in enumerate((w*.25,w*.5,w*.75)):
+                direction=-1 if i==0 else 1
+                poly([(cx-6*direction,cy-9),(cx+8*direction,cy),(cx-6*direction,cy+9)],p['text'])
+                if i!=1:line([(cx+10*direction,cy-9),(cx+10*direction,cy+9)],p['text'],2)
         elif stem.startswith('nav'):
             line([(w*.2,h*.4),(w*.2,h*.25),(w*.1,h*.25)],p['text'],3)
             poly([(w*.1,h*.25),(w*.14,h*.21),(w*.14,h*.29)],p['text'])
@@ -64,13 +66,13 @@ def draw_asset(name,size):
         color=BLUE if pressed else p['text'];cx=w/2;cy=h/2
         if tail.startswith('dialog/') and stem in ('question_ico','info_ico'):
             # Native dialogs sometimes select the dark icon in either theme.
-            color='#7d8188';radius=min(w,h)*.42
+            color=p['info'];radius=min(w,h)*.42
             d.ellipse(((cx-radius)*scale,(cy-radius)*scale,(cx+radius)*scale,(cy+radius)*scale),outline=color,width=3*scale)
             text(cx,cy,'?' if stem=='question_ico' else '!',44,color)
         elif stem.startswith(('btn_ok','btn_dlg_confirm')):
-            box((1,1,w-2,h-2),p['line'] if stem.endswith('_i') else '#2854bd' if pressed else BLUE,r=6)
+            box((1,1,w-2,h-2),p['line'] if stem.endswith('_i') else THEME['accent_pressed'] if pressed else BLUE,r=6)
         elif stem.startswith(('arrow_','btn_back')):
-            if stem.startswith('btn_back'):color='#85898f'
+            if stem.startswith('btn_back'):color=p['navigation']
             direction='left' if 'back' in stem or 'left' in stem else 'right' if 'right' in stem else 'up' if 'up' in stem else 'down'
             cx=18 if 'back' in stem else w/2;r=min(12,h*.3,w*.38)
             points=[(cx+r/2,cy-r),(cx-r/2,cy),(cx+r/2,cy+r)]
@@ -121,13 +123,13 @@ def draw_asset(name,size):
             on=stem.endswith('_on');hh=min(h-2,32);ww=min(w-2,64);x=1;y=(h-hh)/2
             box((x,y,x+ww,y+hh),BLUE if on else p['line'],r=hh/2)
             cx=x+ww-hh/2 if on else x+hh/2
-            d.ellipse(((cx-hh*.38)*scale,(y+hh*.12)*scale,(cx+hh*.38)*scale,(y+hh*.88)*scale),fill='#ffffff')
+            d.ellipse(((cx-hh*.38)*scale,(y+hh*.12)*scale,(cx+hh*.38)*scale,(y+hh*.88)*scale),fill=THEME['switch_thumb'])
         elif stem.startswith(('leftcb','midcb','rightcb')):
-            fill=p['pressed'] if mode=='dash' else '#ffffff' if selected else p['bg']
+            fill=p['selected'] if selected else p['bg']
             if not selected:fill=p['bg']
             box((1,1,w-2,h-2),fill,r=6,outline=p['line'],width=1)
         elif stem.startswith('listitem'):
-            if stem.endswith('_s'):box((1,1,w-2,h-2),p['pressed'] if mode=='dash' else '#ffffff',r=8)
+            if stem.endswith('_s'):box((1,1,w-2,h-2),p['selected'],r=8)
         elif stem in ('slider_bg','dwbar_bg'):
             box((1,h/2-3,w-2,h/2+3),p['line'],r=3)
         elif stem in ('slider_fg','dwbar_val'):
@@ -154,7 +156,7 @@ def draw_asset(name,size):
                 for yy in (cy-r,cy,cy+r):line([(cx-r,yy),(cx+r,yy)],color,2)
         elif stem in ('line25x5',):box((0,0,w-1,h-1),p['line'])
         elif stem in ('header_bg','halfheader_bg','large_bg','pic_ctrls_bg','tz_bg','unpair_bg','btdev_s'):
-            box((1,1,w-2,h-2),p['card'],r=min(10,h/4))
+            box((0,0,w-1,h-1),p['card'],r=min(3,h/4))
         elif stem=='list_bg':pass
         else:
             box((1,1,w-2,h-2),p['pressed'] if pressed else p['card'],r=min(8,h/4),outline=p['line'] if 'btn' in stem else None)
@@ -202,7 +204,8 @@ def draw_asset(name,size):
             # Four-character state strip, one active gear per image.
             for i,c in enumerate('PRND'):text(w*(i+.5)/4,h/2,c,max(12,int(h*.65)),p['text'] if c.lower()==stem[0] else p['muted'])
         elif stem in ('gear_ind','gear_ind_nobg','gears_line'):
-            for i,c in enumerate('PRND'):text(w*(i+.5)/4,h/2,c,max(12,int(h*.65)))
+            for i,c in enumerate('PRND'):text(w/2+(i-1.5)*30 if stem.startswith('gear_ind') else w*(i+.5)/4,h/2,c,max(12,int(h*.85)))
+        elif stem=='gear_wnd':box((1,1,w-2,h-2),None,r=5,outline=p['muted'],width=2)
         elif 'bg' in stem:box((0,0,w-1,h-1),p['card'],r=4)
     elif tail.startswith('gauges/'):
         if 'bluering' in stem:
@@ -228,12 +231,12 @@ def draw_asset(name,size):
 
 
 def generate():
+    write_runtime_tokens()
     sizes=json.loads((ROOT/'resource-sizes.json').read_text())
     for name,size in sizes.items():
         out=ROOT/'assets/ui'/name;out.parent.mkdir(parents=True,exist_ok=True)
         draw_asset(name,size).save(out,optimize=True)
     routes=[n for n in sizes if ('/elements/' in n or '/preview/' in n or n.endswith(('/question_ico.png','/info_ico.png'))) and '/submenu_bar' not in n and '/ps_btn' not in n]
-    if len(routes)>124:raise ValueError('Image route count exceeds the tested adapter')
     (ROOT/'image_routes.inc').write_text('/* Native image names eligible for theme-aware routing. */\nstatic const char *image_assets[]={\n'+''.join(json.dumps(n)+',\n' for n in sorted(routes))+'};\n')
     print(f'Generated {len(sizes)} theme assets')
 

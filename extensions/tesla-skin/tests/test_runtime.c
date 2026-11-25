@@ -23,7 +23,9 @@ static void *read_layout(const char *path,unsigned int *size){requested=path;*si
 static int image_read(void *self,const char *path,int scale,int flags){
  assert(self==(void *)23 && scale==2 && flags==7);requested=path;return 11;
 }
-static void *tables[7][11];
+static int bitmap_read(void **out,const char *path,int scale){assert(out && scale==3);requested=path;return 19;}
+static int bitmap_plain(void **out,const char *path){assert(out);requested=path;return 20;}
+static void *tables[PAGE_COUNT][11];
 static int calls,lookups;
 static void created(void *self){(void)self;calls++;}
 static int timed(void *self,int id){(void)self;calls++;return id;}
@@ -57,13 +59,19 @@ int main(void){
  unrelated="/res/ui/dash/vehicle/brake-warning.png";
  assert(image_path(unrelated)==unrelated && image_path(0)==0);
  unrelated="/res/ui/dash/preview/special/tripPreview.png.extra";assert(image_path(unrelated)==unrelated);
+ bitmap_load=bitmap_read;bitmap_load_plain=bitmap_plain;void *bitmap=0;
+ assert(load_bitmap(&bitmap,"light/elements/btn_back_bg_n.png",3)==19);
+ assert(!strcmp(requested,"/card/assets/ui/dash/elements/btn_back_bg_n.png"));
+ assert(load_bitmap_plain(&bitmap,"light/elements/btn_back_bg_n.png")==20);
+ void *bitmap_slots[]={(void *)load_bitmap,(void *)load_bitmap_plain};
+ for(int i=0;i<2;i++){bitmap_got[i]=&bitmap_slots[i];bitmap_prot[i]=1;bitmap_changed[i]=1;}
  struct dashborne_host api={.resolve=resolve,.owns_callback=owns};host=&api;
  for(unsigned i=0;i<PAGE_COUNT;i++){tables[i][5]=(void *)named;tables[i][6]=(void *)created;tables[i][7]=(void *)timed;tables[i][9]=(void *)named;tables[i][pages[i].resume_slot]=(void *)resumed;tables[i][pages[i].intent_slot]=(void *)intended;}
  assert(install_pages(0));
  void *image_slot=(void *)load_image;image_got=&image_slot;image_prot=1;image_changed=1;
  for(unsigned i=0;i<PAGE_COUNT;i++){
   assert(tables[i][5]==(void *)named); /* Native navigation identity must never change. */
-  assert(tables[i][6]==(void *)page_create);
+  if(pages[i].vtable_name[0])assert(tables[i][6]==(void *)page_create);
  }
  find=lookup;
  void **object=tables[0]+2;
@@ -80,6 +88,8 @@ int main(void){
  for(unsigned i=0;i<PAGE_COUNT;i++){assert(tables[i][5]==(void *)named);assert(tables[i][6]==(void *)created);assert(tables[i][7]==(void *)timed);assert(tables[i][pages[i].resume_slot]==(void *)resumed);assert(tables[i][pages[i].intent_slot]==(void *)intended);}
  assert(tables[6][9]==(void *)named); /* Keyboard onPause is not a style hook. */
  assert(!host && !image_changed && image_slot==(void *)image_read);
+ assert(!bitmap_changed[0] && !bitmap_changed[1]);
+ assert(bitmap_slots[0]==(void *)bitmap_read && bitmap_slots[1]==(void *)bitmap_plain);
  puts("Tesla Skin: exact layout routing, native navigation identity, hook conflicts and rollback passed");
  return 0;
 }

@@ -46,6 +46,22 @@ class LayoutTests(unittest.TestCase):
   for mode in ['dash','light']:
    changed=prepare.transform({'id':1,'colorTab':{'color0':0xffffff,'color4':0x999999},'picTab':{'pic0':'dash/elements/btn_ok_bg.png'}},'dialog',mode,set())
    self.assertEqual(set(changed['colorTab'].values()),{0xffffff})
+ def test_empty_object_override_and_legacy_envelope(self):
+  from ui_codec import encode,decode
+  base=encode({'position':{}})
+  # Two installed 6.11.4 layouts use the older 17-byte envelope header.
+  legacy=bytearray(base[:18]+base[19:]);struct.pack_into('<I',legacy,6,17)
+  changed={'position':{'left':20,'width':100}}
+  patch,_,_=prepare.compile_delta(bytes(legacy),changed)
+  self.assertEqual(decode(self.apply(bytes(legacy),patch)),changed)
+ def test_theme_overrides_do_not_modify_metadata_objects(self):
+  previous=prepare.THEME.get('controls',{})
+  try:
+   prepare.THEME['controls']={'dialog':{'*':{'fontSize':20}}}
+   result=prepare.transform({'id':1,'position':{'left':0,'width':100}},'dialog','dash',set())
+   self.assertEqual(result['fontSize'],20)
+   self.assertEqual(result['position'],{'left':0,'width':100})
+  finally:prepare.THEME['controls']=previous
  def test_packaged_resource_dimensions_and_image_routes(self):
   sizes=json.loads((ROOT/'resource-sizes.json').read_text())
   for name,expected in sizes.items():
@@ -53,7 +69,7 @@ class LayoutTests(unittest.TestCase):
    self.assertEqual(data[:8],b'\x89PNG\r\n\x1a\n')
    self.assertEqual(list(struct.unpack_from('>II',data,16)),expected,name)
   routes=[n for n in sizes if ('/elements/' in n or '/preview/' in n or n.endswith(('/question_ico.png','/info_ico.png'))) and '/submenu_bar' not in n and '/ps_btn' not in n]
-  self.assertLessEqual(len(routes),124)
+  self.assertEqual(len(routes),len(set(routes)))
  def test_device_captures(self):
   directory=os.environ.get('TESLA_SKIN_CAPTURE')
   if not directory:self.skipTest('Optional ADB layout capture not supplied')

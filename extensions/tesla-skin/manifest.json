@@ -3,5 +3,9 @@
   "title": "Tesla Skin",
   "description": "Tesla-style light and dark surfaces, typography and controls throughout the stock dashboard.",
   "abi": 1,
-  "sources": ["extension.c", "layout_patch.c"]
+  "sources": [
+    "extension.c",
+    "layout_patch.c",
+    "theme_engine.c"
+  ]
 }
