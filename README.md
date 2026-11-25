@@ -177,8 +177,8 @@ The [build workflow](.github/workflows/release.yml) builds and tests pushes to
 the core [changelog](CHANGELOG.md), commit them, then push a matching `vX.Y.Z` tag.
 The workflow publishes the ZIP and its SHA-256 checksum after the tests pass.
 
-The [Stock OS preflight workflow](docs/stock-preflight.md) checks offered Enhance
-updates with Codex and opens a compatibility issue before you update your DASH.
+The [local stock OS preflight tools and AI skill](docs/stock-preflight.md) inspect
+update packages and prepare a compatibility report before you update your DASH.
 
 See the [extension SDK](dashborne/extensions/README.md),
 [layout patches](dashborne/patches/README.md), and [platform research](docs/research.md).

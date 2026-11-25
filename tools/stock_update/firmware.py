@@ -14,7 +14,9 @@ from urllib.error import HTTPError, URLError
 from .container import decode
 
 MANIFEST_LIMIT = 1024 * 1024
-IMAGE_LIMIT = 1024 * 1024 * 1024
+IMAGE_LIMIT = 2 * 1024 * 1024 * 1024
+BUNDLE_LIMIT = 4 * 1024 * 1024 * 1024
+ARTIFACT_LIMIT = 32
 
 
 def https_url(url):
@@ -43,26 +45,35 @@ def without_query(url):
     return urlunsplit((p.scheme, p.netloc, p.path, '', ''))
 
 
-def choose_file(manifest, file_type):
+def manifest_files(manifest):
     if not isinstance(manifest, dict):
         raise ValueError('Manifest must be an object')
     version = manifest.get('version')
     if not isinstance(version, str) or not re.fullmatch(r'\d+\.\d+\.\d+', version):
         raise ValueError('Unrecognized manifest version format; inspect schema privately')
     files = manifest.get('files')
-    if not isinstance(files, list) or not all(isinstance(f, dict) for f in files):
-        raise ValueError('Unrecognized manifest files schema')
-    selected = [f for f in files if type(f.get('type')) is int and f['type'] == file_type]
+    if not isinstance(files, list) or not 0 < len(files) <= ARTIFACT_LIMIT:
+        raise ValueError('Invalid manifest artifact count')
+    for item in files:
+        if not isinstance(item, dict) or type(item.get('type')) is not int:
+            raise ValueError('Invalid artifact type')
+        if not 0 <= item['type'] <= 255:
+            raise ValueError('Invalid artifact type')
+        https_url(item.get('url'))
+    return version, files
+
+
+def choose_file(manifest, file_type):
+    version, files = manifest_files(manifest)
+    selected = [f for f in files if f['type'] == file_type]
     if len(selected) != 1:
         raise ValueError('Expected exactly one file of the selected type')
-    return version, https_url(selected[0].get('url'))
+    return version, selected[0]['url']
 
 
-def fetch(device_id, output, file_type=0, download_only=False):
+def open_manifest(device_id, output):
     if not isinstance(device_id, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,128}', device_id):
         raise ValueError('Invalid cloud ID; use the exact ID from the user or device')
-    if file_type != 0 and not download_only:
-        raise ValueError('Non-display artifacts require --download-only and separate format review')
     output = Path(output).expanduser().resolve()
     for parent in (output, *output.parents):
         if (parent / '.git').exists():
@@ -75,23 +86,26 @@ def fetch(device_id, output, file_type=0, download_only=False):
     if len(raw) > MANIFEST_LIMIT:
         raise ValueError('Manifest exceeds size limit')
     manifest = json.loads(raw)
-    version, url = choose_file(manifest, file_type)
-    artifact = output / ('update.img' if file_type == 0 else f'artifact-type-{file_type}.bin')
-    pending = output / 'download.part'
+    manifest_files(manifest)
+    return manifest, output
+
+
+def download(url, artifact, limit=IMAGE_LIMIT):
+    pending = artifact.parent / 'download.part'
     digest = hashlib.sha256()
     size = 0
     try:
         with request(url) as response, pending.open('xb') as stream:
             declared = response.headers.get('Content-Length')
             expected = int(declared) if declared is not None else None
-            if expected is not None and not 0 < expected <= IMAGE_LIMIT:
+            if expected is not None and not 0 < expected <= limit:
                 raise ValueError('Invalid or oversized download length')
             while True:
                 chunk = response.read(1024 * 1024)
                 if not chunk:
                     break
                 size += len(chunk)
-                if size > IMAGE_LIMIT:
+                if size > limit:
                     raise ValueError('Download exceeds size limit')
                 stream.write(chunk)
                 digest.update(chunk)
@@ -102,17 +116,48 @@ def fetch(device_id, output, file_type=0, download_only=False):
     except Exception:
         pending.unlink(missing_ok=True)
         raise
+    return {'bytes': size, 'sha256': digest.hexdigest(), 'source_without_query': final_source}
+
+
+def bundle_digest(artifacts):
+    # Independent of manifest ordering and expiring URLs. Changes to ANY artifact trigger review.
+    identities = sorted((a['type'], a['sha256'], a['bytes']) for a in artifacts)
+    return hashlib.sha256(json.dumps(identities, separators=(',', ':')).encode()).hexdigest()
+
+
+def fetch_bundle(device_id, output):
+    manifest, output = open_manifest(device_id, output)
+    version, files = manifest_files(manifest)
+    artifacts = []; total = 0
+    for index, item in enumerate(files):
+        name = f'artifact-{index:03d}.bin'
+        facts = download(item['url'], output / name, min(IMAGE_LIMIT, BUNDLE_LIMIT-total))
+        total += facts['bytes']
+        artifacts.append({'type': item['type'], 'file': name, **facts})
+    metadata = {'offered_version': version, 'isLatest': manifest.get('isLatest'),
+                'retrieved_at': datetime.now(timezone.utc).isoformat(),
+                'sha256': bundle_digest(artifacts), 'bytes': total,
+                'artifacts': artifacts, 'available_files': [{'type': f['type']} for f in files]}
+    (output / 'provenance.json').write_text(json.dumps(metadata, indent=2) + '\n')
+    return metadata
+
+
+def fetch(device_id, output, file_type=0, download_only=False):
+    """Single-artifact helper for manual investigation; the local audit uses fetch_bundle."""
+    if file_type != 0 and not download_only:
+        raise ValueError('Non-display artifacts require --download-only and separate format review')
+    manifest, output = open_manifest(device_id, output)
+    version, url = choose_file(manifest, file_type)
+    artifact = output / ('update.img' if file_type == 0 else f'artifact-type-{file_type}.bin')
+    facts = download(url, artifact)
     metadata = {
         'retrieved_at': datetime.now(timezone.utc).isoformat(),
         'offered_version': version, 'isLatest': manifest.get('isLatest'),
-        'selected_file_type': file_type, 'bytes': size, 'sha256': digest.hexdigest(),
-        'source_without_query': final_source,
-        'available_files': [{'type': f.get('type'), 'source_without_query': without_query(f['url'])}
+        'selected_file_type': file_type, **facts,
+        'available_files': [{'type': f['type'], 'source_without_query': without_query(f['url'])}
                             for f in manifest['files']],
-        'verification': 'downloaded; container verification pending',
+        'verification': 'download only; format and integrity not yet verified',
     }
-    metadata_path = output / 'provenance.json'
-    metadata_path.write_text(json.dumps(metadata, indent=2) + '\n')
     if not download_only:
         payload, container = decode(artifact.read_bytes())
         if not container['ext_superblock_magic_valid']:
@@ -121,9 +166,7 @@ def fetch(device_id, output, file_type=0, download_only=False):
             stream.write(payload)
         metadata['container'] = container
         metadata['verification'] = 'header CRC32 and payload MD5 verified; not a signature check'
-    else:
-        metadata['verification'] = 'download only; format and integrity not yet verified'
-    metadata_path.write_text(json.dumps(metadata, indent=2) + '\n')
+    (output / 'provenance.json').write_text(json.dumps(metadata, indent=2) + '\n')
     return metadata
 
 

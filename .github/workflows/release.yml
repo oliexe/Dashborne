@@ -26,7 +26,7 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang lld python3 zlib1g-dev
+          sudo apt-get install -y clang lld python3 zlib1g-dev 7zip e2fsprogs
       - name: Build ARM loader and bundled extensions
         run: sh dashborne/build.sh
       - name: Run tests

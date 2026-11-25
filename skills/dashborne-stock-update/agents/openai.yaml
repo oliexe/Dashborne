@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dashborne Stock OS Preflight"
+  short_description: "Audit Linux, core and extensions locally before updating"
+  default_prompt: "Use $dashborne-stock-update to audit the offered stock OS locally before I update my DASH, compare Linux boot components and every extension, and write a compatibility report with proposed fixes."

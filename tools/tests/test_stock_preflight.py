@@ -1,10 +1,13 @@
-"""Preflight fixtures never contact a device, OpenAI or GitHub."""
+"""Local preflight fixtures never contact a device or service."""
 import hashlib
 import io
 import json
 import os
 from pathlib import Path
 import struct
+import subprocess
+import shutil
+import zipfile
 import sys
 import tempfile
 import unittest
@@ -78,14 +81,6 @@ class PreflightTests(unittest.TestCase):
             root=Path(tmp);(root/'.git').mkdir()
             with self.assertRaisesRegex(ValueError,'outside'):firmware.fetch('id',root/'download')
 
-    def test_archive_members_reject_traversal_and_skip_links(self):
-        listing='archive header\n----------\nPath = lib/app.so\nSize = 12\nMode = -rwxrwxrwx\n\nPath = lib/link\nSize = 5\nSymbolic Link = /tmp/secret\n'
-        result=evidence.members(listing)
-        self.assertEqual(result['lib/app.so']['bytes'],12);self.assertTrue(result['lib/link']['symlink'])
-        for name in ('../escape','/absolute','-switch','file*','file?'):
-            with self.assertRaises(ValueError):evidence.members('x\n----------\nPath = '+name+'\nSize = 1\n')
-        with self.assertRaises(ValueError):evidence.members(listing+'\nPath = lib/app.so\nSize = 2\n')
-
     def test_elf_metadata_rejects_invalid_bounds_and_abi(self):
         self.assertIsNone(evidence.elf_info(b'not ELF'))
         self.assertIn('error',evidence.elf_info(b'\x7fELF'+b'\0'*60))
@@ -105,69 +100,110 @@ class PreflightTests(unittest.TestCase):
             self.assertIn('linux-boot',result);self.assertIn('extra-menu',result)
             self.assertEqual(result['new-feature'],['extensions/new-feature/extension.c'])
 
-    def test_dedup_includes_closed_issues_and_ignores_user_markers(self):
-        digest='a'*64
-        fake={'number':1,'user':{'login':'someone'},'body':audit.marker(digest),'state':'closed'}
-        real={'number':2,'user':{'login':'github-actions[bot]'},'body':audit.marker(digest),'state':'closed'}
-        with patch.object(audit,'github',return_value=[fake,real]) as call:
-            self.assertEqual(audit.find_issue(digest)['number'],2)
-            self.assertIn('state=all',call.call_args.args[0])
-
     def test_missing_or_duplicate_components_and_unsafe_output_rejected(self):
         data=report();audit.validate_review(data['review'],{'boot-menu'})
         with self.assertRaises(ValueError):audit.validate_review(data['review'],{'boot-menu','new-extension'})
         data['review']['components']*=2
         with self.assertRaises(ValueError):audit.validate_review(data['review'],{'boot-menu'})
         data=report();data['review']['summary']='https://example.com?X-Amz-Signature=private'
-        with self.assertRaises(ValueError):audit.issue_body(data)
+        with self.assertRaises(ValueError):audit.report_markdown(data)
 
-    def test_issue_body_escapes_mentions_html_and_markdown(self):
+    def test_report_escapes_mentions_html_and_markdown(self):
         data=report();data['review']['summary']='@everyone <script> ![image](evil)'
-        body=audit.issue_body(data)
+        body=audit.report_markdown(data)
         self.assertNotIn('@everyone',body);self.assertNotIn('<script>',body);self.assertNotIn('![image]',body)
         self.assertIn('full Linux boot compatibility',body)
-        self.assertIn(audit.marker('a'*64),body)
+        self.assertIn('a'*64,body)
 
-    def test_publish_updates_existing_issue_and_never_creates_duplicate(self):
+    def test_local_import_and_unknown_format_prepare_complete_review(self):
         with tempfile.TemporaryDirectory() as tmp:
-            work=Path(tmp);(work/'report.json').write_text(json.dumps(report()))
-            with patch.object(audit,'find_issue',return_value={'number':12}),patch.object(audit,'github',return_value={'html_url':'https://github.com/example/repo/issues/12'}) as call:
-                audit.publish(work)
-                self.assertEqual(call.call_args.args[0],'/issues/12');self.assertEqual(call.call_args.args[2],'PATCH')
-
-    def test_unknown_container_still_prepares_complete_review(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            work=Path(tmp);(work/'download').mkdir()
-            (work/'download/update.img').write_bytes(b'future container format')
-            audit.inspect(work);audit.prepare(work)
+            root=Path(tmp);image=root/'update.bin';image.write_bytes(b'future format')
+            work=root/'audit';work.mkdir();audit.import_images(work,[image],'6.12.0')
+            with patch.object(audit,'collect_bundle',side_effect=ValueError('Unknown format')):
+                audit.inspect(work)
             facts=json.loads((work/'evidence.json').read_text())
             self.assertEqual(facts['inspection_error'],'ValueError')
             self.assertEqual(set(facts['components']),set(evidence.source_components(audit.ROOT)))
             self.assertIsNone(facts['app_matches_current_guard'])
+            self.assertTrue((work/'prompt.txt').exists())
+            self.assertTrue((work/'inspection.md').exists())
+            with self.assertRaises(FileExistsError):audit.import_images(work,[image],'6.12.0')
 
-    def test_codex_schema_and_incomplete_output(self):
+    def test_baseline_diff_distinguishes_ambiguous_and_rootfs_files(self):
+        previous={'files':{'artifact-000.bin!lib/a.so':{'sha256':'a','roles':['rootfs']},
+                           'artifact-000.bin!lib/b.so':{'sha256':'b'},
+                           'artifact-000.bin!lib/c.so':{'sha256':'c'}}}
+        current={'files':{'artifact-003.bin!lib/a.so':{'sha256':'changed','roles':['rootfs']},
+                          'artifact-000.bin!lib/b.so':{'sha256':'b'},
+                          'artifact-000.bin!lib/d.so':{'sha256':'d'},
+                          'artifact-001.bin!lib/d.so':{'sha256':'e'}}}
+        diff=audit.compare(current,previous)
+        self.assertEqual(diff['changed'],['rootfs:lib/a.so'])
+        self.assertEqual(diff['removed'],['package:lib/c.so'])
+        self.assertEqual(diff['ambiguous'],['package:lib/d.so'])
+        self.assertEqual(diff['unchanged_count'],1)
+
+    def test_work_directory_cannot_be_inside_a_checkout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);(root/'.git').mkdir()
+            with self.assertRaises(ValueError):audit.private_work(root/'work')
+
+    def test_local_schema_and_incomplete_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             work=Path(tmp);(work/'state.json').write_text('{}')
-            (work/'evidence.json').write_text(json.dumps({'components':{'boot-menu':[]}}))
+            (work/'evidence.json').write_text(json.dumps({'components':{'boot-menu':[]},'coverage':{'unverified':[]}}))
             audit.prepare(work)
             schema=json.loads((work/'review-schema.json').read_text())
             self.assertEqual(schema['properties']['components']['items']['properties']['id']['enum'],['boot-menu'])
             self.assertIn(str(work.resolve()),(work/'prompt.txt').read_text())
-            (work/'codex-review.json').write_text('{"summary":"unfinished"}')
+            (work/'review.json').write_text('{"summary":"unfinished"}')
             with self.assertRaises(ValueError):audit.finish(work)
             self.assertFalse((work/'report.json').exists())
 
-    def test_codex_report_keeps_only_curated_evidence(self):
+    @unittest.skipUnless(shutil.which('7zz') or shutil.which('7z'), '7-Zip required')
+    def test_cli_import_inspect_baseline_and_report(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            def cli(*args):
+                result=subprocess.run([sys.executable,'-m','tools.stock_update.audit',*map(str,args)],
+                                      cwd=audit.ROOT,capture_output=True,text=True)
+                self.assertEqual(result.returncode,0,result.stderr)
+            for label,release in (('baseline','old'),('candidate','new')):
+                source=root/(label+'.zip')
+                with zipfile.ZipFile(source,'w') as archive:
+                    archive.writestr('etc/os-release','VERSION='+release)
+                    archive.writestr('lib/runtime.so','synthetic runtime')
+                    archive.writestr('other-package/resources/colors.dat',release)
+                work=root/label
+                cli('import','--version','6.12.0','--image',source,'--work',work)
+                args=['inspect','--work',work]
+                if label=='candidate':args+=['--baseline',root/'baseline']
+                cli(*args)
+            facts=json.loads((work/'evidence.json').read_text())
+            self.assertIn('rootfs:etc/os-release',facts['baseline_comparison']['changed'])
+            self.assertEqual(facts['coverage']['system']['rootfs']['status'],'inspected')
+            review={'summary':'Synthetic CLI test only','plan':[],'unknowns':['No real device evidence'],
+                    'components':[{'id':key,'status':'unknown','finding':'Synthetic fixture',
+                                   'evidence':[],'fixes':[],'tests':[]} for key in facts['components']]}
+            audit.save(work/'review.json',review)
+            cli('report','--work',work)
+            result=json.loads((work/'report.json').read_text())
+            self.assertEqual(result['baseline']['changes']['changed'],2)
+            self.assertIn('Synthetic CLI test only',(work/'report.md').read_text())
+
+    def test_local_report_keeps_only_curated_evidence(self):
         with tempfile.TemporaryDirectory() as tmp:
             work=Path(tmp);sample=report()
             audit.save(work/'state.json',sample['state'])
             audit.save(work/'evidence.json',{'components':{'boot-menu':[]},
                        'app_matches_current_guard':False,'layout_checks':[{'match':False}],
                        'coverage':{'unverified':['Linux runtime unavailable']},'files':{'private-reference':'omit'}})
-            audit.save(work/'codex-review.json',sample['review'])
+            audit.save(work/'review.json',sample['review'])
             audit.finish(work)
             result=json.loads((work/'report.json').read_text())
             self.assertEqual(result['layout_mismatches'],1)
+            self.assertTrue((work/'report.md').exists())
+            self.assertNotIn('github',(work/'report.md').read_text())
             self.assertNotIn('private-reference',(work/'report.json').read_text())
 
 
