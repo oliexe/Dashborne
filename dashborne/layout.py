@@ -52,7 +52,7 @@ def screen():
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
     config['textview__5'] = label(50013, 'DASHBORNE', 242, 416, 340, 30, 23, 0xf1f2f4)
     config['textview__6'] = label(50014, f'v{VERSION}  /  https://github.com/oliexe/Dashborne', 180, 449, 440, 20, 14, 0x858c94)
-    for id, key, text, y in [(20006, 'patches', 'Extensions', 40), (20007, 'adb', 'ADB', 116), (20008, 'loader', 'Loader', 192), (20012, 'device', 'Device', 268), (20018, 'update', 'Update', 344)]:
+    for id, key, text, y in [(20006, 'patches', 'Extensions', 40), (20007, 'adb', 'ADB', 116), (20008, 'loader', 'Loader', 192), (20012, 'device', 'Device', 268), (20018, 'update', 'Update Dashborne', 344)]:
         config['button__nav_'+key] = button(id, text, 180, y, 400, 56)
         config['button__nav_'+key].update(backgroundColor=0x000000,
             textPosition=position(36, 0, 340, 56),
@@ -156,8 +156,8 @@ def screen():
         dragMaxDis=12, beepEnable=False, backgroundColor=0x07080a)
     update = dict(id=110008, position=position(680, 24, 1060, 376), visible=False,
         backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
-    update['textview__heading'] = dict(label(50201, 'Update', 24, 16, 200, 36, 28, 0xf1f2f4), bold=True)
-    update['textview__installed'] = label(50204, f'Installed: v{VERSION}', 224, 16, 480, 36, 18, 0x858c94)
+    update['textview__heading'] = dict(label(50201, 'Update Dashborne', 24, 16, 320, 36, 28, 0xf1f2f4), bold=True)
+    update['textview__installed'] = label(50204, f'Installed: v{VERSION}', 364, 16, 400, 36, 18, 0x858c94)
     def update_button(id, text, x, y, w, h, asset):
         return dict(label(id, text, x, y, w, h, 20, 0xe4e7eb, 37), touchable=True,
                     picTab={'pic0': f'../../../mnt/extsd/Dashborne/ui/update-{asset}.png',
