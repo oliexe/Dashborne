@@ -127,9 +127,14 @@ the retired Extra Menu and Widget Runtime packages during an upgrade.
 
 All selected modules form one activation transaction. ABI mismatches, missing
 entry points, activation failures, duplicate resource targets and competing
-startup activities trigger cleanup in reverse order. A failed cleanup blocks
-another launch in that process, preserving the library if its callbacks may
-still be live. The configuration screen remains available with an error.
+startup activities trigger cleanup in reverse order. The loader disables the
+failed extension, saves that choice and retries the remaining selection. It
+briefly shows “Some extensions failed to load” before continuing. A core-service
+failure falls back to the stock dashboard without extensions for that boot.
+
+If cleanup fails, the loader keeps affected libraries resident and restarts the
+UI once with extensions bypassed. If cleanup still fails after that restart, it
+asks for a restart without the card instead of entering a restart loop.
 
 The engine records overlays in `Dashborne/extensions.mounts` before mounting. On
 startup, it uses this journal to clear stale mounts before initializing the

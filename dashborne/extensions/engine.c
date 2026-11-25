@@ -324,8 +324,11 @@ int extensions_stop(void) {
         ok = 0;
     return ok && !poisoned;
 }
+static char failed_id[32];
+const char *extensions_failed_id(void) {return failed_id;}
 int extensions_start(const char *const *ids, unsigned int count, void *official, void *runtime,
                      const char *protected_target, void (*logger)(const char *)) {
+    failed_id[0]=0;
     log_line = logger;
     protected_file = protected_target;
     if (poisoned)
@@ -333,6 +336,9 @@ int extensions_start(const char *const *ids, unsigned int count, void *official,
     if (loaded_count || count > MAX_EXTENSIONS-CORE_COUNT || (count && !ids))
         return -1;
     for (unsigned int i = 0; i < count+CORE_COUNT; ++i) {
+        const char *candidate=i<CORE_COUNT?core_services[i].id:ids[i-CORE_COUNT];
+        failed_id[0]=0;
+        if(valid_id(candidate))copy(failed_id,candidate,sizeof(failed_id));
         struct loaded_extension *e = &loaded[loaded_count++];
         *e = (struct loaded_extension){0};
         if(i<CORE_COUNT) {
@@ -394,6 +400,7 @@ int extensions_start(const char *const *ids, unsigned int count, void *official,
         event(d->id);
         event("\n");
     }
+    failed_id[0]=0;
     return (int)count;
 failure:
     event("extensions: activation failed; rolling back\n");

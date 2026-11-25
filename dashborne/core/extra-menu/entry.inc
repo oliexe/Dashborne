@@ -1,0 +1,3 @@
+/* Original runtime overlay; no stock layout bytes. */
+static const char entry_document[]=
+"{\"window__zz_extra\":{\"id\":119200,\"position\":{\"left\":1800,\"top\":400,\"width\":104,\"height\":72},\"backgroundColor\":-1,\"button__extra\":{\"id\":299200,\"text\":\"\",\"fontSize\":22,\"alignment\":37,\"colorTab\":{\"color0\":16777215},\"position\":{\"left\":0,\"top\":0,\"width\":104,\"height\":72},\"touchable\":true,\"iconPosition\":{\"left\":20,\"top\":4,\"width\":64,\"height\":64},\"picTab\":{\"pic0\":\"../../../mnt/extsd/Dashborne/ui/icon.png\",\"pic1\":\"../../../mnt/extsd/Dashborne/ui/icon.png\"},\"backgroundColor\":-1},\"visible\":false}}";

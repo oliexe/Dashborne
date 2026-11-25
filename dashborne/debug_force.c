@@ -22,7 +22,8 @@ int debug_force_install(void (**change_mode)(int), void *network_init, void *mai
     /* This native maintenance method only requests/retries ctl.stop=adbd.
        Vehicle data parsing and socket servicing are separate methods. */
     if(maintain[0]!=0xe92d4070 || maintain[1]!=0xe24dd028 ||
-       maintain[2]!=0xe59f418c || maintain[3]!=0xe59f618c)return 0;
+       !((maintain[2]==0xe59f418c && maintain[3]==0xe59f618c) ||
+         (maintain[2]==0xe59f4188 && maintain[3]==0xe59f6188)))return 0;
     unsigned int stop_before=0xe92d4070,stop_after=0xe12fff1e;
     if(memory_prepare(&daemon_guard,maintain,&stop_before,&stop_after,4))return 0;
     unsigned int *entry=(unsigned int *)*change_mode;
@@ -33,7 +34,9 @@ int debug_force_install(void (**change_mode)(int), void *network_init, void *mai
        requesting its hotspot. Preserve the already connected developer radio,
        but still run the remaining native initialization and listeners. */
     unsigned int *reset=(unsigned int *)network_init+0x10c/4;
-    const unsigned int calls[]={0xebffe810,0xeb009f52,0xeb00bd9d};
+    const unsigned int legacy[]={0xebffe810,0xeb009f52,0xeb00bd9d};
+    const unsigned int current[]={0xebffe80f,0xeb00af4d,0xeb00cd8c};
+    const unsigned int *calls=maintain[2]==0xe59f4188?current:legacy;
     unsigned int nop=0xe320f000;
     for(unsigned int i=0;i<3;++i)
         if(memory_prepare(&startup[i],reset+i,&calls[i],&nop,4))return 0;

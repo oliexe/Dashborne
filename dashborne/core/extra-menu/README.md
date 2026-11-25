@@ -39,14 +39,16 @@ process, so a stale selection cannot open a different plugin.
 
 ## Implementation
 
-`dashboard.json` is a guarded additive patch for the installed 6.11.2 dashboard.
-The loader composes its button with selected layout patches, then starts the menu
-before user extensions. The core observes the dashboard’s existing global touch
-callback and preserves its return value. A native one-shot timer hides the entry;
-new touches reset the timeout. Hidden controls do not receive clicks, and no
-full-screen touch overlay or polling thread is added. Stock clicks and timer IDs
-pass to their previous handlers, including through the custom-widget runtime.
-App/runtime fingerprints and callback ownership are checked before hooking.
+`dashboard.json` defines Dashborne's own overlay control. The core creates it
+inside the dashboard's root window after the stock activity finishes loading;
+no dashboard layout patch or stock app fingerprint is needed. The shared UI
+runtime ABI, named activity callbacks and callback ownership are still checked.
+
+The small dashboard adapter forwards stock clicks and touch events, then reveals
+the icon for four seconds. A one-shot timer hides it, and hidden controls do not
+receive clicks. The widget runtime and themes chain these callbacks. The menu's
+layout, entry registry and window lifecycle remain separate from this adapter.
+If core activation fails, Dashborne warns and opens the unpatched dashboard.
 
 The menu uses a native Activity with a resident factory trampoline, an original
 SD layout and the runtime's scrollable list. The host registry is independent of
@@ -66,8 +68,7 @@ DASHBORNE_LD=/opt/homebrew/opt/lld/bin/ld.lld sh dashborne/build.sh
 
 Host tests cover empty and 64-entry menus, selection and return, duplicate
 opens, cleanup while a window is live, stale tokens, rollback, owner namespaces
-and composition with selected patches. We also applied the dashboard patch to
-the device layout and checked that it preserved the original controls. On
+and runtime overlay creation without replacing the dashboard layout. On
 the DASH, the user confirmed the stock-style menu, opening Screen Mirroring and
 returning to Extra. Deployment checks compared uploaded files with read-back
 copies, preserved settings, and confirmed that configuration and ADB returned

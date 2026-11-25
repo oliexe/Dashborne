@@ -1,3 +1,4 @@
+#include "stock_compat.h"
 #include "data.h"
 extern int open(const char *,int,...),read(int,void *,unsigned int),close(int);
 extern unsigned long crc32(unsigned long,const unsigned char *,unsigned int);
@@ -18,7 +19,7 @@ static int fingerprint(const char *path,unsigned int size,unsigned int expected)
     close(fd);return n==0 && total==size && crc==expected;
 }
 int tm_data_bind(const struct dashborne_host *h) {
-    if(!fingerprint("/res/lib/libzkgui.so",3464120,0x9de99542) ||
+    if(!db_stock_version() ||
        !fingerprint("/lib/libeasyui.so",826052,0xece0feec)) {
         h->log(h,"tesla-model: unsupported app/runtime; vehicle offsets were not read");return -1;
     }

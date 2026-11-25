@@ -5,6 +5,14 @@ tracked separately in their source history.
 
 ## Unreleased
 
+- Support stock OS 6.11.4 in the core widget runtime and Force ADB adapter.
+
+- Failed extensions are disabled and skipped with a warning, allowing boot to
+  continue. Core-service failures fall back to the stock dashboard.
+
+- Extra creates its entry as a runtime overlay instead of patching the stock
+  dashboard layout, reducing its dependence on stock app updates.
+
 - Optional Force ADB keeps developer Wi-Fi connected while the stock dashboard
   runs. Auto recovery captures diagnostics and reboots into the boot menu after
   a crash or a stopped UI event loop.

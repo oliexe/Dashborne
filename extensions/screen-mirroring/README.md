@@ -37,7 +37,7 @@ are not provided.
 
 ## Implementation
 
-The supported installed app is **6.11.2**. Full-file fingerprints, exported
+The supported installed apps are **6.11.2 and 6.11.4**. Full-file fingerprints, exported
 function addresses, and original instruction checks guard the runtime changes.
 Miracast adds checks for the Wi-Fi Display receiver and P2P service.
 
@@ -79,3 +79,6 @@ changes, resize failures, reconnects, and rotated display coordinates.
 AirPlay playback and Back restoring CarPlay/Android Auto were confirmed on the
 DASH before adding the selector. The combined build still needs hardware testing:
 Miracast discovery, pairing, video, audio, and repeated switching are unverified.
+
+On 6.11.4, activation, the receiver selector and return to Extra were checked
+on the device. Phone-to-receiver playback still needs a check on this version.

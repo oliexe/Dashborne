@@ -57,3 +57,7 @@ placements. The normal build was restored afterward. Touch placement/removal,
 rapid page swipes, theme changes, knob navigation and coexistence with active
 projection still need confirmation on the final build before claiming complete
 stock-widget parity.
+
+The 6.11.4 device probe also passed all eight sizes, including native editor
+frames, two independent instances and picker counts across all 25 categories.
+The probe changes live objects only; it leaves saved layouts untouched.

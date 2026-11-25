@@ -80,11 +80,10 @@ class StateTests(unittest.TestCase):
         s.wifi_adb=1;s.adb_force=s.adb_auto_restart=1;s.patches[0].enabled=1;s.patches[1].enabled=1
         self.assertEqual(self.lib.state_save(ctypes.byref(s)),1)
         s=self.load();self.assertEqual((s.adb_force,s.adb_auto_restart),(1,1));self.assertEqual(s.wifi_adb,1);self.assertEqual(s.patches[1].enabled,1)
-        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),3)
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),2)
         result=codec.decode((self.card/'generated.ftu').read_bytes())
         self.assertEqual(result.pop('textview__900001')['text'],'ADDED')
         self.assertEqual(result.pop('textview__900002')['text'],'SECOND')
-        self.assertEqual(result.pop('textview__900003')['text'],'EXTRA')
         self.assertEqual(result,self.original)
         self.assertEqual((self.root/'base.ftu').read_bytes(),self.base)
 
@@ -92,6 +91,8 @@ class StateTests(unittest.TestCase):
         (self.card/'settings.conf').write_text('wifi_adb=1\npatch.one=1\npatch.two=1\n')
         (self.card/'patches/two.dbp').unlink()
         s=self.load();self.assertEqual(s.patches[1].compatible,0);self.assertEqual(s.patches[1].enabled,0)
+        self.assertEqual(self.lib.state_rejected_count(),1)
+        self.assertIn("tweak.two.enabled=0",(self.card/"dashborne.conf").read_text())
         (self.card/'patches/one.dbp').write_bytes(b'broken')
         self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),-1)
         self.assertFalse((self.card/'generated.ftu').exists())
@@ -101,8 +102,8 @@ class StateTests(unittest.TestCase):
         (self.card/'settings.conf').write_text('patch.native=1\n')
         s=self.load();self.assertEqual(s.count,1)
         self.assertTrue(s.patches[0].native and s.patches[0].compatible and s.patches[0].enabled)
-        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),1)
-        self.assertTrue((self.card/'generated.ftu').exists())
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),0)
+        self.assertFalse((self.card/'generated.ftu').exists())
 
     def test_scalar_and_additive_settings_batch_and_collision(self):
         author=load_module('patch_author',ROOT/'patches/author.py')
@@ -111,7 +112,7 @@ class StateTests(unittest.TestCase):
         (self.card/'patches/catalog.tsv').write_text('one\tLabel\tExample\nscalar\tScalar\tExample\n')
         s=self.load()
         for i in range(s.count):s.patches[i].enabled=1
-        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),3)
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),2)
         changed=codec.decode((self.card/'generated.ftu').read_bytes())
         self.assertEqual(changed['textview__1']['id'],50002)
         self.assertEqual(changed['textview__900001']['text'],'ADDED')
@@ -120,20 +121,14 @@ class StateTests(unittest.TestCase):
         self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),-1)
         self.assertFalse((self.card/'generated.ftu').exists())
 
-    def test_core_button_is_composed_without_a_user_toggle(self):
-        core=self.card/'assets/extra-menu'
-        s=self.load();self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),1)
-        self.assertIn('textview__900003',codec.decode((self.card/'generated.ftu').read_bytes()))
+    def test_no_layout_override_needed_for_core_menu(self):
+        s=self.load()
+        (self.card/'assets/extra-menu/dashboard.dbp').unlink()
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),0)
+        self.assertFalse((self.card/'generated.ftu').exists())
         s.patches[1].enabled=1
-        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),2)
-        result=codec.decode((self.card/'generated.ftu').read_bytes())
-        self.assertIn('textview__900003',result);self.assertIn('textview__900002',result)
-        (core/'dashboard.dbp').unlink()
-        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),-1)
-
-    def test_no_user_patches_still_adds_core_menu(self):
-        s=self.load();self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),1)
-        self.assertTrue((self.card/'generated.ftu').exists())
+        self.assertEqual(self.lib.state_apply(ctypes.byref(s),self.logger),1)
+        self.assertIn('textview__900002',codec.decode((self.card/'generated.ftu').read_bytes()))
 
     def test_malformed_catalog_and_settings(self):
         (self.card/'patches/catalog.tsv').write_text('../escape\tBad\tBad\none\tFirst\tOK\none\tDuplicate\tIgnored\ninvalid line\n')

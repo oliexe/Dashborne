@@ -53,16 +53,20 @@ void state_load(struct settings *s) {
 }
 int state_save(const struct settings *s) { assert(s->count == 2 || s->count == 64); ++saved; return !force_save_failure && strcmp(scenario, "save-failure") != 0; }
 int state_apply(const struct settings *s, void (*log)(const char *)) {
-    assert((s->count == 2 || s->count == 64) && log); ++applied; return !strcmp(scenario, "patch-failure") ? -1 : 1;
+    assert((s->count == 2 || s->count == 64) && log); ++applied; return !strcmp(scenario,"patch-failure") && s->patches[0].enabled ? -1 : 1;
 }
+unsigned int state_rejected_count(void){return !strcmp(scenario,"rejected-extension");}
+const char *state_failed_id(void){return "test-label";}
+const char *extensions_failed_id(void){return !strcmp(scenario,"core-failure")?"extra-menu":"native-example";}
 int extension_probe(const char *id) { assert(!strcmp(id,"extra-menu") || !strcmp(id,"widget-runtime")); return !strcmp(scenario,"extension"); }
 int extensions_recover(void (*logger)(const char *)) { assert(logger); return 1; }
 int extensions_start(const char *const *ids, unsigned int count, void *s, void *r,
                      const char *protected_target, void (*logger)(const char *)) {
     assert(ids && s && r && protected_target && logger); ++extension_calls;
-    if (settings.patches[1].native) { assert(count == 1 && !strcmp(ids[0], "native-example")); }
+    if (settings.patches[1].native && settings.patches[1].enabled) { assert(count == 1 && !strcmp(ids[0], "native-example")); }
     else assert(!count);
-    if (!strcmp(scenario, "extension-failure")) return -1;
+    if (!strcmp(scenario,"extension-failure") && count) return -1;
+    if (!strcmp(scenario,"core-failure"))return -1;
     if (!strcmp(scenario, "extension-cleanup-failure")) return -2;
     return (int)count;
 }
@@ -115,7 +119,7 @@ const char *debug_status(void) { return "ADB listening"; }
 const char *debug_ip(void) { return ip; }
 const char *debug_wifi_name(void) { return "TestNetwork"; }
 static void timer(void *p, int id, int interval) {
-    assert(p && ((id == NETWORK_TIMER && interval == 1000) || (id == BOOT_TIMER && interval == 3000) || (id == LOADING_TIMER && interval == 180))); ++timer_calls;
+    assert(p && ((id == NETWORK_TIMER && interval == 1000) || (id == BOOT_TIMER && interval == 3000) || (id == LOADING_TIMER && interval == 180) || (id==CONTINUE_TIMER && interval==2000))); ++timer_calls;
 }
 static int is(const char *s) { return !strcmp(scenario, s); }
 static void original_init(void *p) { assert(p == (void *)123); ++init_calls; }
@@ -215,7 +219,7 @@ void *fake_dlsym(void *handle, const char *name) {
 }
 int fake_open(const char *path, int flags, ...) {
     if (flags == 0) { assert(!strcmp(path, "/lib/libeasyui.so")); return 10; }
-    assert(!strcmp(path, "/mnt/extsd/Dashborne/loader.log")); return 11;
+    assert(!strcmp(path,"/mnt/extsd/Dashborne/loader.log") || !strcmp(path,STOCK_ONCE)); return 11;
 }
 int fake_read(int fd, void *buf, unsigned int count) {
     assert(fd == 10 && count >= 7);
@@ -227,7 +231,7 @@ int fake_write(int fd, const void *buf, unsigned int count) { assert(fd == 11 &&
 int fake_close(int fd) { assert(fd == 10 || fd == 11); return 0; }
 int fake_fsync(int fd) { assert(fd == 11); return 0; }
 int fake_unlink(const char *path) { assert(!strcmp(path, "/mnt/extsd/Dashborne/config.once")); return 0; }
-int fake_access(const char *path, int mode) { if (mode == 0) return (is("config-on") || is("config-off")) ? 0 : -1; assert(!strcmp(path, LAYOUT) && mode == 4); return is("missing-layout") ? -1 : 0; }
+int fake_access(const char *path, int mode) { if(!strcmp(path,STOCK_ONCE))return -1; if (mode == 0) return (is("config-on") || is("config-off")) ? 0 : -1; assert(!strcmp(path, LAYOUT) && mode == 4); return is("missing-layout") ? -1 : 0; }
 void *fake_calloc(usize n, usize size) {
     if (is("allocation-failure")) return NULL;
     ++allocations; return calloc(n, size);
@@ -247,6 +251,17 @@ int main(int argc, char **argv) {
         assert(external_app && !ready && !registered && !applied);
         assert(is("external-empty") ? !selected && restarts==1 : selected && !strcmp(selected,"installedActivity"));
         onEasyUIDeinit((void *)123);assert(deinit_calls==1);
+        printf("PASS: %s\n",scenario);return 0;
+    }
+    if(is("recovery-retry") || is("recovery-bounded")) {
+        void *p=registered();extension_recovery_ok=0;
+        stock_only=is("recovery-bounded");
+        launch(p);
+        assert(!opened && !extension_calls);
+        if(stock_only && is("recovery-bounded"))assert(phase==1 && launch_error && !restarts);
+        else {assert(phase==2 && restart_pending);on_timer(p,CONTINUE_TIMER);assert(restarts==1);}
+        ((void (*)(void *))(*(void ***)p)[1])(p);
+        onEasyUIDeinit((void *)123);
         printf("PASS: %s\n",scenario);return 0;
     }
     if(!strncmp(scenario,"force-",6)) {
@@ -317,7 +332,7 @@ int main(int argc, char **argv) {
         assert(allocations==frees);printf("PASS: %s\n",scenario);return 0;
     }
 
-    if (is("extension") || is("extension-failure") || is("extension-cleanup-failure") || is("config-on") || is("config-off") || is("list") || is("developer-auto") || is("developer-tap") || is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
+    if (is("core-failure") || is("rejected-extension") || is("extension") || is("extension-failure") || is("extension-cleanup-failure") || is("config-on") || is("config-off") || is("list") || is("developer-auto") || is("developer-tap") || is("normal") || is("tapped") || is("toggles") || is("patch-failure") || is("save-failure") || is("shutdown-prepared")) {
         assert(!strcmp(selected, ACTIVITY) && registered && create_calls == 1);
         int marked = is("config-on") || is("config-off");
         assert(phase == marked && timer_calls == (marked ? 1 : 3) && !opened);
@@ -390,12 +405,16 @@ int main(int argc, char **argv) {
                 }
                 click(p, find(p, LAUNCH_ID));
             } else tick(p, BOOT_TIMER);
-            if (is("save-failure") || is("patch-failure") || is("extension-failure") || is("extension-cleanup-failure")) {
-                assert(phase == 1 && !opened);
-                if (is("extension-failure") || is("extension-cleanup-failure")) assert(restored == 1);
-                if (is("extension-cleanup-failure")) {
-                    click(p, find(p, LAUNCH_ID)); assert(extension_calls == 1);
-                }
+            if(is("save-failure"))assert(phase==1 && !opened);
+            else if(is("core-failure") || is("rejected-extension") || is("patch-failure") || is("extension-failure") || is("extension-cleanup-failure")) {
+                assert(phase==2 && !opened);
+                assert(strstr(((struct mock_control *)find(p,NOTICE_ID))->text,"Some extensions failed"));
+                if(is("patch-failure"))assert(!settings.patches[0].enabled && applied==2);
+                else if(!is("core-failure") && !is("rejected-extension"))assert(!settings.patches[1].enabled);
+                if(is("core-failure"))assert(stock_only && restored==1 && extension_calls==1);
+                tick(p,CONTINUE_TIMER);
+                if(is("extension-cleanup-failure"))assert(restarts==1 && !opened);
+                else assert(opened==1 && phase==3);
             }
             else {
                 assert(phase == 3 && opened == 1 && applied == 1);

@@ -84,7 +84,10 @@ static int compatible(const unsigned char *base, unsigned int base_size, const c
     free(out); free(patch); return ok;
 }
 void state_restore(void) { (void)umount2(DASHBORNE_TARGET, 2); }
+static unsigned int rejected;
+unsigned int state_rejected_count(void){return rejected;}
 void state_load(struct settings *state) {
+    rejected=0;
     *state = (struct settings){0};
     /* Clear a previous Dashborne file override when reloading the SD app. */
     (void)umount2(DASHBORNE_TARGET, 2);
@@ -133,9 +136,16 @@ void state_load(struct settings *state) {
         for(unsigned int i=0;i<state->count;++i) {
             char key[64]="tweak.";unsigned int at=copy(key+6,state->patches[i].id,sizeof(key)-6)+6;
             copy(key+at,".enabled",sizeof(key)-at);
-            if(config_get(key,value,sizeof(value)))state->patches[i].enabled=state->patches[i].compatible && equal(value,"1");
+            if(config_get(key,value,sizeof(value))) {
+                int selected=equal(value,"1");
+                state->patches[i].enabled=state->patches[i].compatible && selected;
+                if(selected && !state->patches[i].compatible) {
+                    ++rejected;(void)config_set(key,"0");
+                }
+            }
         }
     }
+    if(rejected)(void)config_commit();
     config_clear();
 }
 int state_save(const struct settings *state) {
@@ -154,32 +164,36 @@ int state_save(const struct settings *state) {
     }
     ok=ok && config_commit();config_clear();return ok;
 }
+static char failed_patch[32];
+const char *state_failed_id(void) {return failed_patch;}
 int state_apply(const struct settings *state, void (*log)(const char *)) {
+    failed_patch[0]=0;
     if (state->count > MAX_PATCHES) return -1;
-    unsigned int chosen = 1;
+    unsigned int chosen = 0;
     for (unsigned int i = 0; i < state->count; ++i) chosen += state->patches[i].enabled && !state->patches[i].native;
     /* A failed extension activation may return to configuration after a layout
        override was mounted. Always compose from the installed file again. */
     (void)umount2(DASHBORNE_TARGET, 2);
+    if(!chosen)return 0;
     unsigned int base_size = 0, loaded = 0;
     unsigned char *base = load_limit(DASHBORNE_TARGET, &base_size, LIMIT);
     struct layout_patch patches[MAX_PATCHES+1] = {{0}};
     int success = base != (void *)0;
-    {
-        patches[loaded].data=load_limit(DASHBORNE_ROOT "/assets/extra-menu/dashboard.dbp",
-                                       &patches[loaded].size,16412);
-        if(!patches[loaded].data)success=0;
-        ++loaded;
-    }
     for (unsigned int i = 0; success && i < state->count; ++i) {
         const struct patch_entry *entry = &state->patches[i];
         if (!entry->enabled || entry->native) continue;
+        copy(failed_patch,entry->id,sizeof(failed_patch));
         if (!entry->compatible || !valid_id(entry->id)) { success = 0; break; }
         char path[256]; patch_path(path, entry->id);
         patches[loaded].data = load_limit(path, &patches[loaded].size, 16412);
         if (!patches[loaded].data) success = 0;
         ++loaded;
+        /* Validate each prefix so collisions identify the newly added patch. */
+        unsigned char *probe=0;unsigned int probe_size=0;
+        if(success)success=patch_layout_many(base,base_size,patches,loaded,&probe,&probe_size);
+        free(probe);
     }
+    if(success)failed_patch[0]=0;
     unsigned char *result = (void *)0; unsigned int result_size = 0;
     if (success) success = patch_layout_many(base, base_size, patches, loaded, &result, &result_size);
     for (unsigned int i = 0; i < loaded; ++i) free((void *)patches[i].data);

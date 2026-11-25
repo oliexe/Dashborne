@@ -18,14 +18,15 @@ class InstallTests(unittest.TestCase):
             for old in install.RETIRED_PACKAGES:
                 folder=card/old;folder.mkdir(parents=True)
                 (folder/'libextension.so').write_bytes(b'old core')
-            (card/'Dashborne/patches/dashborne-badge.dbp').write_bytes(b'old patch')
+            for old in install.RETIRED_FILES:
+                (card/old).write_bytes(b'old patch')
             user=card/'Dashborne/extensions/my-widget';user.mkdir()
             (user/'libextension.so').write_bytes(b'user widget')
             install.stage(card)
             self.assertEqual((card/'dashborne.conf').read_bytes(),settings)
             self.assertEqual((user/'libextension.so').read_bytes(),b'user widget')
             self.assertTrue(all(not (card/old).exists() for old in install.RETIRED_PACKAGES))
-            self.assertFalse((card/'Dashborne/patches/dashborne-badge.dbp').exists())
+            self.assertTrue(all(not (card/old).exists() for old in install.RETIRED_FILES))
 
     def test_migrate_preserve_choices_and_restore_exact_config(self):
         with tempfile.TemporaryDirectory() as tmp:

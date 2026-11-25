@@ -30,7 +30,8 @@ RETIRED_PACKAGES = RETIRED_CORE + ('Dashborne/extensions/tesla-ui',
                                  'Dashborne/extensions/vehicle-widget',
                                  'Dashborne/extensions/contrast',
                                  'Dashborne/extensions/lifecycle-example')
-RETIRED_FILES = ('Dashborne/patches/dashborne-badge.dbp',)
+RETIRED_FILES = ('Dashborne/patches/dashborne-badge.dbp',
+                 'Dashborne/assets/extra-menu/dashboard.dbp')
 
 
 def stage(card, wifi_config=None, configure=False, restore=False, build=None):
@@ -56,7 +57,7 @@ def stage(card, wifi_config=None, configure=False, restore=False, build=None):
     library = (build / 'Dashborne/lib/libdashborne.so').read_bytes()
     if len(library) < 52 or library[:6] != b'\x7fELF\x01\x01' or library[18:20] != b'\x28\x00':
         raise ValueError('Build the ARM loader first')
-    for name in ('menu.ftu', 'dashboard.dbp', 'star.png', 'star-pressed.png', 'tweaks.png'):
+    for name in ('menu.ftu', 'star.png', 'star-pressed.png', 'tweaks.png'):
         if not (build / 'Dashborne/assets/extra-menu' / name).is_file():
             raise ValueError('Core menu assets are missing from the build')
     if any((build / legacy).exists() for legacy in RETIRED_CORE):

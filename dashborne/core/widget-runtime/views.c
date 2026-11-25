@@ -1,3 +1,4 @@
+#include "stock_compat.h"
 #include "runtime.h"
 #include "memory.h"
 extern int snprintf(char *,usize,const char *,...);
@@ -214,7 +215,7 @@ int views_bind(const struct dashborne_host *h) {
     if(sizeof(void *)!=4 || !dladdr(base_table,&image) || base_table!=(void **)((unsigned char *)image.base+0x351e10) ||
        text_table[10]!=(void *)base_draw)return -1;
     /* Use the app's allocator pair through its verified delete PLT entry. */
-    cpp_delete=(void (*)(void *))((unsigned char *)image.base+0x9893c);
+    cpp_delete=(void (*)(void *))((unsigned char *)image.base+DB_STOCK_OFFSET(0x9893c,0x9896c));
     for(int i=0;i<25;++i)native_table[i]=base_table[i];
     for(int i=0;i<23;++i)if(i!=12 && i!=19)native_table[i+2]=(void *)noop;
     native_table[12]=(void *)apply_theme;native_table[22]=(void *)alpha;
@@ -222,10 +223,10 @@ int views_bind(const struct dashborne_host *h) {
     h->log(h,"widgets: view tables verified");
     code=mmap(0,4096,3,0x22,-1,0);if(code==(void *)-1){code=0;return -1;}
     unsigned char *base=image.base;
-    if(hook_entry(base+0x11c014,0xe92d47f0u,0xe1a07001u,(void *)activate_widget,code) ||
-       hook_entry(base+0x11b26c,0xe92d47f0u,0xe2809e56u,(void *)get_by_button,(unsigned int *)code+4) ||
-       hook_entry(base+0x113c4c,0xe5902018u,0xe590101cu,(void *)video_layout,(unsigned int *)code+8) ||
-       hook_entry(base+0xf8d58,0xe92d41f0u,0xe1a08000u,(void *)count_stock,(unsigned int *)code+12))return -1;
+    if(hook_entry(base+DB_STOCK_OFFSET(0x11c014,0x1067e4),0xe92d47f0u,0xe1a07001u,(void *)activate_widget,code) ||
+       hook_entry(base+DB_STOCK_OFFSET(0x11b26c,0x105a3c),0xe92d47f0u,0xe2809e56u,(void *)get_by_button,(unsigned int *)code+4) ||
+       hook_entry(base+DB_STOCK_OFFSET(0x113c4c,0xfd8e4),0xe5902018u,0xe590101cu,(void *)video_layout,(unsigned int *)code+8) ||
+       hook_entry(base+DB_STOCK_OFFSET(0xf8d58,0xbb35c),0xe92d41f0u,0xe1a08000u,(void *)count_stock,(unsigned int *)code+12))return -1;
     h->log(h,"widgets: entry hooks prepared");
     if(syscall(0xf0002L,(uintptr)code,(uintptr)code+64,0L) || mprotect(code,4096,5))return -1;
     *(void **)(&factory)=code;*(void **)(&button_lookup)=(unsigned int *)code+4;

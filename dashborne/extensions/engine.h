@@ -6,4 +6,5 @@ int extensions_start(const char *const *ids, unsigned int count, void *official,
                      const char *protected_target, void (*logger)(const char *));
 const char *extensions_activity(const char *official_activity);
 int extensions_stop(void);
+const char *extensions_failed_id(void);
 #endif

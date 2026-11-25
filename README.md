@@ -42,10 +42,8 @@ Power off and remove the microSD card to boot the unpatched OS.
 <details>
 <summary>What if an extension fails to load?</summary>
 
-If an extension reports a loading or activation error, Dashborne stays in the boot
-menu and shows the error so you can disable it.
-If it crashes or freezes the UI, power-cycle the DASH and tap the splash to
-disable the extension, or remove the card to boot stock.
+Dashborne warns you, disables extensions that fail to load, and continues booting.
+If an extension crashes later, use opt-in Auto recovery or restart and disable it in the boot menu.
 
 </details>
 
@@ -116,10 +114,10 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 
 | Name | Description | OS Version |
 | --- | --- | --- |
-| [Tesla Skin](extensions/tesla-skin) | Tesla-inspired light and dark styling for the stock dashboard, Settings and widget picker. | 6.11.2 |
-| [Development Menu](extensions/development-menu) | Opens the hidden stock Settings category without a password. | 6.11.2 |
-| [Tesla Model Widget](extensions/tesla-model) | A 2×2 animated car-state widget with tap-to-change model variants. Requires a separately installed model pack. | 6.11.2 |
-| [Screen Mirroring](extensions/screen-mirroring) | AirPlay and experimental Miracast in a shared viewer with aspect controls; Back restores CarPlay/Android Auto. | 6.11.2 |
+| [Tesla Skin](extensions/tesla-skin) | Tesla-inspired light and dark styling for the stock dashboard, Settings and widget picker. | 6.11.2, 6.11.4 |
+| [Development Menu](extensions/development-menu) | Opens the hidden stock Settings category without a password. | 6.11.2, 6.11.4 |
+| [Tesla Model Widget](extensions/tesla-model) | A 2×2 animated car-state widget with tap-to-change model variants. Requires a separately installed model pack. | 6.11.2, 6.11.4 |
+| [Screen Mirroring](extensions/screen-mirroring) | AirPlay and experimental Miracast in a shared viewer with aspect controls; Back restores CarPlay/Android Auto. | 6.11.2, 6.11.4 |
 
 Version targets refer to the stock DASH application version.
 

@@ -53,5 +53,11 @@ int main(void){
     assert(mode[0]==0xe59f328c && !memcmp(init+0x10c/4,calls,sizeof(calls)));
     assert(fn==(void (*)(int))mode);assert(maintain[0]==0xe92d4070);
     assert(debug_force_install(&fn,init,maintain));assert(debug_force_remove(&fn));
+    maintain[2]=0xe59f4188;maintain[3]=0xe59f6188;
+    assert(!debug_force_install(&fn,init,maintain));
+    const unsigned int current[]={0xebffe80f,0xeb00af4d,0xeb00cd8c};
+    memcpy(init+0x10c/4,current,sizeof(current));
+    assert(debug_force_install(&fn,init,maintain));assert(debug_force_remove(&fn));
+    assert(!memcmp(init+0x10c/4,current,sizeof(current)) && maintain[0]==0xe92d4070);
     return 0;
 }

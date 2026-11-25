@@ -14,13 +14,34 @@ static int protection,installed;
 #define EXTRA_WINDOW 119200
 #define EXTRA_TIMER 97401
 #define EXTRA_TIMEOUT 4000
-static const int indices[]={4,7,17,24,52};
-static void *saved[5];
+static const int indices[]={4,7,17,24,52,6};
+static void *saved[6];
+static void *(*find_control)(void *,int);
+#include "entry.inc"
+static void (*original_create)(void *),(*listener)(void *,void *);
+static void (*json_ctor)(void *,int),(*json_dtor)(void *),(*reader_ctor)(void *),(*reader_dtor)(void *);
+static int (*json_parse)(void *,const char *,const char *,void *,int);
+static void (*parse_controls)(void *,const void *);
+static void created(void *self) {
+    original_create(self);
+    /* BaseApp's root window is part of the verified shared runtime ABI.
+       Create children only once the stock activity has finished initializing. */
+    void *root=((void **)self)[2];
+    if(!root || find_control(self,119200))return;
+    union {double align;unsigned char bytes[256];} reader;
+    union {double align;unsigned char bytes[64];} json;
+    reader_ctor(&reader);json_ctor(&json,0);
+    int ok=json_parse(&reader,entry_document,entry_document+sizeof(entry_document)-1,&json,0);
+    if(ok)parse_controls(root,&json);
+    json_dtor(&json);reader_dtor(&reader);
+    void *button=find_control(self,299200);
+    if(button)listener(button,self);
+    else host->log(host,"extra-menu: overlay entry unavailable; stock dashboard continues");
+}
 static int (*id_of)(void *);
 static void (*original_click)(void *,void *);
 static int (*original_touch)(void *,const void *),(*original_touch_secondary)(void *,const void *);
 static int (*original_timer)(void *,int),(*original_timer_secondary)(void *,int);
-static void *(*find_control)(void *,int);
 static int (*is_visible)(void *);
 static void (*visible)(void *,int);
 static void (*register_timer)(void *,int,int),(*reset_timer)(void *,int,int),(*unregister_timer)(void *,int);
@@ -92,9 +113,13 @@ int core_extra_start(const struct dashborne_host *api) {
     if(!api || api->abi_version!=DASHBORNE_EXTENSION_ABI || api->struct_size<sizeof(*api) || host)return -1;
     host=api;
     if(!api->extra_count || !api->extra_entry || !api->open_extra || !api->register_activity ||
-       !fingerprint("/res/lib/libzkgui.so",3464120u,0x9de99542u) ||
        !fingerprint("/lib/libeasyui.so",826052u,0xece0feecu))return -1;
 #define UI(v,s) do {*(void **)(&(v))=api->resolve(api->ui_runtime,s);if(!(v))return -1;}while(0)
+    UI(json_ctor,"_ZN4Json5ValueC1ENS_9ValueTypeE");UI(json_dtor,"_ZN4Json5ValueD1Ev");
+    UI(reader_ctor,"_ZN4Json6ReaderC1Ev");UI(reader_dtor,"_ZN4Json6ReaderD2Ev");
+    UI(json_parse,"_ZN4Json6Reader5parseEPKcS2_RNS_5ValueEb");
+    UI(parse_controls,"_ZN8ZKWindow21parseControlsFromJsonERKN4Json5ValueE");
+    UI(listener,"_ZN6ZKBase16setClickListenerEPNS_14IClickListenerE");
     UI(id_of,"_ZNK6ZKBase5getIDEv");
     UI(find_control,"_ZN7BaseApp15findControlByIDEi");
     UI(visible,"_ZN6ZKBase10setVisibleEb");UI(is_visible,"_ZNK6ZKBase9isVisibleEv");
@@ -105,19 +130,21 @@ int core_extra_start(const struct dashborne_host *api) {
     if(!table)return -1;
     const char *symbols[]={"_ZN16dash1actActivity7onClickEP6ZKBase",
         "_ZN16dash1actActivity7onTimerEi","_ZN16dash1actActivity12onTouchEventERK11MotionEvent",
-        "_ZThn4_N16dash1actActivity7onTimerEi","_ZThn40_N16dash1actActivity12onTouchEventERK11MotionEvent"};
-    for(int i=0;i<5;++i) {
+        "_ZThn4_N16dash1actActivity7onTimerEi","_ZThn40_N16dash1actActivity12onTouchEventERK11MotionEvent",
+        "_ZN16dash1actActivity8onCreateEv"};
+    for(int i=0;i<6;++i) {
         void *stock=api->resolve(api->official_library,symbols[i]);
         if(!stock || (table[indices[i]]!=stock && (!api->owns_callback || !api->owns_callback(api,table[indices[i]]))))return -1;
         saved[i]=table[indices[i]];
     }
+    *(void **)(&original_create)=saved[5];
     *(void **)(&original_click)=saved[0];*(void **)(&original_timer)=saved[1];
     *(void **)(&original_touch)=saved[2];*(void **)(&original_timer_secondary)=saved[3];
     *(void **)(&original_touch_secondary)=saved[4];
     if(map() || extra_window_bind(api))return -1;
     if(mprotect(page,4096,protection|2))return -1;
-    void *callbacks[]={(void *)clicked,(void *)timer,(void *)touched,(void *)timer_secondary,(void *)touched_secondary};
-    for(int i=0;i<5;++i)table[indices[i]]=callbacks[i];
+    void *callbacks[]={(void *)clicked,(void *)timer,(void *)touched,(void *)timer_secondary,(void *)touched_secondary,(void *)created};
+    for(int i=0;i<6;++i)table[indices[i]]=callbacks[i];
     installed=1;
     if(mprotect(page,4096,protection))return -1;
     api->log(api,"extra-menu: dashboard entry ready");return 0;
@@ -125,10 +152,10 @@ int core_extra_start(const struct dashborne_host *api) {
 int core_extra_stop(void) {
     if(extra_window_cleanup())return -1;
     if(installed) {
-        void *callbacks[]={(void *)clicked,(void *)timer,(void *)touched,(void *)timer_secondary,(void *)touched_secondary};
-        for(int i=0;i<5;++i)if(table[indices[i]]!=callbacks[i] && table[indices[i]]!=saved[i])return -1;
+        void *callbacks[]={(void *)clicked,(void *)timer,(void *)touched,(void *)timer_secondary,(void *)touched_secondary,(void *)created};
+        for(int i=0;i<6;++i)if(table[indices[i]]!=callbacks[i] && table[indices[i]]!=saved[i])return -1;
         if(mprotect(page,4096,protection|2))return -1;
-        for(int i=4;i>=0;--i)table[indices[i]]=saved[i];
+        for(int i=5;i>=0;--i)table[indices[i]]=saved[i];
         if(mprotect(page,4096,protection))return -1;
     }
     installed=0;host=0;table=0;page=0;return 0;

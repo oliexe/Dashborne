@@ -36,7 +36,7 @@ static int original_timer(void *p,int id){(void)p;assert(id!=TIMER);return 7;}
 static void original_pause(void *p){(void)p;assert(view_paused);++pauses;}
 static void original_resume(void *p){(void)p;++resumes;}
 static void original_destroy(void *p){assert(p==(void *)1 && !live && detaches);++destructs;}
-static int owns(const struct dashborne_host *h,const void *p){(void)h;return p==(void *)original_timer;}
+static int owns(const struct dashborne_host *h,const void *p){(void)h;return p==(void *)original_timer || p==(void *)original_created;}
 static void log_message(const struct dashborne_host *h,const char *s){(void)h;assert(strstr(s,"widgets:"));}
 static void register_tick(void *p,int id,int ms){assert(p==(void *)1 && id==TIMER && ms==16);++registered;}
 static void unregister_tick(void *p,int id){assert(p==(void *)1 && id==TIMER);++unregistered;}
@@ -57,6 +57,9 @@ int main(void) {
     assert(!add_hook(7,(void *)timer_secondary,(void *)timer,1) && hooks[0].before==(void *)original_timer);
     native_activity[24]=(void *)original_timer;
     assert(!add_hook(24,(void *)timer,(void *)timer_secondary,1) && hooks[1].before==(void *)original_timer);
+    native_activity[6]=(void *)original_created;
+    assert(!add_hook(6,(void *)created,(void *)created,1));
+    assert(hooks[2].before==(void *)original_created);
     native_activity[4]=(void *)original_click;hook_count=0;
     assert(!add_hook(4,(void *)original_click,(void *)clicked,0) && !map_table());
     installed=1;native_activity[4]=(void *)clicked;protect_fail=1;assert(runtime_unbind()==-1 && installed);

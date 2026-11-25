@@ -1,13 +1,10 @@
-"""Original Extra menu layout and a version-guarded dashboard button patch."""
-import importlib.util
+"""Original Extra menu layout and runtime overlay entry."""
 import json
 import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT.parents[1]))
 from ui_codec import encode,decode
-spec=importlib.util.spec_from_file_location('package',ROOT.parents[1]/'patches/package.py')
-package=importlib.util.module_from_spec(spec);spec.loader.exec_module(package)
 def pos(x,y,w,h):return dict(left=x,top=y,width=w,height=h)
 def label(id,text,x,y,w,h,size=24,color=0xffffff):
     return dict(id=id,text=text,fontSize=size,alignment=36,colorTab={'color0':color},position=pos(x,y,w,h),touchable=False)
@@ -43,4 +40,6 @@ if __name__=='__main__':
     (ROOT/'assets').mkdir(exist_ok=True)
     data=screen();blob=encode(data);assert decode(blob)==data
     (ROOT/'assets/menu.ftu').write_bytes(blob)
-    (ROOT/'assets/dashboard.dbp').write_bytes(package.compile_patch(json.loads((ROOT/'dashboard.json').read_text()),native_controls=True))
+    spec=json.loads((ROOT/'dashboard.json').read_text())
+    document=json.dumps({spec['key']:spec['control']},separators=(',',':'))
+    (ROOT/'entry.inc').write_text('/* Original runtime overlay; no stock layout bytes. */\nstatic const char entry_document[]=\n'+json.dumps(document)+';\n')

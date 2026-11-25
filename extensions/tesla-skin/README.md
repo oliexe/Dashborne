@@ -21,7 +21,7 @@ Inter and original artwork. The dashboard layout remains the stock DASH layout.
 
 ## Implementation
 
-The adapter supports stock app **6.11.2** and its verified FlyThings runtime.
+The adapter supports stock apps **6.11.2 and 6.11.4** and its verified FlyThings runtime.
 Binary and layout fingerprints reject other builds. It compiles small layout
 deltas against the installed resources at startup, then redirects layout reads
 and theme pointers in the UI process. Shared picker and navigation artwork uses

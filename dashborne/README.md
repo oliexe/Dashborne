@@ -153,7 +153,8 @@ startup resets and mode changes that would replace developer Wi-Fi with the proj
 It also suspends the stock routine that periodically stops the ADB daemon.
 The developer controller can still reset and reconnect the radio. This option
 requires Enable ADB; disabling either restores the stock radio and ADB maintenance code.
-Unsupported software reports an error and stays in configuration.
+On unsupported software, dashboard handoff disables Force ADB and Auto recovery
+and continues with stock networking.
 
 **Auto recovery** (`adb.auto_restart=1`) requires Force ADB. A separate supervisor
 watches a heartbeat from the UI event loop. If the process exits or the heartbeat

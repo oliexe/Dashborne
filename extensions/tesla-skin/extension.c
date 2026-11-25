@@ -1,3 +1,4 @@
+#include "stock_compat.h"
 /* Stock 6.11.2 / FlyThings theme adapter. State belongs to this UI process. */
 #include "dashborne_extension.h"
 #include "layout_patch.h"
@@ -60,7 +61,7 @@ static int patch_font(void *base){
  return 1;
 }
 static int patch_theme(void *base){
- table=(unsigned char *)base+0x3360f8;
+ table=(unsigned char *)base+DB_STOCK_OFFSET(0x3360f8,0x3356b0);
  table_prot=permissions(table,TABLE_BYTES);if(table_prot<0)return 0;
  copy(original_table,table,TABLE_BYTES);
  for(unsigned int t=0;t<4;t++)for(unsigned int i=0;i<145;i++)paths[t][i][0]=0;
@@ -241,19 +242,18 @@ static int owned_callback(void *callback) {
         (permissions(callback,1)&4);
 }
 static int install_pages(void *base) {
- static const unsigned int expected[][4]={
-  {0x104098,0x112934,0x10eff0,0x10ee14},{0xbb8dc,0xbb0c4,0xb7084,0xb6458},
-  {0x11f46c,0x11fd6c,0x1277ac,0x1219d4},{0x1090dc,0x107d78,0x10d898,0x10d748},
-  {0x10df6c,0x1087b4,0x109e30,0x10ddc8},{0xb75dc,0xb87d8,0xb6fb8,0xb6e3c},
-  {0xe841c,0xe467c,0xe4af0,0xe468c}};
+ (void)base;
  for(unsigned int i=0;i<PAGE_COUNT;i++) {
   struct page *p=&pages[i];p->vtable=host->resolve(host->official_library,p->vtable_name);
   const unsigned int slots[]={6,7,p->resume_slot,p->intent_slot};
   if(!p->vtable || permissions(p->vtable,44)<0)return 0;
   for(int k=0;k<4;k++) {
    void *callback=p->vtable[slots[k]];
-   if((uptr)callback!=(uptr)base+expected[i][k] &&
-      !owned_callback(callback))return 0;
+   char symbol[96];
+   const char *methods[]={"8onCreateEv","7onTimerEi","8onResumeEv","8onIntentEPK6Intent"};
+   if(snprintf(symbol,sizeof(symbol),"_ZN%s%s",p->vtable_name+4,methods[k])>=(int)sizeof(symbol))return 0;
+   void *expected=host->resolve(host->official_library,symbol);
+   if(!expected || (callback!=expected && !owned_callback(callback)))return 0;
   }
   int mode=permissions(p->vtable,44);if(protect(p->vtable,44,mode|2))return 0;
   p->old_intent=(void (*)(void *,const void *))p->vtable[p->intent_slot];p->old_create=(void (*)(void *))p->vtable[6];
@@ -299,7 +299,7 @@ static int deactivate(void) {
 static int activate(const struct dashborne_host *api) {
  if(!api||api->abi_version!=DASHBORNE_EXTENSION_ABI||api->struct_size<sizeof(*api)||!api->resolve||!api->log||host)return -1;
  host=api;unsigned int n;struct dl_info official={0},runtime={0};
- if(file_crc("/res/lib/libzkgui.so",&n)!=0x9de99542u||n!=3464120u||
+ if(!db_stock_version()||
  file_crc("/lib/libeasyui.so",&n)!=0xece0feecu||n!=826052u){host->log(host,"tesla-skin: unsupported app/runtime fingerprint");return -1;}
  void *config=host->resolve(host->official_library,"_ZN12ThemeManager9getConfigEj");
  void *font=host->resolve(host->ui_runtime,"zk_font_create");

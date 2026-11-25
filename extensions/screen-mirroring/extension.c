@@ -1,3 +1,4 @@
+#include "stock_compat.h"
 #include "dashborne_extension.h"
 #include "receiver.h"
 #include "window.h"
@@ -16,7 +17,8 @@ static const struct dashborne_host *host;
 struct memory_page {void *address; int protection;};
 static struct memory_page mask_page,network_page;
 static int (*started)(void);
-static void (*restart)(void);
+static void *restart;
+static void (*restart_legacy)(void),(*restart_current)(int);
 static struct receiver_patches patches;
 static struct mirror_session session;
 static void *controller;
@@ -32,7 +34,9 @@ static int (*network_mode)(void);
 static int off(void) {return manual_off(controller);}
 static void hold(int value) {inhibit(controller,0x80,value);}
 static void mirror_restart(void) {request_restart(1888,384,1);}
-static void stock_restart(void) {restart();}
+static void stock_restart(void) {
+    if(restart_current)restart_current(0);else restart_legacy();
+}
 static int show(unsigned int generation,int aspect) {
     struct mirror_rect r=aspect_physical_rect(aspect);
     return video_show(generation,r.left,r.top,r.width,r.height);
@@ -79,7 +83,7 @@ static int flush(void *begin,void *end) {
 static int activate(const struct dashborne_host *api) {
     if(!api || api->abi_version!=DASHBORNE_EXTENSION_ABI || api->struct_size<sizeof(*api) || host)return -1;
     host=api;
-    if(!fingerprint("/res/lib/libzkgui.so",3464120u,0x9de99542u) ||
+    if(!db_stock_version() ||
        !fingerprint("/lib/libeasyui.so",826052u,0xece0feecu) ||
        !fingerprint("/res/lib/liblylinkui.so",50480u,0x30f47c7du) ||
        !fingerprint("/res/bin/lylinkapp_ab",149332u,0x75af0e16u) ||
@@ -87,38 +91,40 @@ static int activate(const struct dashborne_host *api) {
         log_message("screen-mirroring: unsupported app/projection fingerprint");return -1;
     }
     *(void **)(&started)=host->resolve(host->official_library,"_ZN2lk17is_lylink_startedEv");
-    *(void **)(&restart)=host->resolve(host->official_library,"_ZN7lkvideo13restartLylinkEv");
+    restart=host->resolve(host->official_library,db_stock_version()==6114?"_ZN7lkvideo13restartLylinkEb":"_ZN7lkvideo13restartLylinkEv");
     struct image_info image;
     if(!started || !restart || !dladdr((void *)restart,&image) || !image.base ||
-       (uintptr)restart!=(uintptr)image.base+0xf844cu ||
-       (uintptr)started!=(uintptr)image.base+0x132ffcu) return -1;
+       (uintptr)restart!=(uintptr)image.base+DB_STOCK_OFFSET(0xf844c,0xbaa4c) ||
+       (uintptr)started!=(uintptr)image.base+DB_STOCK_OFFSET(0x132ffc,0x133ccc)) return -1;
+    if(db_stock_version()==6114)*(void **)(&restart_current)=restart;
+    else *(void **)(&restart_legacy)=restart;
     if(!api->register_activity || !api->owns_callback)return -1;
 #define BIND(var,sym,offset) do { \
     *(void **)(&(var))=host->resolve(host->official_library,sym); \
     if((uintptr)(var)!=(uintptr)image.base+(offset))return -1; \
 }while(0)
-    BIND(controller_instance,"_ZN17DisplayController8instanceEv",0x115898);
-    BIND(inhibit,"_ZN17DisplayController17inhibitDisplayOffENS_11InhibitUserEb",0x11585c);
-    BIND(manual_off,"_ZN17DisplayController17getUserDisplayOffEv",0x11584c);
-    BIND(projection_enable,"_ZN2lk17enable_projectionEv",0x132f00);
-    BIND(link_type,"_ZN2lk15get_lylink_typeEv",0x132a90);
-    BIND(request_restart,"_ZN2lk15request_restartEttb",0x1331ac);
-    BIND(video_hide,"_ZN2lk10video_hideEv",0x132830);
-    BIND(video_play,"_ZN2lk11video_startEv",0x133084);
-    BIND(video_show,"_ZN2lk10video_showEjiiii",0x1328e8);
-    BIND(video_status,"_ZN2lk16get_video_statusEv",0x132a20);
+    BIND(controller_instance,"_ZN17DisplayController8instanceEv",DB_STOCK_OFFSET(0x115898,0xff544));
+    BIND(inhibit,"_ZN17DisplayController17inhibitDisplayOffENS_11InhibitUserEb",DB_STOCK_OFFSET(0x11585c,0xff508));
+    BIND(manual_off,"_ZN17DisplayController17getUserDisplayOffEv",DB_STOCK_OFFSET(0x11584c,0xff4f8));
+    BIND(projection_enable,"_ZN2lk17enable_projectionEv",DB_STOCK_OFFSET(0x132f00,0x133bcc));
+    BIND(link_type,"_ZN2lk15get_lylink_typeEv",DB_STOCK_OFFSET(0x132a90,0x133738));
+    BIND(request_restart,"_ZN2lk15request_restartEttb",DB_STOCK_OFFSET(0x1331ac,0x133e7c));
+    BIND(video_hide,"_ZN2lk10video_hideEv",DB_STOCK_OFFSET(0x132830,0x1334d8));
+    BIND(video_play,"_ZN2lk11video_startEv",DB_STOCK_OFFSET(0x133084,0x133d54));
+    BIND(video_show,"_ZN2lk10video_showEjiiii",DB_STOCK_OFFSET(0x1328e8,0x133590));
+    BIND(video_status,"_ZN2lk16get_video_statusEv",DB_STOCK_OFFSET(0x132a20,0x1336c8));
 #undef BIND
     controller=controller_instance();
     if(!controller || (((unsigned char *)controller)[8]&0x80))return -1;
-    uintptr address=(uintptr)image.base+0xd10f8u;
+    uintptr address=(uintptr)image.base+DB_STOCK_OFFSET(0xd10f8,0xddb30);
     if(!map_page(address,&mask_page) || *(unsigned int *)address!=0xe3a01012u)return -1;
     patches.mask=(struct instruction_patch){(unsigned int *)address,0xe3a01012u,0xe3001400u,0,protect_mask,flush};
     /* Miracast is optional: an unavailable receiver must not disable AirPlay. */
     *(void **)(&network_change)=host->resolve(host->official_library,"_ZN3net11change_modeE10net_mode_e");
     *(void **)(&network_mode)=host->resolve(host->official_library,"_ZN3net8get_modeEv");
-    uintptr gate=(uintptr)image.base+0x135644u;
-    int miracast=(uintptr)network_change==(uintptr)image.base+0xa1b28u &&
-        (uintptr)network_mode==(uintptr)image.base+0xa1df8u &&
+    uintptr gate=(uintptr)image.base+DB_STOCK_OFFSET(0x135644,0x13630c);
+    int miracast=(uintptr)network_change==(uintptr)image.base+DB_STOCK_OFFSET(0xa1b28,0xaa570) &&
+        (uintptr)network_mode==(uintptr)image.base+DB_STOCK_OFFSET(0xa1df8,0xaa840) &&
         fingerprint("/res/lib/libwfd.so",124288u,0xd0db4e86u) &&
         fingerprint("/res/bin/p2p_supplicant",883552u,0x70c7d50cu) &&
         map_page(gate,&network_page) && *(unsigned int *)gate==0x13530001u;
@@ -145,7 +151,7 @@ static int deactivate(void) {
     }
     if(receiver_mode(&patches,MIRROR_STOCK))return -1;
     session=(struct mirror_session){0};controller=0;
-    host=0;started=0;restart=0;patches=(struct receiver_patches){0};
+    host=0;started=0;restart=0;restart_legacy=0;restart_current=0;patches=(struct receiver_patches){0};
     return 0;
 }
 DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *dashborne_extension_v1(void) {

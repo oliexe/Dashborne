@@ -31,6 +31,8 @@ EXPORT const char *onStartupApp(void *);
 #define BOOT_TIMER 92001
 #define NETWORK_TIMER 92002
 #define LOADING_TIMER 92003
+#define CONTINUE_TIMER 92004
+#define STOCK_ONCE "/mnt/extsd/Dashborne/stock.once"
 #define LOADING_DOT_ID 50060
 #define SPLASH_ID 110001
 #define CONFIG_ID 110002
@@ -92,6 +94,7 @@ static void *table[17], *prepared;
 static struct settings settings;
 static int phase, section, settings_ok = 1;
 static unsigned int watchdog_pending;
+static int stock_only,restart_pending;
 static unsigned int loading_dot;
 static const char *launch_error;
 static void *list_owner;
@@ -309,12 +312,51 @@ static void toggle_autolaunch(void *self) {
     if(!settings_ok){settings.loader_autolaunch=before;append(settings.loader_app,0,previous,sizeof(settings.loader_app));}
     render(self);
 }
+static void finish_boot(void *self) {
+    phase=3;
+    if(!debug_is_forced()){unregister_timer(self,NETWORK_TIMER);debug_release();}
+    watchdog_beat();log_line("official-selected\n");
+    open_activity(ui_instance(),stock_only?stock_screen:extensions_activity(stock_screen),(void *)0);
+}
+static int disable_failed(const char *id,int native_only) {
+    if(!id || !*id)return 0;
+    for(unsigned int i=0;i<settings.count;i++) {
+        struct patch_entry *p=&settings.patches[i];
+        const char *a=p->id,*b=id;while(*a && *a==*b){a++;b++;}
+        if(!*a && !*b && p->enabled && p->native==native_only) {
+            p->enabled=0;
+            log_line("extensions: disabled ");log_line(id);log_line("\n");
+            if(!state_save(&settings))log_line("extensions: could not persist disabled selection\n");
+            return 1;
+        }
+    }
+    return 0;
+}
+static void warn_boot(void *self,int restart) {
+    phase=2;restart_pending=restart;
+    visible(self,SPLASH_ID,0);visible(self,CONFIG_ID,1);
+    label(self,NOTICE_ID,"Some extensions failed to load. Continuing without them...");
+    void *notice=find_control(self,NOTICE_ID);if(notice)set_color(notice,0xffbc67);
+    register_timer(self,CONTINUE_TIMER,2000);
+}
+static int prepare_stock_restart(void) {
+    int fd=open(STOCK_ONCE,1|0100|01000,0600);
+    if(fd<0)return 0;
+    int ok=write(fd,"1\n",2)==2 && fsync(fd)==0;
+    if(close(fd))ok=0;
+    return ok;
+}
 static void launch(void *self) {
     if (phase == 2 || phase == 3) return;
     if (!extension_recovery_ok) {
-        launch_error = "Extension cleanup failed. See loader.log before retrying.";
-        phase = 1; render(self);
-        return;
+        if(stock_only) {
+            launch_error="Extension cleanup still failed. Restart without the card to recover.";
+            phase=1;render(self);return;
+        }
+        stock_only=1;
+        if(prepare_stock_restart()){warn_boot(self,1);return;}
+        launch_error="Could not prepare recovery on the microSD. Restart without the card.";
+        phase=1;render(self);return;
     }
     launch_error = (const char *)0;
     if (!state_save(&settings)) { settings_ok = 0; phase = 1; render(self); return; }
@@ -323,8 +365,9 @@ static void launch(void *self) {
         phase=1;render(self);return;
     }
     if(settings.wifi_adb && settings.adb_force && !debug_is_forced()) {
-        launch_error="Force ADB is unavailable. Disable Force ADB to continue.";
-        phase=1;render(self);return;
+        settings.adb_force=0;settings.adb_auto_restart=0;
+        (void)state_save(&settings);
+        log_line("debug: Force ADB unavailable; continuing with stock networking\n");
     }
     if(settings.wifi_adb && debug_is_forced() && settings.adb_auto_restart) {
         unregister_timer(self,BOOT_TIMER);unregister_timer(self,LOADING_TIMER);
@@ -340,34 +383,41 @@ static void launch(void *self) {
     void *notice=find_control(self, NOTICE_ID);
     if(notice)set_color(notice,0x858c94);
     label(self, NOTICE_ID, "Loading selected extensions...");
-    int result = state_apply(&settings, log_line);
-    if (result < 0) {
-        watchdog_stop();
-        launch_error = "Extension could not be applied. Disable it to continue.";
-        phase = 1; render(self);
-        return;
+    int warned=stock_only || state_rejected_count()!=0;
+    if(stock_only){state_restore();warn_boot(self,0);return;}
+    int result;
+    for(unsigned int attempt=0;;attempt++) {
+        result=state_apply(&settings,log_line);
+        if(result>=0)break;
+        warned=1;state_restore();
+        if(attempt>=MAX_PATCHES || !disable_failed(state_failed_id(),0)) {
+            /* File/mount failure: do not depend on a partially composed layout. */
+            stock_only=1;warn_boot(self,0);return;
+        }
     }
-    const char *extensions[MAX_PATCHES]; unsigned int extension_count = 0;
-    for (unsigned int i = 0; i < settings.count; ++i)
-        if (settings.patches[i].enabled && settings.patches[i].native)
-            extensions[extension_count++] = settings.patches[i].id;
-    int activated = extensions_start(extensions, extension_count, stock, runtime,
-                                    result > 0 ? "/res/ui/dash1act.ftu" : (const char *)0, log_line);
-    if (activated < 0) {
-        watchdog_stop();
-        state_restore();
-        extension_recovery_ok = activated != -2;
-        launch_error = extension_recovery_ok ?
-              "Extension failed to activate. Uncheck it to continue." :
-              "Extension cleanup failed. See loader.log before retrying.";
-        phase = 1; render(self);
-        return;
+    for(unsigned int attempt=0;;attempt++) {
+        const char *extensions[MAX_PATCHES];unsigned int count=0;
+        for(unsigned int i=0;i<settings.count;i++)
+            if(settings.patches[i].enabled && settings.patches[i].native)extensions[count++]=settings.patches[i].id;
+        int activated=extensions_start(extensions,count,stock,runtime,
+            result>0?"/res/ui/dash1act.ftu":(const char *)0,log_line);
+        if(activated>=0)break;
+        warned=1;
+        int disabled=disable_failed(extensions_failed_id(),1);
+        if(activated==-2) {
+            /* Never launch native UI in a process with unretired callbacks. */
+            extension_recovery_ok=0;state_restore();stock_only=1;
+            if(prepare_stock_restart()){warn_boot(self,1);return;}
+            launch_error="Could not prepare recovery on the microSD. Restart without the card.";
+            phase=1;render(self);return;
+        }
+        if(!disabled || attempt>=MAX_PATCHES) {
+            state_restore();stock_only=1;
+            log_line("core: unavailable; continuing with stock dashboard\n");break;
+        }
     }
-    phase = 3;
-    if(!debug_is_forced()) {unregister_timer(self,NETWORK_TIMER);debug_release();}
-    watchdog_beat();
-    log_line("official-selected\n");
-    open_activity(ui_instance(), extensions_activity(stock_screen), (void *)0);
+    if(warned){warn_boot(self,0);return;}
+    finish_boot(self);
 }
 static void continue_boot(void *self) {
     if(!settings.loader_autolaunch){launch(self);return;}
@@ -385,6 +435,15 @@ static void continue_boot(void *self) {
     debug_set_enabled(settings.wifi_adb);register_timer(self,NETWORK_TIMER,1000);render(self);
 }
 static int on_timer(void *self, int id) {
+    if(id==CONTINUE_TIMER && phase==2) {
+        if(restart_pending) {
+            watchdog_stop();
+            if(!restart_ui()) {
+                phase=1;launch_error="Could not restart the UI. Restart the DASH to recover.";render(self);
+            }
+        } else finish_boot(self);
+        return 0;
+    }
     if (id == LOADING_TIMER) {
         if (phase == 0) {
             visible(self, LOADING_DOT_ID + loading_dot, 0);
@@ -415,6 +474,10 @@ static void on_create(void *self) {
     base_on_create(self);
     state_load(&settings);
     settings_ok=settings.config_ok;
+    if(access(STOCK_ONCE,0)==0) {
+        extern int unlink(const char *);
+        stock_only=1;(void)unlink(STOCK_ONCE);
+    }
     phase = browser_returning ? 1 : 0; section = browser_returning ? 2 : 0;
     launch_error = browser_failed ? "App could not be loaded. See loader.log." : (const char *)0;
     if(!settings.config_ok){phase=1;launch_error="Could not read dashborne.conf. Check the microSD configuration.";}

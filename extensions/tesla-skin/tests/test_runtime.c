@@ -31,7 +31,7 @@ static void intended(void *self,const void *intent){(void)self;(void)intent;call
 static void resumed(void *self){(void)self;calls++;}
 static void *lookup(void *self,int id){(void)self;(void)id;lookups++;return 0;}
 static const char *named(void *self){(void)self;return "native-name";}
-static void *resolve(void *library,const char *name){(void)library;for(unsigned i=0;i<PAGE_COUNT;i++)if(!strcmp(name,pages[i].vtable_name))return tables[i];return 0;}
+static void *resolve(void *library,const char *name){(void)library;for(unsigned i=0;i<PAGE_COUNT;i++)if(!strcmp(name,pages[i].vtable_name))return tables[i];if(strstr(name,"8onCreateEv"))return (void *)created;if(strstr(name,"7onTimerEi"))return (void *)timed;if(strstr(name,"8onResumeEv"))return (void *)resumed;if(strstr(name,"8onIntentEPK6Intent"))return (void *)intended;return 0;}
 static int owns(const struct dashborne_host *api,const void *callback){(void)api;return callback==(void *)created||callback==(void *)timed||callback==(void *)resumed||callback==(void *)intended;}
 int main(void){
  active_theme=theme;file_load=read_layout;

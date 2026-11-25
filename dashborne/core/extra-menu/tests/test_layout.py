@@ -2,11 +2,11 @@ import json
 import sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from generate import ROOT,screen,encode,decode,package
+from generate import ROOT,screen,decode
 layout=screen()
 assert decode((ROOT/'assets/menu.ftu').read_bytes())==layout
 spec=json.loads((ROOT/'dashboard.json').read_text())
-assert (ROOT/'assets/dashboard.dbp').read_bytes()==package.compile_patch(spec,native_controls=True)
+assert json.dumps({spec['key']:spec['control']},separators=(',',':')) == json.loads((ROOT/'entry.inc').read_text().split('[]=\n')[1].rstrip(';\n'))
 button=spec['control'];p=button['position']
 assert p['left']>=1700 and p['top']>=400 and p['left']+p['width']<=1920 and p['top']+p['height']<=480
 assert button['button__extra']['touchable']

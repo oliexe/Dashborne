@@ -1,3 +1,4 @@
+#include "stock_compat.h"
 #include "runtime.h"
 #include "memory.h"
 #include "storage.h"
@@ -250,7 +251,7 @@ int registry_bind(const struct dashborne_host *h) {
 #define UI(v,s) BIND(v,h->ui_runtime,s)
     void *symbol=h->resolve(h->official_library,"_ZN7WdgList7getItemE9WdgType_tt");
     struct image_info image;
-    if(!symbol || !dladdr(symbol,&image) || (uintptr)symbol!=(uintptr)image.base+0xda1c8)return -1;
+    if(!symbol || !dladdr(symbol,&image) || (uintptr)symbol!=(uintptr)image.base+DB_STOCK_OFFSET(0xda1c8,0xe670c))return -1;
     base=image.base;
     APP(stock_special,"_ZN7WdgList7specialE");
     APP(active_grid,"_ZNK10WidgetBook13getActiveGridEv");APP(book,"_ZN10WidgetBook8instanceEv");
@@ -268,7 +269,7 @@ int registry_bind(const struct dashborne_host *h) {
 #undef APP
 #undef UI
 #undef BIND
-    if(sizeof(void *)!=4 || stock_special!=base+0x34e2c4)return -1;
+    if(sizeof(void *)!=4 || stock_special!=base+DB_STOCK_OFFSET(0x34e2c4,0x34e2f0))return -1;
     void *refresh=h->resolve(h->official_library,"_Z13getStat_VideoR11IWidgetBasei");
     if(!refresh)return -1;
     prepare_catalog(stock_special,refresh);
@@ -283,18 +284,22 @@ int registry_bind(const struct dashborne_host *h) {
     }
     /* RTLD_LAZY may leave this import pointing at the image's PLT resolver. */
     void *write_slot=pointer(base+0x358378);
-    if(write_slot!=(void *)json_write && write_slot!=base+0x97b78)return -1;
+    if(write_slot!=(void *)json_write && write_slot!=base+DB_STOCK_OFFSET(0x97b78,0x97ba8))return -1;
     if(word(0x358c44,(uintptr)stock_special,(uintptr)catalog) ||
-       word(0xda218,0xe3510010u,0xe35100ffu) ||
+       word(DB_STOCK_OFFSET(0xda218,0xe675c),0xe3510010u,0xe35100ffu) ||
        word(0x358378,(uintptr)write_slot,(uintptr)write_layout) ||
        word(0x3507bc,(uintptr)picker_resume,(uintptr)resume_picker))return -1;
     /* Every reference to the layout pathname, including reset/check paths.
        Change aligned relative-address literals, never a live string in pieces. */
-    const unsigned int paths[][2]={{0xb9b78,0xb9a40},{0xba20c,0xba05c},
+    const unsigned int legacy_paths[][2]={{0xb9b78,0xb9a40},{0xba20c,0xba05c},
         {0xdd440,0xdd300},{0xdd444,0xdd360},{0xdf054,0xdeafc},
         {0xdf058,0xdeb80},{0xdf080,0xdecb0}};
+    const unsigned int current_paths[][2]={{0xc65ac,0xc6474},{0xc6c40,0xc6a90},
+        {0x1046e4,0x1045a4},{0x1046e8,0x104604},{0xea680,0xea128},
+        {0xea684,0xea1ac},{0xea6ac,0xea2dc}};
+    const unsigned int (*paths)[2]=db_stock_version()==6114?current_paths:legacy_paths;
     path_edits=edit_count;
-    for(unsigned int i=0;i<7;++i)if(word(paths[i][0],0x28dda0-paths[i][1],
+    for(unsigned int i=0;i<7;++i)if(word(paths[i][0],DB_STOCK_OFFSET(0x28dda0,0x2919bc)-paths[i][1],
         (uintptr)WIDGET_LAYOUT_RAM-(uintptr)(base+paths[i][1])))return -1;
     if(layout_prepare())return -1;
     for(unsigned int i=0;i<edit_count;++i)if(memory_apply(&edits[i]))return -1;

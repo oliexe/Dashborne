@@ -14,7 +14,9 @@ struct settings {
     int adb_force, adb_auto_restart;
 };
 void state_restore(void);
+const char *state_failed_id(void);
 void state_load(struct settings *);
+unsigned int state_rejected_count(void);
 int state_save(const struct settings *);
 int state_apply(const struct settings *, void (*logger)(const char *));
 #endif

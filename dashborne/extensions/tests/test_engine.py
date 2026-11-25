@@ -47,9 +47,17 @@ int dbx_umount(const char*a,int b) {(void)a;(void)b;++stub_unmounts;
         self.lib.extension_probe.argtypes = [ctypes.c_char_p]
         self.lib.extensions_start.argtypes = [ctypes.POINTER(ctypes.c_char_p),ctypes.c_uint,
                                              ctypes.c_void_p,ctypes.c_void_p,ctypes.c_char_p,type(self.logger)]
+        self.lib.extensions_failed_id.restype=ctypes.c_char_p
         self.lib.extensions_activity.argtypes=[ctypes.c_char_p]
         self.lib.extensions_activity.restype=ctypes.c_char_p
         self.assertEqual(self.lib.extensions_recover(self.logger),1)
+
+    def test_null_and_oversized_ids_fail_without_stale_failure_owner(self):
+        for value in (None, b'a'*80):
+            ids=(ctypes.c_char_p*1)(value)
+            self.assertEqual(self.lib.extensions_start(ids,1,1,2,None,self.logger),-1)
+            self.assertEqual(self.lib.extensions_failed_id(),b'')
+            self.assertEqual(self.lib.extensions_stop(),1)
 
     def tearDown(self):
         self.lib.extensions_stop()
@@ -132,6 +140,7 @@ DASHBORNE_EXTENSION_EXPORT const struct dashborne_extension *GETTER(void) {
         self.plugin('one')
         self.assertEqual(self.start('one'),-1)
         self.assertEqual(self.core_log(),[1,2,-2,-1])
+        self.assertEqual(self.lib.extensions_failed_id(),b'extra-menu')
         self.assertEqual(self.log(),[])
         self.value('core_fail_start',0)
         self.assertEqual(self.start('one'),1)

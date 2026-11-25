@@ -1,3 +1,4 @@
+#include "stock_compat.h"
 #include "runtime.h"
 extern int snprintf(char *,usize,const char *,...);
 extern int strcmp(const char *,const char *);
@@ -100,7 +101,7 @@ int runtime_bind(void) {
     const struct dashborne_host *api=runtime_host;
     if(!api || api->abi_version!=DASHBORNE_EXTENSION_ABI || api->struct_size<sizeof(*api) || !api->resolve || !api->log || host)return -1;
     host=api;hook_count=0;
-    if(!fingerprint("/res/lib/libzkgui.so",3464120u,0x9de99542u) ||
+    if(!db_stock_version() ||
        !fingerprint("/lib/libeasyui.so",826052u,0xece0feecu))return -1;
 #define BIND(v,handle,s) do {*(void **)(&(v))=api->resolve(handle,s);if(!(v)){api->log(api,"widgets: missing " s);return -1;}}while(0)
 #define UI(v,s) BIND(v,api->ui_runtime,s)
@@ -117,10 +118,11 @@ int runtime_bind(void) {
 #undef BIND
     if(registry_bind(api) || views_bind(api))return -1;
     if(add_hook(2,(void *)stock_destroy,(void *)destroy,0) || add_hook(3,(void *)stock_delete,(void *)deleting,0) ||
-       add_hook(4,(void *)stock_click,(void *)clicked,1) || add_hook(6,(void *)stock_create,(void *)created,0) ||
+       add_hook(4,(void *)stock_click,(void *)clicked,1) || add_hook(6,(void *)stock_create,(void *)created,1) ||
        add_hook(7,(void *)stock_timer,(void *)timer,1) || add_hook(9,(void *)stock_resume,(void *)resume_view,0) ||
        add_hook(10,(void *)stock_pause,(void *)pause_view,0) || add_hook(24,(void *)stock_timer_secondary,(void *)timer_secondary,1))return -1;
     *(void **)(&stock_click)=hooks[2].before;
+    *(void **)(&stock_create)=hooks[3].before;
     *(void **)(&stock_timer)=hooks[4].before;
     *(void **)(&stock_timer_secondary)=hooks[7].before;
     const int offsets[]={4,24,28,32,36,40,44,48};
