@@ -31,14 +31,20 @@ This pass fixed overlapping speed and driving-mode text, gear-strip spacing,
 stock Action-picker gradients, stale navigation-icon coloring, invisible
 light-mode action icons, and low-contrast Restore defaults text.
 
+## Final deployment check
+
+After ADB reconnected, the final build, including the Knob fallback expansion,
+was installed and activated on the device. Switching from light to dark mode
+preserved readable Action-picker icons and media previews. Twelve page swipes
+completed without a process restart or loss of ADB; available memory afterward
+was about 96 MiB. This is a short navigation check, not a long-duration soak.
+
+Dark mode was restored, Production mode remained disabled, and the temporary
+media widget was removed from the dashboard.
+
 ## Remaining device checks
 
-ADB disconnected after starting the stock Wi-Fi scan. Production mode was
-already disabled and the temporary media widget had been removed; light mode
-remained selected. The keyboard and state-dependent pairing/update dialogs have
-layout tests but still need visual checks on the device.
-
-The final Knob fallback expansion passed the local resource audit but was added
-after that disconnection. It needs deployment and a live knob-overlay check.
-Resource coverage is not a claim that every possible UI state has been visually
-verified.
+The keyboard, live Knob overlays and state-dependent pairing/update dialogs
+still need visual checks on the device. Their resources passed the local audit
+and layout tests. Resource coverage is not a claim that every possible UI state
+has been visually verified.
