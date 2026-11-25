@@ -223,7 +223,7 @@ static void close_wifi(void *self) {
     wifi_editor_close(&wifi_form);
 }
 static void redraw_update_progress(void *self) {
-    /* Native dot visibility damage can repaint the card behind cached labels. */
+    /* Keep modal labels fresh when the native runtime repaints the card. */
     static const int ids[]={50310,50311,50312};
     for(unsigned int i=0;i<sizeof(ids)/sizeof(ids[0]);++i) {
         void *control=find_control(self,ids[i]);if(control)invalidate(control,(const void *)0);
@@ -245,7 +245,7 @@ static void render(void *self) {
         label(self,50310,update_selection==-2 ? "Restoring Dashborne" : update_selection>=0 ? "Updating Dashborne" : "Checking for updates");
         label(self,50311,update_waiting ? "Connecting to Wi-Fi..." : update_status());
         label(self,50312,update_selection!=-1 ? "Keep the DASH powered on. It will restart when ready." : "");
-        for(int i=0;i<3;++i)visible(self,50320+i,(unsigned int)i==update_dot);
+        for(int i=0;i<3;++i)label(self,50320+i,(unsigned int)i==update_dot ? "1" : "0");
         redraw_update_progress(self);
         return;
     }
@@ -603,9 +603,9 @@ static int on_timer(void *self, int id) {
     }
     if(id==UPDATE_ANIMATION_TIMER) {
         if(update_progress) {
-            visible(self,50320+update_dot,0);
+            label(self,50320+update_dot,"0");
             update_dot=(update_dot+1)%3;
-            visible(self,50320+update_dot,1);
+            label(self,50320+update_dot,"1");
             redraw_update_progress(self);
         }
         return 1;

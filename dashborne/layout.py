@@ -214,12 +214,13 @@ def screen():
     progress_card['textview__title'] = dict(label(50310, '', 32, 48, 996, 44, 28, 0xf1f2f4, 37), bold=True)
     progress_card['textview__status'] = label(50311, '', 32, 112, 996, 64, 22, 0xd9dde2, 37)
     for i in range(3):
-        for state in ('off', 'on'):
-            progress_card['textview__loading_'+state+'_'+str(i)] = dict(
-                id=50320+i if state == 'on' else 50323+i,
-                position=position(510+i*15, 208, 10, 10), touchable=False,
-                visible=state == 'off' or i == 0,
-                backgroundPic='../../../mnt/extsd/Dashborne/ui/loading-'+state+'.png')
+        progress_card['textview__loading_'+str(i)] = dict(
+            id=50320+i, text='1' if i == 0 else '0', alignment=37,
+            position=position(510+i*15, 208, 10, 10), touchable=False,
+            charsetTab=[dict(char=48+j,
+                             pic='../../../mnt/extsd/Dashborne/ui/loading-'+state+'.png',
+                             size=dict(width=10, height=10))
+                        for j, state in enumerate(('off', 'on'))])
     progress_card['textview__notice'] = label(50312, '', 32, 274, 996, 40, 18, 0xa4abb3, 37)
     progress['window__card'] = progress_card
     root['window__progress'] = progress

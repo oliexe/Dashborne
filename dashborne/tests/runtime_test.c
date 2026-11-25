@@ -296,7 +296,7 @@ int main(int argc, char **argv) {
         assert(wifi_connections==2 && update_selection==-1);
         assert(update_progress && !((struct mock_control *)find(p,CONFIG_ID))->shown);
         assert(!strcmp(((struct mock_control *)find(p,50311))->text,"Connecting to Wi-Fi..."));
-        for(unsigned int i=0;i<6;++i){on_timer(p,UPDATE_ANIMATION_TIMER);assert(update_dot==(i+1)%3);assert(((struct mock_control *)find(p,50320+update_dot))->shown);}
+        for(unsigned int i=0;i<6;++i){on_timer(p,UPDATE_ANIMATION_TIMER);assert(update_dot==(i+1)%3);assert(!strcmp(((struct mock_control *)find(p,50320+update_dot))->text,"1"));}
         ip="192.0.2.42";on_timer(p,NETWORK_TIMER);assert(!update_waiting && updater_calls==1 && !strcmp(updater_action,"list"));
         int refreshes=list_refreshes;on_timer(p,NETWORK_TIMER);assert(list_refreshes==refreshes);
         release_click(NULL,find(p,80004),0,0);assert(update_selection==0 && update_confirming);
