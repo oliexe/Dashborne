@@ -44,8 +44,7 @@ EXPORT const char *onStartupApp(void *);
 #define CONFIG_ID 110002
 #define TAP_ID 20001
 #define WIFI_ID 20002
-#define FORCE_ID 20015
-#define RESTART_ID 20016
+#define DEVELOPER_ID 20015
 #define LAUNCH_ID 20003
 #define PATCHES_TAB_ID 20006
 #define ADB_TAB_ID 20007
@@ -89,7 +88,7 @@ static struct wifi_editor wifi_form;
 static char saved_network[33];
 static int update_selection=-1,update_confirming,update_waiting;
 static unsigned int update_wait_ticks,update_dot;
-static int update_progress;
+static int update_progress,developer_confirming;
 static int update_confirmation_pending;
 
 static void *stock, *runtime, *external_app;
@@ -223,6 +222,13 @@ static void close_wifi(void *self) {
     label(self,WIFI_PASSWORD_ID,"");label(self,WIFI_SSID_ID,"");
     wifi_editor_close(&wifi_form);
 }
+static void redraw_update_progress(void *self) {
+    /* Native dot visibility damage can repaint the card behind cached labels. */
+    static const int ids[]={50310,50311,50312};
+    for(unsigned int i=0;i<sizeof(ids)/sizeof(ids[0]);++i) {
+        void *control=find_control(self,ids[i]);if(control)invalidate(control,(const void *)0);
+    }
+}
 static void render(void *self) {
     int progress=phase==1 && section==4 && (update_busy() || update_waiting);
     if(progress!=update_progress) {
@@ -233,15 +239,14 @@ static void render(void *self) {
     visible(self,110011,progress);
     visible(self, SPLASH_ID, phase == 0);
     visible(self,WIFI_EDITOR_ID,phase==1 && wifi_form.active);
-    visible(self, CONFIG_ID, (phase == 1 || phase == 2) && !wifi_form.active && !update_confirming && !progress);
-    visible(self,110009,phase==1 && update_confirming && !wifi_form.active && !progress);
+    visible(self, CONFIG_ID, (phase == 1 || phase == 2) && !wifi_form.active && !update_confirming && !developer_confirming && !progress);
+    visible(self,110009,phase==1 && (update_confirming || developer_confirming) && !wifi_form.active && !progress);
     if(progress) {
         label(self,50310,update_selection==-2 ? "Restoring Dashborne" : update_selection>=0 ? "Updating Dashborne" : "Checking for updates");
         label(self,50311,update_waiting ? "Connecting to Wi-Fi..." : update_status());
         label(self,50312,update_selection!=-1 ? "Keep the DASH powered on. It will restart when ready." : "");
         for(int i=0;i<3;++i)visible(self,50320+i,(unsigned int)i==update_dot);
-        static const int ids[]={50310,50311,50312};
-        for(unsigned int i=0;i<sizeof(ids)/sizeof(ids[0]);++i)invalidate(find_control(self,ids[i]),(const void *)0);
+        redraw_update_progress(self);
         return;
     }
     if(phase==1 && wifi_form.active){render_wifi(self);return;}
@@ -311,10 +316,8 @@ static void render(void *self) {
     color(self, ADB_TAB_ID, section == 1 ? 0xf1f2f4 : 0x858c94);
     label(self, WIFI_ID, "Enable ADB");
     label(self, WIFI_TOGGLE_ID, settings.wifi_adb ? "1" : "0");
-    label(self,50066,settings.wifi_adb ? (debug_is_forced() ? "1" : "0") : "2");
-    label(self,50067,settings.wifi_adb && debug_is_forced() ? (settings.adb_auto_restart ? "1" : "0") : "2");
-    color(self,FORCE_ID,settings.wifi_adb ? 0xd9dde2 : 0x666e77);
-    color(self,RESTART_ID,settings.wifi_adb && debug_is_forced() ? 0xd9dde2 : 0x666e77);
+    label(self,50066,settings.wifi_adb ? (debug_is_forced() && settings.adb_auto_restart ? "1" : "0") : "2");
+    color(self,DEVELOPER_ID,settings.wifi_adb ? 0xd9dde2 : 0x666e77);
     color(self, WIFI_ID, settings.wifi_adb ? 0xc2c9d1 : 0xd9dde2);
     const char *ip = debug_ip();
     label(self, STATUS_ID, debug_status());
@@ -338,7 +341,16 @@ static void render(void *self) {
     void *notice=find_control(self, NOTICE_ID);
     if(notice)set_color(notice,0xff6369);
     label(self, NOTICE_ID, launch_error ? launch_error : settings_ok ? "" : "Could not read or save dashborne.conf");
-    if(section==4 && update_confirming) {
+    if(developer_confirming) {
+        label(self,50300,"Enable Developer Mode?");
+        label(self,50301,"Persistent ADB and automatic crash recovery");
+        label(self,50302,"Keeps Wi-Fi ADB connected while the stock dashboard runs.");
+        label(self,50304,"CarPlay and Android Auto are unavailable in this mode.");
+        label(self,50305,"Captures crashes and restarts into the Dashborne boot menu.");
+        label(self,50303,"Turn it off to restore normal operation.");
+        label(self,20304,"Cancel");label(self,20302,"Enable");visible(self,20302,1);
+    }
+    if((section==4 && update_confirming) || developer_confirming) {
         static const int controls[]={50300,50301,50302,50304,50305,50303,20304,20302};
         for(unsigned int i=0;i<sizeof(controls)/sizeof(controls[0]);++i) {
             void *control=find_control(self,controls[i]);if(control)invalidate(control,(const void *)0);
@@ -506,7 +518,7 @@ static void launch(void *self) {
     launch_error = (const char *)0;
     if (!state_save(&settings)) { settings_ok = 0; phase = 1; render(self); return; }
     if(debug_is_forced() && !(settings.wifi_adb && settings.adb_force)) {
-        launch_error="Force ADB cleanup failed. Restart before continuing.";
+        launch_error="Developer Mode cleanup failed. Restart before continuing.";
         phase=1;render(self);return;
     }
     if(settings.wifi_adb && settings.adb_force && !debug_is_forced()) {
@@ -594,6 +606,7 @@ static int on_timer(void *self, int id) {
             visible(self,50320+update_dot,0);
             update_dot=(update_dot+1)%3;
             visible(self,50320+update_dot,1);
+            redraw_update_progress(self);
         }
         return 1;
     }
@@ -713,6 +726,17 @@ static void on_click(void *self, void *control) {
         debug_set_enabled(settings.wifi_adb);
     } else if (phase != 1) return;
     else if(watchdog_pending || update_busy() || update_progress)return;
+    else if(developer_confirming) {
+        if(id==20304)developer_confirming=0;
+        else if(id==20302) {
+            settings.adb_force=settings.adb_auto_restart=1;
+            settings_ok=state_save(&settings);
+            if(!settings_ok)settings.adb_force=settings.adb_auto_restart=0;
+            (void)debug_set_forced(settings.adb_force);
+            developer_confirming=0;
+        }
+        render(self);return;
+    }
     else if(update_confirming) {
         const struct update_release *r=update_release((unsigned int)update_selection);
         if(id==20304)update_confirming=0;
@@ -751,17 +775,12 @@ static void on_click(void *self, void *control) {
         debug_set_enabled(settings.wifi_adb);
         if(settings.wifi_adb && settings.adb_force)(void)debug_set_forced(1);
         if(!settings.wifi_adb)watchdog_stop();
-    } else if(id==FORCE_ID && section==1 && settings.wifi_adb) {
-        int before=settings.adb_force;settings.adb_force=!before;
-        settings_ok=state_save(&settings);
-        if(!settings_ok && settings.adb_force)settings.adb_force=before;
-        (void)debug_set_forced(settings.adb_force);
-        if(!settings.adb_force)watchdog_stop();
-    } else if(id==RESTART_ID && section==1 && settings.wifi_adb && debug_is_forced()) {
-        int before=settings.adb_auto_restart;settings.adb_auto_restart=!before;
-        settings_ok=state_save(&settings);
-        if(!settings_ok && settings.adb_auto_restart)settings.adb_auto_restart=before;
-        if(!settings.adb_auto_restart)watchdog_stop();
+    } else if(id==DEVELOPER_ID && section==1 && settings.wifi_adb) {
+        if(settings.adb_force && settings.adb_auto_restart) {
+            settings.adb_force=settings.adb_auto_restart=0;
+            settings_ok=state_save(&settings);
+            (void)debug_set_forced(0);watchdog_stop();
+        } else developer_confirming=1;
     }
     render(self);
 }

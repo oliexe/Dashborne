@@ -103,6 +103,13 @@ class StateTests(unittest.TestCase):
         s=self.load()
         self.assertEqual([s.patches[i].enabled for i in range(s.count)],[1,0,0,0])
 
+    def test_partial_legacy_developer_modes_require_confirmation(self):
+        for force, recovery in ((1, 0), (0, 1)):
+            s=self.load();s.wifi_adb=1;s.adb_force=force;s.adb_auto_restart=recovery
+            self.assertEqual(self.lib.state_save(ctypes.byref(s)),1)
+            s=self.load()
+            self.assertEqual((s.wifi_adb,s.adb_force,s.adb_auto_restart),(1,0,0))
+
     def test_settings_roundtrip_and_composed_patches(self):
         s=self.load(); self.assertEqual(s.count,2)
         self.assertTrue(all(s.patches[i].compatible for i in range(2)))

@@ -132,6 +132,8 @@ void state_load(struct settings *state) {
         if(config_get("adb.enabled",value,sizeof(value)))state->wifi_adb=equal(value,"1");
         if(config_get("adb.force",value,sizeof(value)))state->adb_force=equal(value,"1");
         if(config_get("adb.auto_restart",value,sizeof(value)))state->adb_auto_restart=equal(value,"1");
+        /* Partial legacy modes need confirmation before enabling the combined mode. */
+        state->adb_force=state->adb_auto_restart=state->adb_force && state->adb_auto_restart;
         if(config_get("loader.autolaunch",value,sizeof(value)))state->loader_autolaunch=equal(value,"1");
         config_get("loader.app",state->loader_app,sizeof(state->loader_app));
         for(unsigned int i=0;i<state->count;++i) {

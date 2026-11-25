@@ -402,13 +402,13 @@ void debug_release(void) {
 int debug_set_forced(int enabled) {
     if(enabled) {
         if(!wanted || !config_ok || !debug_force_install(&change_mode,network_init,runtime_maintenance)) {
-            report("Force ADB unavailable on this software");return 0;
+            report("Developer Mode unavailable on this software");return 0;
         }
         forced=1;
         if(logger)logger("debug: Force ADB enabled\n");
     } else {
         if(!debug_force_remove(&change_mode)) {
-            report("Force ADB cleanup failed - restart required");return 0;
+            report("Developer Mode cleanup failed - restart required");return 0;
         }
         forced=0;
     }

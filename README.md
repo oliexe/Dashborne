@@ -43,7 +43,7 @@ Power off and remove the microSD card to boot the unpatched OS.
 <summary>What if an extension fails to load?</summary>
 
 Dashborne warns you, disables extensions that fail to load, and continues booting.
-If an extension crashes later, use opt-in Auto recovery or restart and disable it in the boot menu.
+If an extension crashes later, enable Developer Mode for automatic recovery or restart and disable it in the boot menu.
 
 </details>
 
@@ -139,11 +139,11 @@ debug applications, and reverse-engineer the device's software.
 
 Refer to the [boot menu](#boot-menu) section to enable the ADB bridge.
 
-For autonomous testing, **Force ADB** keeps the development Wi-Fi connection
-while the stock dashboard runs, blocking its switch to a CarPlay/Android Auto
-hotspot. **Auto recovery** saves crash diagnostics to the microSD and returns
-to the boot menu with a Linux reboot if the UI exits or stops responding. Both options are off by
-default. See [connection and recovery details](dashborne/README.md#adb-connection-handling).
+For autonomous testing, **Developer Mode** keeps Wi-Fi ADB connected while the
+stock dashboard runs and enables automatic crash recovery. It saves diagnostics
+to microSD and reboots into the boot menu if the UI exits or stops responding.
+CarPlay and Android Auto are unavailable in this mode. It is off by default and
+asks for confirmation when enabled. See [connection and recovery details](dashborne/README.md#adb-connection-handling).
 
 ## Development
 

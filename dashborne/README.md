@@ -164,7 +164,7 @@ client isolation can still block a computer even when the router itself replies.
 
 The controller clears stale displayed addresses, retries failed Wi-Fi
 connections and missing ADB listeners up to three times, then reports a failure.
-Toggle off/on to retry after correcting the cause. Force ADB retries after a
+Toggle off/on to retry after correcting the cause. Developer Mode retries after a
 60-second pause so a temporary network outage does not require a manual toggle.
 Disabling cancels connection
 retries, stops TCP ADB, and reports **Disabled** only after the service confirms
@@ -173,19 +173,19 @@ transport, the controller reports that transport and leaves the daemon running.
 
 If saving an enabled selection fails, ADB stays off. A disable request takes
 effect even if saving fails, with the card-write error shown. Dashborne cancels
-pending work at dashboard handoff unless Force ADB is selected, then leaves
+pending work at dashboard handoff unless Developer Mode is selected, then leaves
 networking to the official app.
 
-**Force ADB** (`adb.force=1`) keeps the connection controller running after the
+**Developer Mode** (`adb.force=1` and `adb.auto_restart=1`) keeps the connection controller running after the
 official dashboard opens. A reversible, in-memory hook blocks the stock radio
 startup resets and mode changes that would replace developer Wi-Fi with the projection hotspot.
 It also suspends the stock routine that periodically stops the ADB daemon.
-The developer controller can still reset and reconnect the radio. This option
-requires Enable ADB; disabling either restores the stock radio and ADB maintenance code.
-On unsupported software, dashboard handoff disables Force ADB and Auto recovery
+The developer controller can still reset and reconnect the radio. This mode
+requires Enable ADB and asks for confirmation before enabling; disabling either restores the stock radio and ADB maintenance code.
+On unsupported software, dashboard handoff disables Developer Mode
 and continues with stock networking.
 
-**Auto recovery** (`adb.auto_restart=1`) requires Force ADB. A separate supervisor
+Developer Mode also enables automatic recovery. A separate supervisor
 watches a heartbeat from the UI event loop. If the process exits or the heartbeat
 stops for 20 seconds, it saves logs under `Dashborne/diagnostics/watchdog-N/`,
 flushes the card and reboots Linux into configuration. A full reboot releases
@@ -197,7 +197,9 @@ process details, with file size limits. If Linux refuses the reboot, the
 supervisor falls back to restarting the UI, limited to three attempts per boot.
 It cannot recover a halted kernel.
 
-Both options default to off and are saved in the card-root `dashborne.conf`.
+Developer Mode defaults to off. Its two settings are saved together in the
+card-root `dashborne.conf`. Older configurations with only one setting enabled
+leave Developer Mode off until you confirm enabling it.
 The watchdog heartbeat and restart count live in RAM. Normal shutdown or
 disabling developer access cancels monitoring.
 

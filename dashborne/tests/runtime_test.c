@@ -33,7 +33,7 @@ static void *bound_adapter, *bound_listener;
 static int force_save_failure, extension_calls, restored;
 struct mock_control { int id; char text[256]; int shown, selected; };
 static struct mock_control controls[160];
-static int control_count;
+static int control_count,progress_label_redraws;
 static char config_ssid[33]="TestNetwork",config_password[64]="testpassword";
 static char pending_ssid[33],pending_password[64];
 static int wifi_commits;
@@ -188,7 +188,7 @@ static void text(void *p, const char *s) {
     if (c->id == ADDRESS_ID) snprintf(address, sizeof(address), "%s", s);
 }
 static void visibility(void *p, int shown) { ((struct mock_control *)p)->shown = shown; }
-static void dirty(void *p,const void *rect) {assert(p && !rect);}
+static void dirty(void *p,const void *rect) {assert(p && !rect);int id=((struct mock_control *)p)->id;if(id>=50310 && id<=50312)++progress_label_redraws;}
 static void selection(void *p, int selected) { ((struct mock_control *)p)->selected = selected; }
 static void text_color(void *p, int rgb) { assert(p && rgb); }
 static int id_of(void *p) { return ((struct mock_control *)p)->id; }
@@ -272,6 +272,20 @@ int main(int argc, char **argv) {
     onEasyUIInit((void *)123);
     const char *selected = onStartupApp((void *)123);
     assert(init_calls == 1 && start_calls == 1);
+    if(is("developer-mode")) {
+        void *p=registered();on_click(p,find(p,TAP_ID));on_click(p,find(p,ADB_TAB_ID));
+        on_click(p,find(p,DEVELOPER_ID));assert(!developer_confirming);
+        on_click(p,find(p,WIFI_ID));assert(settings.wifi_adb);
+        on_click(p,find(p,DEVELOPER_ID));assert(developer_confirming && !settings.adb_force && !settings.adb_auto_restart);
+        on_click(p,find(p,LAUNCH_ID));assert(developer_confirming && !opened);
+        on_click(p,find(p,20304));assert(!developer_confirming && !forced_debug);
+        on_click(p,find(p,DEVELOPER_ID));force_save_failure=1;on_click(p,find(p,20302));
+        assert(!developer_confirming && !settings.adb_force && !settings.adb_auto_restart && !forced_debug && !settings_ok);
+        force_save_failure=0;on_click(p,find(p,DEVELOPER_ID));on_click(p,find(p,20302));
+        assert(!developer_confirming && settings.adb_force && settings.adb_auto_restart && forced_debug);
+        on_click(p,find(p,DEVELOPER_ID));assert(!settings.adb_force && !settings.adb_auto_restart && !forced_debug);
+        destroy(p);onEasyUIDeinit((void *)123);puts("PASS: Developer Mode confirms both features, cancels and handles save failure");return 0;
+    }
     if(is("updates")) {
         void *p=registered();on_click(p,find(p,TAP_ID));on_click(p,find(p,20018));
         assert(section==4 && !settings.wifi_adb);
@@ -296,7 +310,7 @@ int main(int argc, char **argv) {
         on_click(p,find(p,20302));assert(!update_confirming && updater_calls==2 && !strcmp(updater_action,"install"));
         updater_active=1;on_timer(p,NETWORK_TIMER);assert(update_progress);
         assert(!strcmp(((struct mock_control *)find(p,50310))->text,"Updating Dashborne"));
-        on_timer(p,UPDATE_ANIMATION_TIMER);assert(update_dot==1);
+        int redraws=progress_label_redraws;on_timer(p,UPDATE_ANIMATION_TIMER);assert(update_dot==1 && progress_label_redraws==redraws+3);
         on_click(p,find(p,LAUNCH_ID));on_click(p,find(p,ADB_TAB_ID));assert(!opened && section==4);
         updater_active=0;on_timer(p,NETWORK_TIMER);assert(!update_progress && ((struct mock_control *)find(p,CONFIG_ID))->shown);on_click(p,find(p,20303));assert(update_confirming);
         on_click(p,find(p,20302));assert(updater_calls==3 && !strcmp(updater_action,"rollback"));

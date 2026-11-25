@@ -68,29 +68,28 @@ def screen():
         backgroundColor=0x202228, touchable=False)
     for key, title, control_id, switch_id, y in [
         ('enable', 'Enable ADB', 20002, 50016, 72),
-        ('force', 'Force ADB', 20015, 50066, 120),
-        ('restart', 'Auto recovery', 20016, 50067, 168),
+        ('developer', 'Developer Mode', 20015, 50066, 120),
     ]:
         adb['button__'+key] = button(control_id, title, 0, y, 1060, 48)
         adb['button__'+key].update(backgroundColor=0x07080a, bgColorTab={'color1': 0x1c2025})
         adb['button__'+key]['textPosition'] = position(24, 0, 900, 48)
         adb['textview__toggle_'+key] = switch(switch_id, 964, y+6)
-    adb['button__network'] = dict(button(20017, 'Wi-Fi network', 0, 312, 256, 48),
+    adb['button__network'] = dict(button(20017, 'Wi-Fi network', 0, 264, 256, 48),
         fontSize=22, textPosition=position(24, 0, 232, 48),
         bgColorTab={'color0': 0x07080a, 'color1': 0x1c2025})
     for key, title, value_id, label_id, y, size, color in [
-        ('status', 'Status', 50002, 50028, 216, 20, 0xa4abb3),
-        ('address', 'IP address', 50003, 50029, 264, 22, 0xc2c9d1),
+        ('status', 'Status', 50002, 50028, 168, 20, 0xa4abb3),
+        ('address', 'IP address', 50003, 50029, 216, 22, 0xc2c9d1),
     ]:
         adb['textview__label_'+key] = label(label_id, title, 24, y, 220, 48, 22, 0xe4e7eb)
         adb['textview__'+key] = label(value_id, '-', 256, y, 780, 48, size, color, 38)
     # Native non-touchable text views still consume hits. Each row segment is a
     # button, so tapping the name/value/chevron all opens the same editor.
-    adb['button__network_value'] = dict(label(50027, '', 256, 312, 744, 48, 22, 0xd9dde2, 38),
+    adb['button__network_value'] = dict(label(50027, '', 256, 264, 744, 48, 22, 0xd9dde2, 38),
         touchable=True, textPosition=position(0, 0, 736, 48))
-    adb['button__network_arrow'] = dict(label(50076, '>', 1000, 312, 60, 48, 22, 0x858c94, 36),
+    adb['button__network_arrow'] = dict(label(50076, '>', 1000, 264, 60, 48, 22, 0x858c94, 36),
         touchable=True)
-    for index, y in enumerate((119, 167, 215, 263, 311, 359)):
+    for index, y in enumerate((119, 167, 215, 263, 311)):
         adb['textview__row_line_'+str(index)] = dict(id=50070+index,
             position=position(24, y, 1012, 1), backgroundColor=0x202228, touchable=False)
     patches = dict(id=110004, position=position(680, 24, 1060, 376), visible=True,

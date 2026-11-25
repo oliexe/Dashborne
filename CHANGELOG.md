@@ -5,6 +5,9 @@ tracked separately in their source history.
 
 ## Unreleased
 
+- Combine persistent ADB and automatic crash recovery into Developer Mode, with
+  a confirmation dialog explaining Wi-Fi behavior and recovery.
+
 - Show update progress in a modal with animated loading dots and separate status
   messages for verification, file preservation and microSD writes.
 - Rename the release check to Check Updates and remove the duplicate version label.
