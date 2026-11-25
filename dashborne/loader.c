@@ -123,6 +123,8 @@ static const char *launch_error;
 static void *list_owner;
 static void (*set_adapter)(void *, void *), (*set_list_listener)(void *, void *);
 static void (*refresh_list)(void *);
+static void (*invalidate)(void *,const void *);
+static unsigned int displayed_release_count;
 static void *(*find_subitem)(void *, int);
 static int (*control_id)(void *);
 static void (*set_visible)(void *, int), (*set_color)(void *, int), (*set_selected)(void *, int);
@@ -214,14 +216,26 @@ static void render(void *self) {
     void *update_tab=find_control(self,20018);if(update_tab)set_selected(update_tab,section==4);
     color(self,20018,section==4 ? 0xf1f2f4 : 0x858c94);
     if(section==4) {
-        visible(self,20300,!update_busy());visible(self,20301,!update_busy());visible(self,20303,!update_busy());
+        int busy=update_busy();
+        visible(self,20300,!busy && !update_waiting);visible(self,20301,!busy && !update_waiting);visible(self,20303,!busy && !update_waiting);
         const struct update_release *r=update_release((unsigned int)update_selection);
-        label(self,20300,*saved_network ? saved_network : "Set up Wi-Fi");
-        label(self,50203,update_waiting ? debug_status() : update_status());
-        label(self,50202,update_selection==-2 ? "Restore the previous installation; current dashborne.conf is kept." :
-            r ? (r->supported ? r->notes : "This older release requires manual installation.") : "Choose a release. Settings and community extensions are preserved.");
-        visible(self,20302,!update_busy() && !update_waiting && (update_selection==-2 || (r && r->supported)));
-        label(self,20302,update_confirming ? "Confirm restart" : update_selection==-2 ? "Restore previous" : "Install release");
+        char network[96]="Wi-Fi: ";unsigned int n=append(network,7,*saved_network ? saved_network : "choose network",sizeof(network));
+        append(network,n,"  >",sizeof(network));label(self,20300,network);
+        label(self,20301,update_count() ? "Refresh releases" : "Find releases");
+        visible(self,80004,update_count()!=0 && !update_waiting);
+        visible(self,50207,!update_count() || update_waiting);
+        label(self,50207,update_waiting ? "Connecting to Wi-Fi..." : busy ? "Loading releases..." :
+            "Choose Wi-Fi above, then tap Find releases.");
+        label(self,50203,update_waiting ? "Releases will load once connected." :
+            update_confirming ? "Your DASH will restart. Tap again to confirm." :
+            !busy && update_selection==-2 ? "Tap Restore & restart to continue." :
+            !busy && r ? (r->supported ? "Ready to install the selected release." : "This release cannot be installed from the boot menu.") : update_status());
+        label(self,50202,update_selection==-2 ? "Restore the last installation. Your current settings will be kept." :
+            r ? (r->supported ? r->notes : "Install this release manually from GitHub using a computer.") :
+            "Updates include Dashborne and bundled extensions. Your settings are kept.");
+        visible(self,20302,!busy && !update_waiting && (update_selection==-2 || (r && r->supported)));
+        label(self,20302,update_confirming ? "Confirm & restart" : update_selection==-2 ? "Restore & restart" : "Install & restart");
+
     }
     visible(self, PATCHES_PANEL_ID, section == 0);
     visible(self, ADB_PANEL_ID, section == 1);
@@ -321,12 +335,13 @@ static void release_data(void *self,void *list,void *item,int index) {
     (void)self;(void)list;const struct update_release *r=update_release((unsigned int)index);if(!r)return;
     char title[64]="Dashborne ";append(title,10,r->version,sizeof(title));set_text(item,title);
     char detail[96]="Stock OS ";unsigned int n=append(detail,9,r->os,sizeof(detail));
-    if(!r->supported)append(detail,n," / manual install",sizeof(detail));
+    if(!r->supported)append(detail,n,"  /  Computer install only",sizeof(detail));
     void *value=find_subitem(item,24031);if(value)set_text(value,detail);set_selected(item,index==update_selection);
 }
 static void release_click(void *self,void *list,int index,int subitem) {
-    (void)self;(void)subitem;if(phase!=1 || section!=4 || update_busy() || index<0 || !update_release((unsigned int)index))return;
+    (void)self;(void)subitem;if(phase!=1 || section!=4 || update_busy() || update_waiting || index<0 || !update_release((unsigned int)index))return;
     update_selection=index;update_confirming=0;refresh_list(list);render(list_owner);
+    invalidate(find_control(list_owner,CONFIG_ID),(const void *)0);
 }
 static void *release_adapter_table[]={0,0,(void *)list_noop,(void *)list_noop,(void *)release_count,(void *)release_data};
 static void *release_listener_table[]={0,0,(void *)list_noop,(void *)list_noop,(void *)release_click};
@@ -534,7 +549,13 @@ static int on_timer(void *self, int id) {
         watchdog_beat();
         if(update_confirmation_pending){update_confirmation_pending=0;update_confirm();}
         update_poll();
-        if(phase==1 && section==4){void *list=find_control(self,80004);if(list)refresh_list(list);}
+        if(phase==1 && section==4 && displayed_release_count!=update_count()) {
+            displayed_release_count=update_count();
+            void *list=find_control(self,80004);if(list)refresh_list(list);
+            /* Native list damage is relative to its parent; repaint the containing
+               window so a refreshed list cannot erase neighboring navigation. */
+            invalidate(find_control(self,CONFIG_ID),(const void *)0);
+        }
         if(update_waiting) {
             if(*debug_ip()){update_waiting=0;(void)update_start("list",(const char *)0);}
             else if(++update_wait_ticks>=180){update_waiting=0;launch_error="Wi-Fi connection failed. Check network settings and retry.";}
@@ -632,11 +653,11 @@ static void on_click(void *self, void *control) {
     } else if (phase != 1) return;
     else if(watchdog_pending || update_busy())return;
     else if(id==20018){section=4;update_confirming=0;}
-    else if(section==4 && id==20300){if(!wifi_editor_open(&wifi_form))launch_error="Could not read dashborne.conf";}
-    else if(section==4 && id==20301){
+    else if(section==4 && id==20300 && !update_waiting){if(!wifi_editor_open(&wifi_form))launch_error="Could not read dashborne.conf";}
+    else if(section==4 && id==20301 && !update_waiting){
         update_selection=-1;update_confirming=0;launch_error=0;debug_connect_wifi();update_waiting=1;update_wait_ticks=0;
     }
-    else if(section==4 && id==20303){update_selection=-2;update_confirming=0;}
+    else if(section==4 && id==20303 && !update_waiting){update_selection=-2;update_confirming=0;}
     else if(section==4 && id==20302){
         const struct update_release *r=update_release((unsigned int)update_selection);
         if(!update_waiting && (update_selection==-2 || (r && r->supported))) {
@@ -721,6 +742,7 @@ static int bind_runtime(void) {
     BIND(set_selected, "_ZN6ZKBase11setSelectedEb");
     BIND(set_adapter, "_ZN10ZKListView14setListAdapterEPNS_14AbsListAdapterE");
     BIND(set_list_listener, "_ZN10ZKListView20setItemClickListenerEPNS_18IItemClickListenerE");
+    BIND(invalidate, "_ZN6ZKBase10invalidateEPK14LayoutPosition");
     BIND(refresh_list, "_ZN10ZKListView15refreshListViewEv");
     BIND(find_subitem, "_ZNK10ZKListView10ZKListItem15findSubItemByIDEi");
     BIND(ui_instance, "_ZN13EasyUIContext11getInstanceEv");

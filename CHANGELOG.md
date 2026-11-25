@@ -8,6 +8,8 @@ tracked separately in their source history.
 - Update from the boot menu over Wi-Fi, with release selection, checksum and
   stock OS checks, interrupted-install recovery and rollback. Settings and
   community extensions are preserved; connecting for updates does not enable ADB.
+- Clarify the Update page with a Wi-Fi selector, installed version, release list
+  and explicit install/restart confirmation.
 - Build the updater in C with the existing Clang toolchain; no Go runtime or SDK.
 
 - Configure developer Wi-Fi from the ADB page with an on-screen keyboard.

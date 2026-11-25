@@ -5,7 +5,7 @@ extern int open(const char *,int,...),read(int,void *,unsigned int),close(int),u
 extern void _exit(int);
 extern int *__errno_location(void);
 static int child;
-static char message[256]="Connect to Wi-Fi, then check for releases";
+static char message[256]="No release selected";
 static struct update_release releases[100];
 static unsigned int count;
 static int fetching;
@@ -34,7 +34,7 @@ void update_poll(void){
     if(!child)return;
     int fd=open("/tmp/dashborne-update.status",0);if(fd>=0){int n=read(fd,message,sizeof(message)-1);if(n>0)message[n]=0;close(fd);}
     int status=0,result=waitpid(child,&status,1);
-    if(result==child || (result<0 && *__errno_location()==10)){child=0;if(status && equal(message,"Working..."))copy(message,"Updater could not start",sizeof(message));if(!status && fetching)load_list();else if(!status && equal(message,"Working..."))copy(message,"Connect to Wi-Fi, then check for releases",sizeof(message));fetching=0;}
+    if(result==child || (result<0 && *__errno_location()==10)){child=0;if(status && equal(message,"Working..."))copy(message,"Updater could not start",sizeof(message));if(!status && fetching)load_list();else if(!status && equal(message,"Working..."))copy(message,"No release selected",sizeof(message));fetching=0;}
 }
 int update_busy(void){return child!=0 || access("/mnt/extsd/.dashborne-update/journal.json",0)==0;}
 const char *update_status(void){return message;}

@@ -156,20 +156,31 @@ def screen():
         dragMaxDis=12, beepEnable=False, backgroundColor=0x07080a)
     update = dict(id=110008, position=position(680, 24, 1060, 376), visible=False,
         backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
-    update['textview__heading'] = dict(label(50201, 'Update', 24, 16, 400, 36, 28, 0xf1f2f4), bold=True)
-    update['button__rollback'] = button(20303, 'Rollback', 800, 16, 236, 40)
-    update['button__network'] = button(20300, 'Wi-Fi setup', 24, 72, 680, 40)
-    update['button__refresh'] = button(20301, 'Check releases', 724, 72, 312, 40)
-    release_item = label(24030, '', 0, 0, 1060, 48, 21, 0xe4e7eb)
-    release_item.update(touchable=True, textPosition=position(24, 0, 380, 48),
+    update['textview__heading'] = dict(label(50201, 'Update', 24, 16, 200, 36, 28, 0xf1f2f4), bold=True)
+    update['textview__installed'] = label(50204, f'Installed: v{VERSION}', 224, 16, 480, 36, 18, 0x858c94)
+    def update_button(id, text, x, y, w, h, asset):
+        return dict(label(id, text, x, y, w, h, 20, 0xe4e7eb, 37), touchable=True,
+                    picTab={'pic0': f'../../../mnt/extsd/Dashborne/ui/update-{asset}.png',
+                            'pic1': f'../../../mnt/extsd/Dashborne/ui/update-{asset}-pressed.png'})
+    update['button__rollback'] = update_button(20303, 'Restore previous', 800, 16, 236, 36, 'restore')
+    update['textview__header_line'] = dict(id=50205, position=position(24, 64, 1012, 1),
+        backgroundColor=0x202228, touchable=False)
+    update['button__network'] = dict(update_button(20300, 'Wi-Fi: choose network  >', 24, 76, 680, 44, 'network'),
+        alignment=36, textPosition=position(16, 0, 648, 44))
+    update['button__refresh'] = update_button(20301, 'Find releases', 724, 76, 312, 44, 'check')
+    update['textview__releases_heading'] = label(50206, 'Available releases', 24, 130, 500, 26, 18, 0xa4abb3)
+    release_item = label(24030, '', 0, 0, 1060, 56, 21, 0xe4e7eb)
+    release_item.update(touchable=True, textPosition=position(24, 0, 380, 56),
         bgColorTab={'color0': 0x07080a, 'color1': 0x1c2025, 'color2': 0x242930},
-        subItem=[label(24031, '', 420, 0, 616, 48, 17, 0xa4abb3, 38)])
-    update['listview__releases'] = dict(id=80004, position=position(0, 120, 1060, 144),
-        rows=3, cols=1, rowSpacing=0, colSpacing=0, item=release_item,
+        subItem=[label(24031, '', 420, 0, 616, 56, 17, 0xa4abb3, 38),
+                 dict(id=24032, position=position(24, 55, 1012, 1), backgroundColor=0x202228, touchable=False)])
+    update['listview__releases'] = dict(id=80004, position=position(0, 160, 1060, 112),
+        rows=2, cols=1, rowSpacing=0, colSpacing=0, item=release_item,
         hasScrollbar=True, scrollbarColor=0x626a73, autoRollback=True, dragMaxDis=12)
-    update['textview__notes'] = label(50202, '', 24, 268, 1012, 48, 17, 0xa4abb3)
-    update['textview__status'] = label(50203, '', 24, 320, 712, 48, 17, 0xc2c9d1)
-    update['button__install'] = button(20302, 'Install', 756, 320, 280, 48, True)
+    update['textview__empty'] = label(50207, '', 24, 176, 1012, 64, 21, 0x858c94, 37)
+    update['textview__notes'] = label(50202, '', 24, 280, 1012, 40, 17, 0xa4abb3)
+    update['textview__status'] = label(50203, '', 24, 328, 712, 40, 17, 0xc2c9d1)
+    update['button__install'] = update_button(20302, 'Install & restart', 756, 324, 280, 44, 'install')
     config['window__update'] = update
     config['window__device'] = device
     config['window__browser'] = browser

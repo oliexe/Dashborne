@@ -188,6 +188,7 @@ static void text(void *p, const char *s) {
     if (c->id == ADDRESS_ID) snprintf(address, sizeof(address), "%s", s);
 }
 static void visibility(void *p, int shown) { ((struct mock_control *)p)->shown = shown; }
+static void dirty(void *p,const void *rect) {assert(p && !rect);}
 static void selection(void *p, int selected) { ((struct mock_control *)p)->selected = selected; }
 static void text_color(void *p, int rgb) { assert(p && rgb); }
 static int id_of(void *p) { return ((struct mock_control *)p)->id; }
@@ -224,6 +225,7 @@ void *fake_dlsym(void *handle, const char *name) {
         {"_ZN7BaseApp13registerTimerEii", (void *)timer},
         {"_ZN7BaseApp15unregisterTimerEi", (void *)cancel_timer},
         {"_ZNK6ZKBase5getIDEv", (void *)id_of},
+        {"_ZN6ZKBase10invalidateEPK14LayoutPosition", (void *)dirty},
         {"_ZN6ZKBase11setSelectedEb", (void *)selection},
         {"_ZN6ZKBase10setVisibleEb", (void *)visibility},
         {"_ZN10ZKTextView12setTextColorEi", (void *)text_color},
@@ -276,7 +278,11 @@ int main(int argc, char **argv) {
         on_click(p,find(p,20300));assert(wifi_form.active);on_click(p,find(p,WIFI_SAVE_ID));
         assert(!wifi_form.active && wifi_connections==1 && !retried && !settings.wifi_adb);
         on_click(p,find(p,20301));assert(update_waiting && wifi_connections==2);
+        on_click(p,find(p,20301));on_click(p,find(p,20303));release_click(NULL,find(p,80004),0,0);
+        assert(wifi_connections==2 && update_selection==-1);
+        assert(!strcmp(((struct mock_control *)find(p,50207))->text,"Connecting to Wi-Fi..."));
         ip="192.0.2.42";on_timer(p,NETWORK_TIMER);assert(!update_waiting && updater_calls==1 && !strcmp(updater_action,"list"));
+        int refreshes=list_refreshes;on_timer(p,NETWORK_TIMER);assert(list_refreshes==refreshes);
         release_click(NULL,find(p,80004),0,0);assert(update_selection==0);
         on_click(p,find(p,20302));assert(update_confirming && updater_calls==1);
         on_click(p,find(p,20302));assert(!update_confirming && updater_calls==2 && !strcmp(updater_action,"install"));
