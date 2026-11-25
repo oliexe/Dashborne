@@ -37,17 +37,18 @@ int main(void){
  helper=&native;stock_brightness=get_brightness;screen_on=get_screen;native.i[0]=32;native.i[1]=100;native.i[2]=0;native.f[3]=2.23f;
  assert(!display_hardware_restore()&&!writes);
  assert(display_hardware_apply(0,50)==-1&&!writes);
+ for(int low=0;low<6;low++)assert(display_hardware_apply(low,50)==-1&&!writes);
  native.i[4]=1;
- assert(!display_hardware_apply(1,40)&&level==1&&luma==40&&native.i[0]==1&&native.f[3]==0);
- int n=writes;assert(!display_hardware_apply(1,40)&&writes==n);
+ assert(!display_hardware_apply(6,40)&&level==6&&luma==40&&native.i[0]==6&&native.f[3]==0);
+ int n=writes;assert(!display_hardware_apply(6,40)&&writes==n);
  /* Subsequent stock requests still map to our absolute level, sleep stays off. */
- native.i[2]=75;assert(native.i[0]+(int)(native.i[2]*native.f[3])==1);
+ native.i[2]=75;assert(native.i[0]+(int)(native.i[2]*native.f[3])==6);
  native.i[4]=0;level=78; /* LCD disable retains a nonzero brightness cache. */
  n=writes;assert(!display_hardware_apply(255,50)&&level==78&&writes==n);
  assert(!display_hardware_restore()&&level==78&&native.i[0]==32&&native.f[3]>2.2f);
  native.i[4]=1;native.i[2]=20;level=76;
- assert(!display_hardware_apply(2,49));assert(!display_hardware_restore()&&level==76&&luma==50);
- fail_op=0x190;fail_count=1;assert(display_hardware_apply(1,30)==-1&&level==76&&luma==50&&!touched);
- fail_count=2;assert(display_hardware_apply(1,30)==-1&&touched);assert(!display_hardware_restore()&&!touched);
+ assert(!display_hardware_apply(6,49));assert(!display_hardware_restore()&&level==76&&luma==50);
+ fail_op=0x190;fail_count=1;assert(display_hardware_apply(6,30)==-1&&level==76&&luma==50&&!touched);
+ fail_count=2;assert(display_hardware_apply(6,30)==-1&&touched);assert(!display_hardware_restore()&&!touched);
  puts("display hardware: full lit range, sleep, stock requests, restore, rollback and retry passed");
 }

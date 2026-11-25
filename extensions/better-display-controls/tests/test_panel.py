@@ -17,6 +17,6 @@ class Panel(unittest.TestCase):
     walk(value,p['width'],p['height'])
   walk(doc);self.assertEqual(len(ids),len(set(ids)))
   for name in ('day','night'):
-   self.assertEqual(doc['window__'+name]['seekbar__brightness']['max'],254)
+   self.assertEqual(doc['window__'+name]['seekbar__brightness']['max'],249)
    self.assertEqual(doc['window__'+name]['seekbar__black']['max'],100)
 if __name__=='__main__':unittest.main()

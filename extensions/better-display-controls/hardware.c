@@ -1,4 +1,5 @@
 #include "hardware.h"
+#include "model.h"
 extern int open(const char *,int,...),read(int,void *,unsigned int),close(int),ioctl(int,unsigned long,...);
 extern unsigned long crc32(unsigned long,const unsigned char *,unsigned int);
 extern void *dlopen(const char *,int);extern int dlclose(void *);
@@ -46,7 +47,7 @@ int display_hardware_restore(void) {
     if(ok)touched=captured=0;return ok?0:-1;
 }
 int display_hardware_apply(int brightness,int black) {
-    if(!helper||brightness<1||brightness>255||black<0||black>100)return -1;
+    if(!helper||brightness<DISPLAY_MIN_BRIGHTNESS||brightness>255||black<0||black>100)return -1;
     if(!captured) {
         base_min=*(int *)helper;base_scale=*(float *)((char *)helper+12);base_black=command(0x191,0);
         if(base_black<0||base_black>100)return -1;captured=1;

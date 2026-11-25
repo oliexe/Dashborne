@@ -39,8 +39,8 @@ int main(void){
  ((void (*)(void *,void *))v[3])(&listener,lookup(live,919530));
  ((void (*)(void *,void *,int))v[2])(&listener,lookup(live,919530),0);
  ((void (*)(void *,void *))v[4])(&listener,lookup(live,919530));
- assert(display_settings.day.brightness==1&&changes==1&&display_settings.enabled&&display_settings.mode==1);
- seek_changed(&listener,lookup(live,919540),254);assert(display_settings.night.brightness==255);
+ assert(display_settings.day.brightness==6&&changes==1&&display_settings.enabled&&display_settings.mode==1);
+ seek_changed(&listener,lookup(live,919540),249);assert(display_settings.night.brightness==255);
  seek_changed(&listener,lookup(live,919541),30);assert(display_settings.night.black==30);
  int n=changes;seek_changed(&listener,lookup(live,919541),101);assert(changes==n);
  click(live,lookup(live,299521));assert(display_settings.mode==0);

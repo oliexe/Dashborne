@@ -37,7 +37,7 @@ static void render(void *s) {
         label(s,599530+i*10,line);
         snprintf(line,sizeof(line),"Black level  %d",v.black);label(s,599531+i*10,line);
         snprintf(line,sizeof(line),"Starts at  %02d:%02d",starts[i]/60,starts[i]%60);label(s,599532+i*10,line);
-        p=find(s,919530+i*10);if(p)progress(p,v.brightness-1);
+        p=find(s,919530+i*10);if(p)progress(p,v.brightness-DISPLAY_MIN_BRIGHTNESS);
         p=find(s,919531+i*10);if(p)progress(p,v.black);
     }
     rendering=0;
@@ -76,7 +76,7 @@ static void seek_changed(void *listener,void *bar,int value) {
     (void)listener;if(rendering||!live||closing)return;
     wake();
     int id=id_of(bar);struct display_profile *p=id>=919540?&display_settings.night:&display_settings.day;
-    if(id==919530||id==919540){if(value<0||value>254||!display_preview_begin())return;p->brightness=value+1;}
+    if(id==919530||id==919540){if(value<0||value>255-DISPLAY_MIN_BRIGHTNESS||!display_preview_begin())return;p->brightness=value+DISPLAY_MIN_BRIGHTNESS;}
     else if(id==919531||id==919541){if(value<0||value>100||!display_preview_begin())return;p->black=value;}
     else return;
     /* Editing a profile is an immediate, explicitly labelled manual preview. */

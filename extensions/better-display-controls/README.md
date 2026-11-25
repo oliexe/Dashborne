@@ -21,8 +21,9 @@ Display Controls → Open**.
 - **Restore stock** stops the override and restores stock display control.
   Save or Back remembers that choice.
 
-Brightness exposes raw backlight levels **1–255**, bypassing the stock offset and
-minimum. Level zero is screen-off and is reserved for the stock sleep controls.
+Brightness exposes raw backlight levels **6–255**, bypassing the stock offset and
+minimum. The slider floor is at least **2%** (6/255); older saved values below
+that floor are raised when loaded. Level zero remains reserved for stock sleep.
 The percentage is a fraction of the driver range, not a measured light output.
 
 Black level uses the display engine's luminance control, **0–100**, with 50 neutral.
@@ -45,8 +46,8 @@ All settings live in `dashborne.conf`:
 | `display.mode` | `0` | `0` Auto, `1` Day, `2` Night |
 | `display.day_start` | `420` | Minutes after midnight, 07:00 |
 | `display.night_start` | `1200` | Minutes after midnight, 20:00 |
-| `display.day.brightness` | `160` | 1–255 |
-| `display.night.brightness` | `16` | 1–255 |
+| `display.day.brightness` | `160` | 6–255 |
+| `display.night.brightness` | `16` | 6–255 |
 | `display.day.black` | `50` | 0–100 |
 | `display.night.black` | `50` | 0–100 |
 
@@ -82,6 +83,5 @@ editing its layout source.
 Testing on 6.11.4 confirmed changes in the PWM hardware registers for brightness
 and the output color-conversion registers for black level. Unconfirmed previews
 returned to the original brightness and color coefficients after 15 seconds,
-and the LCD remained enabled through repeated slider tests. A display-engine
-screenshot did not capture the black-level difference; physical panel verification
-is still needed before claiming the visible result is correct.
+and the LCD remained enabled through repeated slider tests. The owner confirmed that
+both sliders visibly change the physical screen after the timeout and preview fixes.

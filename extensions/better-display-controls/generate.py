@@ -25,7 +25,7 @@ def screen():
         panel['textview__title']=label(599533+i*10,title,26,10,160,44,28)
         panel['textview__brightness']=label(599530+i*10,'Brightness',26,63,615,38)
         panel['textview__black']=label(599531+i*10,'Black level',26,175,615,38)
-        for n,key,y,maximum in [(0,'brightness',105,254),(1,'black',217,100)]:
+        for n,key,y,maximum in [(0,'brightness',105,249),(1,'black',217,100)]:
             panel['seekbar__'+key]=dict(id=919530+i*10+n,position=pos(26,y,615,54),max=maximum,
                 backgroundPic='dash/settings/slider_bg.png',progressPic='dash/settings/slider_fg.png',
                 thumb=dict(normalPic='dash/settings/slider_thumb.png',size=dict(width=30,height=30)))

@@ -14,6 +14,9 @@ int display_settings_load(struct display_settings *s) {
     int *values[]={&s->enabled,&s->mode,&s->day_start,&s->night_start,&s->day.brightness,&s->day.black,&s->night.brightness,&s->night.black};
     int ok=1;char value[CONFIG_VALUE];
     for(unsigned int i=0;i<8;++i)if(config_get(keys[i],value,sizeof(value))&&!number(value,values[i]))ok=0;
+    /* Migrate valid older levels without discarding profiles or other settings. */
+    if(s->day.brightness>0&&s->day.brightness<DISPLAY_MIN_BRIGHTNESS)s->day.brightness=DISPLAY_MIN_BRIGHTNESS;
+    if(s->night.brightness>0&&s->night.brightness<DISPLAY_MIN_BRIGHTNESS)s->night.brightness=DISPLAY_MIN_BRIGHTNESS;
     config_clear();if(!ok||!display_valid(s)){display_defaults(s);return 0;}return 1;
 }
 int display_settings_save(const struct display_settings *s) {

@@ -49,8 +49,8 @@ int main(void){
  save_fail=0;assert(display_save()&&!display_dirty);assert(!strcmp(display_status,"Stock display controls"));
  /* Preview expiry uses monotonic time, restores the preceding profile and dirty state. */
  display_settings.mode=1;display_settings.enabled=0;ticks=100;
- assert(display_preview_begin());display_settings.enabled=1;display_settings.day.brightness=1;display_changed();
- assert(display_preview_seconds()==15&&brightness==1);
+ assert(display_preview_begin());display_settings.enabled=1;display_settings.day.brightness=6;display_changed();
+ assert(display_preview_seconds()==15&&brightness==6);
  ticks=114;epoch=0;display_tick();assert(display_settings.enabled);
  ticks=115;display_tick();assert(!display_settings.enabled&&display_settings.day.brightness==160&&!display_dirty);
  assert(strstr(display_status,"reverted"));
@@ -59,7 +59,7 @@ int main(void){
  assert(display_preview_begin());display_settings.day.brightness=255;display_changed();
  display_preview_cancel();assert(display_settings.day.brightness==160&&!display_dirty);
  clock_fail=1;assert(!display_preview_begin());clock_fail=0;
- assert(display_preview_begin());display_settings.day.brightness=1;display_changed();
+ assert(display_preview_begin());display_settings.day.brightness=6;display_changed();
  save_fail=1;assert(!display_save()&&display_preview_seconds());save_fail=0;
  ticks+=16;display_tick();assert(display_settings.day.brightness==160);
  restore_fail=1;assert(display_controller_stop()==-1);restore_fail=0;assert(!display_controller_stop());

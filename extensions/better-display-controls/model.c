@@ -3,7 +3,7 @@ void display_defaults(struct display_settings *s) {
     *s=(struct display_settings){0,0,420,1200,{160,50},{16,50}};
 }
 static int profile_valid(const struct display_profile *p) {
-    return p->brightness>=1 && p->brightness<=255 && p->black>=0 && p->black<=100;
+    return p->brightness>=DISPLAY_MIN_BRIGHTNESS && p->brightness<=255 && p->black>=0 && p->black<=100;
 }
 int display_valid(const struct display_settings *s) {
     return s && s->enabled>=0 && s->enabled<=1 && s->mode>=0 && s->mode<=2 &&
