@@ -117,7 +117,7 @@ entries to the floating Extra menu or build custom widgets for the stock widget 
 
 | Name | Description | OS Version |
 | --- | --- | --- |
-| [Better Display Controls](extensions/better-display-controls) | Direct brightness and black-level controls with scheduled day/night profiles. | 6.11.4 |
+| [Better Display Controls](extensions/better-display-controls) | Direct brightness and black-level controls with scheduled day/night profiles - create display profile that matches your center screen. | 6.11.4 |
 | [Tesla Skin](extensions/tesla-skin) | Tesla-inspired light and dark styling for the stock dashboard, Settings and widget picker. | 6.11.2, 6.11.4 |
 | [Development Menu](extensions/development-menu) | Opens the hidden stock Settings category without a password. | 6.11.2, 6.11.4 |
 | [Tesla Model Widget](extensions/tesla-model) | A 2×2 animated car-state widget with tap-to-change model variants. Requires a separately installed model pack. | 6.11.2, 6.11.4 |
