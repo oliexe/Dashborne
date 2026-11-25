@@ -5,6 +5,8 @@ void debug_set_enabled(int enabled);
 int debug_set_forced(int enabled);
 int debug_is_forced(void);
 void debug_poll(void);
+/* Connect for updates without granting developer access. */
+void debug_connect_wifi(void);
 void debug_release(void);
 const char *debug_status(void);
 const char *debug_ip(void);

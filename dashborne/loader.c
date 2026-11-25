@@ -6,6 +6,7 @@
 #include "extensions/engine.h"
 #include "state.h"
 #include "wifi_editor.h"
+#include "update.h"
 #ifndef DASHBORNE_VERSION
 #define DASHBORNE_VERSION "development"
 #endif
@@ -85,6 +86,9 @@ EXPORT const char *onStartupApp(void *);
 #define WIFI_KEY_ID 20200
 static struct wifi_editor wifi_form;
 static char saved_network[33];
+static int update_selection=-1,update_confirming,update_waiting;
+static unsigned int update_wait_ticks;
+static int update_confirmation_pending;
 
 static void *stock, *runtime, *external_app;
 static void (*external_deinit)(void *);
@@ -205,6 +209,20 @@ static void render(void *self) {
     if(phase==1 && wifi_form.active){render_wifi(self);return;}
     if (phase != 1 && phase != 2) return;
     label(self,50014,"v" DASHBORNE_VERSION "  /  https://github.com/oliexe/Dashborne");
+    visible(self,LAUNCH_ID,!update_busy());
+    visible(self,110008,section==4);visible(self,50200,section==4);
+    void *update_tab=find_control(self,20018);if(update_tab)set_selected(update_tab,section==4);
+    color(self,20018,section==4 ? 0xf1f2f4 : 0x858c94);
+    if(section==4) {
+        visible(self,20300,!update_busy());visible(self,20301,!update_busy());visible(self,20303,!update_busy());
+        const struct update_release *r=update_release((unsigned int)update_selection);
+        label(self,20300,*saved_network ? saved_network : "Set up Wi-Fi");
+        label(self,50203,update_waiting ? debug_status() : update_status());
+        label(self,50202,update_selection==-2 ? "Restore the previous installation; current dashborne.conf is kept." :
+            r ? (r->supported ? r->notes : "This older release requires manual installation.") : "Choose a release. Settings and community extensions are preserved.");
+        visible(self,20302,!update_busy() && !update_waiting && (update_selection==-2 || (r && r->supported)));
+        label(self,20302,update_confirming ? "Confirm restart" : update_selection==-2 ? "Restore previous" : "Install release");
+    }
     visible(self, PATCHES_PANEL_ID, section == 0);
     visible(self, ADB_PANEL_ID, section == 1);
     visible(self, DEVICE_PANEL_ID, section == 3);
@@ -297,6 +315,22 @@ static void list_click(void *self, void *list, int index, int subitem) {
 static void *adapter_table[] = {0, 0, (void *)list_noop, (void *)list_noop, (void *)list_count, (void *)list_data};
 static void *listener_table[] = {0, 0, (void *)list_noop, (void *)list_noop, (void *)list_click};
 static void **adapter = adapter_table + 2, **list_listener = listener_table + 2;
+
+static int release_count(void *self,void *list){(void)self;(void)list;return (int)update_count();}
+static void release_data(void *self,void *list,void *item,int index) {
+    (void)self;(void)list;const struct update_release *r=update_release((unsigned int)index);if(!r)return;
+    char title[64]="Dashborne ";append(title,10,r->version,sizeof(title));set_text(item,title);
+    char detail[96]="Stock OS ";unsigned int n=append(detail,9,r->os,sizeof(detail));
+    if(!r->supported)append(detail,n," / manual install",sizeof(detail));
+    void *value=find_subitem(item,24031);if(value)set_text(value,detail);set_selected(item,index==update_selection);
+}
+static void release_click(void *self,void *list,int index,int subitem) {
+    (void)self;(void)subitem;if(phase!=1 || section!=4 || update_busy() || index<0 || !update_release((unsigned int)index))return;
+    update_selection=index;update_confirming=0;refresh_list(list);render(list_owner);
+}
+static void *release_adapter_table[]={0,0,(void *)list_noop,(void *)list_noop,(void *)release_count,(void *)release_data};
+static void *release_listener_table[]={0,0,(void *)list_noop,(void *)list_noop,(void *)release_click};
+static void **release_adapter=release_adapter_table+2,**release_listener=release_listener_table+2;
 
 static int info_count(void *self, void *list) { (void)self; (void)list; return (int)device_count(); }
 static void info_data(void *self, void *list, void *item, int index) {
@@ -496,7 +530,16 @@ static int on_timer(void *self, int id) {
         return 1;
     }
     if (id == BOOT_TIMER && phase == 0) { continue_boot(self); return 1; }
-    if(id==NETWORK_TIMER)watchdog_beat();
+    if(id==NETWORK_TIMER) {
+        watchdog_beat();
+        if(update_confirmation_pending){update_confirmation_pending=0;update_confirm();}
+        update_poll();
+        if(phase==1 && section==4){void *list=find_control(self,80004);if(list)refresh_list(list);}
+        if(update_waiting) {
+            if(*debug_ip()){update_waiting=0;(void)update_start("list",(const char *)0);}
+            else if(++update_wait_ticks>=180){update_waiting=0;launch_error="Wi-Fi connection failed. Check network settings and retry.";}
+        }
+    }
     if(id==NETWORK_TIMER && watchdog_pending) {
         if(watchdog_ready()) {watchdog_pending=0;launch(self);}
         else if(++watchdog_pending>=6) {
@@ -515,6 +558,7 @@ static int on_timer_secondary(void *self, int id) {
 }
 static void on_create(void *self) {
     base_on_create(self);
+    update_confirmation_pending=1;
     wifi_editor_close(&wifi_form);
     wifi_saved_name(saved_network);
     state_load(&settings);
@@ -532,6 +576,8 @@ static void on_create(void *self) {
         set_adapter(list, &adapter); set_list_listener(list, &list_listener);
         refresh_list(list);
     }
+    void *releases=find_control(self,80004);
+    if(releases){set_adapter(releases,&release_adapter);set_list_listener(releases,&release_listener);}
     void *info=find_control(self,DEVICE_LIST_ID);
     if(info)set_adapter(info,&info_adapter);
     void *files=find_control(self,BROWSER_LIST_ID);
@@ -563,6 +609,7 @@ static void on_click(void *self, void *control) {
         else if(id==WIFI_SAVE_ID) {
             if(wifi_editor_save(&wifi_form)) {
                 wifi_saved_name(saved_network);close_wifi(self);settings_ok=1;
+                if(section==4 && !settings.wifi_adb)debug_connect_wifi();
                 if(settings.wifi_adb) {
                     debug_set_enabled(1);
                     if(settings.adb_force)(void)debug_set_forced(1);
@@ -583,8 +630,21 @@ static void on_click(void *self, void *control) {
         phase = 1; unregister_timer(self, BOOT_TIMER); unregister_timer(self, LOADING_TIMER); log_line("configuration-entered\n");
         debug_set_enabled(settings.wifi_adb);
     } else if (phase != 1) return;
-    else if(watchdog_pending)return;
-    else if (id == LAUNCH_ID) { continue_boot(self); return; }
+    else if(watchdog_pending || update_busy())return;
+    else if(id==20018){section=4;update_confirming=0;}
+    else if(section==4 && id==20300){if(!wifi_editor_open(&wifi_form))launch_error="Could not read dashborne.conf";}
+    else if(section==4 && id==20301){
+        update_selection=-1;update_confirming=0;launch_error=0;debug_connect_wifi();update_waiting=1;update_wait_ticks=0;
+    }
+    else if(section==4 && id==20303){update_selection=-2;update_confirming=0;}
+    else if(section==4 && id==20302){
+        const struct update_release *r=update_release((unsigned int)update_selection);
+        if(!update_waiting && (update_selection==-2 || (r && r->supported))) {
+            if(!update_confirming)update_confirming=1;
+            else {watchdog_stop();(void)update_start(update_selection==-2 ? "rollback" : "install",r ? r->id : (const char *)0);update_confirming=0;}
+        }
+    }
+    else if (id == LAUNCH_ID) { update_waiting=0;continue_boot(self); return; }
     else if (id == PATCHES_TAB_ID) section = 0;
     else if (id == ADB_TAB_ID) section = 1;
     else if (id == DEVICE_TAB_ID) { section=3;refresh_device(self); }

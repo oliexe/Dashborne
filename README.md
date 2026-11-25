@@ -99,6 +99,8 @@ otherwise, Dashborne continues to the official dashboard with your selected exte
 - ADB: enable root access over Wi-Fi, useful for development and modding the device.
 - Loader: browse and launch compatible apps from microSD, with optional autolaunch.
 - Device: view hardware details, software versions, serials and system information.
+- Update: connect to Wi-Fi, choose a compatible GitHub release and install it on the card.
+  Rollback restores the previous installation while keeping your current settings.
 
 Dashborne saves preferences in the card-root `dashborne.conf`.
 See [configuration and operation](dashborne/README.md).
@@ -146,14 +148,14 @@ default. See [connection and recovery details](dashborne/README.md#adb-connectio
 ## Development
 
 ```text
-dashborne/             Boot menu, configuration, ADB, Loader and Device
+dashborne/             Boot menu, configuration, ADB, Loader, Device and Update
   extensions/          Native extension engine and SDK
   patches/             Layout patch engine, compiler and definitions
 extensions/            Bundled extensions
 docs/                  Platform and SD loading research
 ```
 
-Build with Python 3.10+, Clang and LLD; host tests also need a C compiler and zlib.
+Build with Python 3.10+, Go 1.23+, Clang and LLD; host tests also need a C compiler and zlib.
 From the repository root:
 
 ```sh

@@ -32,11 +32,14 @@ static int opened, applied, saved, stopped, retried, cancelled, list_refreshes;
 static void *bound_adapter, *bound_listener;
 static int force_save_failure, extension_calls, restored;
 struct mock_control { int id; char text[256]; int shown, selected; };
-static struct mock_control controls[128];
+static struct mock_control controls[160];
 static int control_count;
 static char config_ssid[33]="TestNetwork",config_password[64]="testpassword";
 static char pending_ssid[33],pending_password[64];
 static int wifi_commits;
+static int updater_active,updater_calls,wifi_connections;
+static const char *updater_action;
+static const struct update_release test_release={"123","0.2.0","6.11.4","Test release notes",1};
 int config_load(void) {strcpy(pending_ssid,config_ssid);strcpy(pending_password,config_password);return strcmp(scenario,"wifi-read-failure")!=0;}
 int config_get(const char *key,char *out,unsigned int capacity) {
     snprintf(out,capacity,"%s",!strcmp(key,"wifi.ssid") ? pending_ssid : pending_password);return 1;
@@ -163,7 +166,7 @@ static int create(void *p) {
 static void *find(void *p, int id) {
     assert(p);
     for (int i = 0; i < control_count; ++i) if (controls[i].id == id) return &controls[i];
-    assert(control_count < 128); controls[control_count].id = id;
+    assert(control_count < 160); controls[control_count].id = id;
     return &controls[control_count++];
 }
 static void attach_adapter(void *p, void *a) { assert(p && a); if (((struct mock_control *)p)->id == LIST_ID) bound_adapter = a; }
@@ -267,6 +270,21 @@ int main(int argc, char **argv) {
     onEasyUIInit((void *)123);
     const char *selected = onStartupApp((void *)123);
     assert(init_calls == 1 && start_calls == 1);
+    if(is("updates")) {
+        void *p=registered();on_click(p,find(p,TAP_ID));on_click(p,find(p,20018));
+        assert(section==4 && !settings.wifi_adb);
+        on_click(p,find(p,20300));assert(wifi_form.active);on_click(p,find(p,WIFI_SAVE_ID));
+        assert(!wifi_form.active && wifi_connections==1 && !retried && !settings.wifi_adb);
+        on_click(p,find(p,20301));assert(update_waiting && wifi_connections==2);
+        ip="192.0.2.42";on_timer(p,NETWORK_TIMER);assert(!update_waiting && updater_calls==1 && !strcmp(updater_action,"list"));
+        release_click(NULL,find(p,80004),0,0);assert(update_selection==0);
+        on_click(p,find(p,20302));assert(update_confirming && updater_calls==1);
+        on_click(p,find(p,20302));assert(!update_confirming && updater_calls==2 && !strcmp(updater_action,"install"));
+        updater_active=1;on_click(p,find(p,LAUNCH_ID));on_click(p,find(p,ADB_TAB_ID));assert(!opened && section==4);
+        updater_active=0;on_click(p,find(p,20303));on_click(p,find(p,20302));assert(update_confirming);
+        on_click(p,find(p,20302));assert(updater_calls==3 && !strcmp(updater_action,"rollback"));
+        destroy(p);onEasyUIDeinit((void *)123);puts("PASS: updates share Wi-Fi, require confirmation and block conflicting actions");return 0;
+    }
     if(!strncmp(scenario,"wifi-",5)) {
         void *p=registered();on_click(p,find(p,TAP_ID));on_click(p,find(p,ADB_TAB_ID));
         assert(strstr(((struct mock_control *)find(p,50014))->text,DASHBORNE_VERSION));
@@ -489,3 +507,12 @@ int main(int argc, char **argv) {
     assert(deinit_calls == 1 && allocations == frees && dtor_calls == frees);
     printf("PASS: %s\n", scenario);
 }
+
+void update_poll(void){}
+int update_start(const char *action,const char *id){(void)id;updater_action=action;++updater_calls;return 1;}
+int update_busy(void){return updater_active;}
+const char *update_status(void){return "Select a release";}
+unsigned int update_count(void){return is("updates") ? 1:0;}
+const struct update_release *update_release(unsigned int index){return is("updates") && index==0 ? &test_release:NULL;}
+void update_confirm(void){}
+void debug_connect_wifi(void){++wifi_connections;}

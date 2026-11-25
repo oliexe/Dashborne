@@ -11,6 +11,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'dashborne'))
 import install
+import update_manifest
 
 INSTRUCTIONS = """# Install Dashborne {version}
 
@@ -26,8 +27,8 @@ Target stock OS: {stock_os}.
 3. Eject the card, insert it into the powered-off DASH, then power on.
    Tap the splash within three seconds to open the boot menu.
 
-ADB is off by default. Set `wifi.ssid` and `wifi.password` in the card-root
-`dashborne.conf`, then enable ADB in the boot menu when needed.
+ADB is off by default. Set up Wi-Fi from the boot menu, then enable ADB when needed.
+Use Update to choose a compatible GitHub release and install it on the card.
 Power off and remove the card to boot without Dashborne.
 
 Documentation: https://github.com/oliexe/Dashborne/tree/v{version}
@@ -56,6 +57,7 @@ def release(output, tag=None):
         card = package / 'card'
         card.mkdir()
         install.stage(card)
+        update_manifest.write(card / "Dashborne")
         for name in ('install.py', 'configuration.py', 'files.py'):
             shutil.copyfile(ROOT / 'dashborne' / name, package / name)
         for name in ('VERSION', 'STOCK_OS_VERSION', 'CHANGELOG.md'):
@@ -66,6 +68,7 @@ def release(output, tag=None):
                 if path.is_file():
                     zipped.write(path, path.relative_to(package))
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    (output / 'updater-v1.json').write_text('{"format":1}\n')
     (output / 'SHA256SUMS').write_text(f'{digest}  {archive.name}\n')
     notes = match[1].strip() + '\n\n' + (
         f'Download **{archive.name}** below and follow its `README.md`. '

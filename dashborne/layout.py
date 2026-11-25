@@ -52,14 +52,14 @@ def screen():
                                backgroundPic='../../../mnt/extsd/Dashborne/ui/icon.png')
     config['textview__5'] = label(50013, 'DASHBORNE', 242, 416, 340, 30, 23, 0xf1f2f4)
     config['textview__6'] = label(50014, f'v{VERSION}  /  https://github.com/oliexe/Dashborne', 180, 449, 440, 20, 14, 0x858c94)
-    for id, key, text, y in [(20006, 'patches', 'Extensions', 40), (20007, 'adb', 'ADB', 116), (20008, 'loader', 'Loader', 192), (20012, 'device', 'Device', 268)]:
-        config['button__nav_'+key] = button(id, text, 180, y, 400, 64)
+    for id, key, text, y in [(20006, 'patches', 'Extensions', 40), (20007, 'adb', 'ADB', 116), (20008, 'loader', 'Loader', 192), (20012, 'device', 'Device', 268), (20018, 'update', 'Update', 344)]:
+        config['button__nav_'+key] = button(id, text, 180, y, 400, 56)
         config['button__nav_'+key].update(backgroundColor=0x000000,
-            textPosition=position(36, 0, 340, 64),
+            textPosition=position(36, 0, 340, 56),
             picTab={'pic0': '../../../mnt/extsd/Dashborne/ui/nav-idle.png',
                     'pic1': '../../../mnt/extsd/Dashborne/ui/nav-pressed.png',
                     'pic2': '../../../mnt/extsd/Dashborne/ui/nav-selected.png'})
-        config['textview__active_'+key] = dict(id={20006: 50020, 20007: 50021, 20008: 50035, 20012: 50050}[id],
+        config['textview__active_'+key] = dict(id={20006: 50020, 20007: 50021, 20008: 50035, 20012: 50050, 20018: 50200}[id],
             position=position(196, y+22, 3, 20), backgroundColor=0xc2c9d1, touchable=False)
     adb = dict(id=110003, position=position(680, 24, 1060, 376), visible=False,
                backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
@@ -154,6 +154,23 @@ def screen():
         rows=5, cols=1, rowSpacing=0, colSpacing=0, item=device_item,
         hasScrollbar=True, scrollbarColor=0x626a73, autoRollback=True,
         dragMaxDis=12, beepEnable=False, backgroundColor=0x07080a)
+    update = dict(id=110008, position=position(680, 24, 1060, 376), visible=False,
+        backgroundPic='../../../mnt/extsd/Dashborne/ui/content-panel.png')
+    update['textview__heading'] = dict(label(50201, 'Update', 24, 16, 400, 36, 28, 0xf1f2f4), bold=True)
+    update['button__rollback'] = button(20303, 'Rollback', 800, 16, 236, 40)
+    update['button__network'] = button(20300, 'Wi-Fi setup', 24, 72, 680, 40)
+    update['button__refresh'] = button(20301, 'Check releases', 724, 72, 312, 40)
+    release_item = label(24030, '', 0, 0, 1060, 48, 21, 0xe4e7eb)
+    release_item.update(touchable=True, textPosition=position(24, 0, 380, 48),
+        bgColorTab={'color0': 0x07080a, 'color1': 0x1c2025, 'color2': 0x242930},
+        subItem=[label(24031, '', 420, 0, 616, 48, 17, 0xa4abb3, 38)])
+    update['listview__releases'] = dict(id=80004, position=position(0, 120, 1060, 144),
+        rows=3, cols=1, rowSpacing=0, colSpacing=0, item=release_item,
+        hasScrollbar=True, scrollbarColor=0x626a73, autoRollback=True, dragMaxDis=12)
+    update['textview__notes'] = label(50202, '', 24, 268, 1012, 48, 17, 0xa4abb3)
+    update['textview__status'] = label(50203, '', 24, 320, 712, 48, 17, 0xc2c9d1)
+    update['button__install'] = button(20302, 'Install', 756, 320, 280, 48, True)
+    config['window__update'] = update
     config['window__device'] = device
     config['window__browser'] = browser
     config['window__adb'] = adb

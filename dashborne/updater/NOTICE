@@ -1,0 +1,4 @@
+The updater includes the Go runtime and standard library under the BSD license
+in GO-LICENSE; Go module licenses are in GO-X-*-LICENSE. Its embedded Mozilla root certificate bundle (roots.pem) was
+retrieved from https://curl.se/ca/cacert.pem on 2026-11-25 and is distributed
+under MPL-2.0. Certificate bundle source: https://curl.se/docs/caextract.html.

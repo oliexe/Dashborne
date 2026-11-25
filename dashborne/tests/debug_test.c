@@ -538,7 +538,19 @@ static void test_cancellation_and_stress(void) {
     }
     cancelled();
 }
+static void test_wifi_only(void) {
+    reset();debug_connect_wifi();advance(80);
+    assert(*debug_ip() && starts==0 && !wanted && network_only && !debug_is_forced());
+    assert(!strcmp(debug_status(),"Wi-Fi connected"));
+    connected=0;advance(100);assert(*debug_ip() && starts==0);
+    debug_set_enabled(1);advance(100);assert(*debug_ip() && starts>0 && !network_only);
+    int before=starts;debug_connect_wifi();advance(10);assert(starts==before && wanted);
+    debug_set_enabled(0);advance(30);assert(!*debug_ip() && !network_only);
+    reset();config_valid=0;debug_connect_wifi();advance(100);assert(!*debug_ip() && starts==0);
+    puts("PASS: updater Wi-Fi connects and retries without enabling ADB; ADB transition remains explicit");
+}
 int main(void) {
+    test_wifi_only();
     reset();assert(!debug_set_forced(1) && !debug_is_forced());
     ready();force_failed=1;assert(!debug_set_forced(1) && !debug_is_forced());
     force_failed=0;assert(debug_set_forced(1) && debug_is_forced());

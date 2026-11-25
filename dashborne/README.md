@@ -33,7 +33,29 @@ Configuration includes:
   details, memory, uptime, display mode and storage serials/capacities. Values are
   read when the page opens; **Refresh** updates the snapshot. Missing values show
   **Unavailable**, and unrecognized dashboard binaries are identified as such.
+- Update: connect using the saved Wi-Fi network, browse releases and install a
+  version that targets the installed stock OS. ADB can stay disabled.
 - Continue booting: save selections, load the extensions, open the official UI.
+
+## Update from the boot menu
+
+1. Open **Update**. Tap the network name to set up Wi-Fi if needed.
+2. Tap **Check releases**, then select a release to see its target OS and notes.
+3. Tap **Install release**, then **Confirm restart**. Dashborne verifies the
+   download, installs it on microSD and restarts into the boot menu.
+
+The updater replaces bundled components and extensions, keeps `dashborne.conf`
+unchanged, and carries over community extensions. **Rollback**, then **Restore previous** and **Confirm restart**, restores the previous installation with your current settings.
+An incompatible or unrecognized stock OS blocks installation. Releases published
+before the updater was introduced are listed as requiring manual installation.
+
+Downloads use HTTPS and SHA256 verification. The card needs at least 768 MB of
+free space plus the download size. Staging happens before the active files are
+replaced. A temporary recovery loader restores the previous installation after an
+interrupted replacement or a first boot that fails before configuration opens.
+The backup is stored in `.dashborne-update/previous` on the card; the next
+successful installation replaces it. Neither updates nor rollback write to the
+DASH's flash partitions.
 
 ## Configuration file
 

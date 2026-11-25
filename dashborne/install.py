@@ -72,7 +72,7 @@ def stage(card, wifi_config=None, configure=False, restore=False, build=None):
             name = str(source.relative_to(build))
             if name in SAVED: continue
             atomic_write(card / name, source.read_bytes()); changed.append(name)
-            if name == 'Dashborne/bin/watchdog': (card / name).chmod(0o755)
+            if name in ('Dashborne/bin/watchdog', 'Dashborne/bin/updater'): (card / name).chmod(0o755)
     if not (card/'dashborne.conf').exists() or (card/'dashborne.conf').read_bytes() != unified:
         atomic_write(card/'dashborne.conf', unified); changed.append('dashborne.conf')
     for legacy in configuration.LEGACY:
@@ -120,7 +120,7 @@ def deploy(device, adb, wifi_config=None, configure=False, restore=False, previe
         for name in changed:
             if name != 'EasyUI.cfg': upload((card / name).read_bytes(), '/mnt/extsd/' + name)
         if not restore and (card/'Dashborne/bin/watchdog').exists():
-            shell('chmod 755 /mnt/extsd/Dashborne/bin/watchdog')
+            shell('chmod 755 /mnt/extsd/Dashborne/bin/watchdog /mnt/extsd/Dashborne/bin/updater')
         if not restore:
             # Root configuration is verified before retiring the old active files.
             for legacy in configuration.LEGACY:

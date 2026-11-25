@@ -20,7 +20,7 @@ static int active, wanted, owned_network, config_ok, start_pending;
 static unsigned int ticks, stop_attempts, network_attempts, adb_attempts, stable, lost;
 enum { STOP, PREPARE, OFF_WAIT, MODE_WAIT, SETTLE, CONNECT_WAIT, SERVE, FAILED };
 static int step;
-static int forced;
+static int forced, network_only;
 static void *network_init,*runtime_maintenance;
 struct string_view_abi {
     const char *data;
@@ -303,7 +303,7 @@ static void poll_stop(void) {
             --ticks;
             return;
         }
-        if (!wanted) {
+        if (!wanted && !network_only) {
             if (equal(port, "5555") && set_property("service.adb.tcp.port", "-1")) {
                 if (++stop_attempts >= 3)
                     fail("ADB stopped; TCP setting could not be cleared");
@@ -366,6 +366,7 @@ void debug_bind(void *stock, void *runtime, void (*log)(const char *)) {
 #undef BIND
 }
 void debug_set_enabled(int enabled) {
+    network_only=0;
     if(!enabled)(void)debug_set_forced(0);
     lan_reset();
     active = 1;
@@ -385,10 +386,15 @@ void debug_set_enabled(int enabled) {
     }
     poll_stop();
 }
+void debug_connect_wifi(void) {
+    if(wanted && active && step!=FAILED)return;
+    debug_set_enabled(0);network_only=1;active=1;config_ok=load_config();step=STOP;
+    poll_stop();
+}
 void debug_release(void) {
     (void)debug_set_forced(0);
     lan_reset();
-    active = wanted = owned_network = start_pending = 0;
+    active = wanted = owned_network = start_pending = network_only = 0;
     address[0] = 0;
     wipe(password, sizeof(password));
     wipe(ssid, sizeof(ssid));
@@ -419,7 +425,7 @@ void debug_poll(void) {
         poll_stop();
         return;
     }
-    if (!wanted)
+    if (!wanted && !network_only)
         return;
     char ip[16];
     if (step == PREPARE) {
@@ -469,7 +475,7 @@ void debug_poll(void) {
             if (++stable >= 2) {
                 step = SERVE;
                 ticks = 0;
-                report("Wi-Fi connected; starting ADB...");
+                report(network_only ? "Wi-Fi connected" : "Wi-Fi connected; starting ADB...");
             }
         } else
             stable = 0;
@@ -496,6 +502,7 @@ void debug_poll(void) {
         return;
     }
     lost = 0;
+    if(network_only){copy(address,ip);report("Wi-Fi connected");return;}
     char daemon[128], port[128];
     if (!properties(daemon, port)) {
         address[0] = 0;
@@ -558,4 +565,4 @@ void debug_poll(void) {
 const char *debug_status(void) { return status; }
 const char *debug_ip(void) { return address; }
 
-const char *debug_wifi_name(void) { return wanted && config_ok ? ssid : ""; }
+const char *debug_wifi_name(void) { return (wanted || network_only) && config_ok ? ssid : ""; }

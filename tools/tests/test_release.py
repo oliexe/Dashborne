@@ -1,5 +1,6 @@
 """Exercise the downloadable package without the source checkout's installer."""
 import hashlib
+import json
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -29,6 +30,12 @@ class ReleaseTests(unittest.TestCase):
             with zipfile.ZipFile(archive) as zipped:
                 self.assertIsNone(zipped.testzip())
                 zipped.extractall(package)
+            self.assertEqual(json.loads((archive.parent/'updater-v1.json').read_text()), {'format': 1})
+            manifest = json.loads((package/'card/Dashborne/update-manifest.json').read_text())
+            self.assertEqual((manifest['format'], manifest['version'], manifest['stock_os']), (1, version, stock_os))
+            for name, digest in manifest['files'].items():
+                self.assertEqual(hashlib.sha256((package/'card/Dashborne'/name).read_bytes()).hexdigest(), digest)
+            self.assertIn('bin/updater', manifest['files'])
             self.assertEqual((package / 'STOCK_OS_VERSION').read_text().strip(), stock_os)
             self.assertIn(f'Target stock OS: {stock_os}.', (package / 'README.md').read_text())
             bundles=package/'card/Dashborne/extensions'
