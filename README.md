@@ -82,8 +82,9 @@ and extract it.
    **Tap the splash within three seconds** to configure Dashborne; otherwise it
    continues to the official dashboard with your selected extensions.
 
-For developer Wi-Fi, edit `wifi.ssid` and `wifi.password` in the card-root
-`dashborne.conf`, then enable ADB in the boot menu. ADB is off by default.
+For developer Wi-Fi, open **ADB → Wi-Fi network** in the boot menu, enter your
+SSID and password with the on-screen keyboard, then save and enable ADB.
+ADB is off by default.
 Power off and remove the card to boot the original dashboard without Dashborne.
 
 ## Boot menu

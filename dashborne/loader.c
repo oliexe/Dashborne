@@ -5,6 +5,10 @@
 #include "device.h"
 #include "extensions/engine.h"
 #include "state.h"
+#include "wifi_editor.h"
+#ifndef DASHBORNE_VERSION
+#define DASHBORNE_VERSION "development"
+#endif
 typedef __SIZE_TYPE__ usize;
 typedef unsigned int u32;
 extern void *dlopen(const char *, int);
@@ -66,6 +70,21 @@ EXPORT const char *onStartupApp(void *);
 #define ADDRESS_ID 50003
 #define NOTICE_ID 50004
 #define NETWORK_NAME_ID 50027
+#define NETWORK_EDIT_ID 20017
+#define WIFI_EDITOR_ID 110007
+#define WIFI_SSID_ID 20100
+#define WIFI_PASSWORD_ID 20101
+#define WIFI_SAVE_ID 20102
+#define WIFI_CANCEL_ID 20103
+#define WIFI_SHIFT_ID 20104
+#define WIFI_SYMBOLS_ID 20105
+#define WIFI_SPACE_ID 20106
+#define WIFI_BACKSPACE_ID 20107
+#define WIFI_CLEAR_ID 20108
+#define WIFI_REVEAL_ID 20109
+#define WIFI_KEY_ID 20200
+static struct wifi_editor wifi_form;
+static char saved_network[33];
 
 static void *stock, *runtime, *external_app;
 static void (*external_deinit)(void *);
@@ -157,10 +176,35 @@ static unsigned int number(char *to, unsigned int at, unsigned int value) {
     to[at++] = (char)('0' + value % 10); to[at] = 0;
     return at;
 }
+static void render_wifi(void *self) {
+    char text[65];
+    wifi_editor_display(&wifi_form,0,text);label(self,WIFI_SSID_ID,text);
+    wifi_editor_display(&wifi_form,1,text);label(self,WIFI_PASSWORD_ID,text);
+    /* setText copies the input. Clear the temporary, including revealed passwords. */
+    volatile char *secret=text;for(unsigned int i=0;i<sizeof(text);++i)secret[i]=0;
+    color(self,WIFI_SSID_ID,!wifi_form.field ? 0xffffff : 0xa4abb3);
+    color(self,WIFI_PASSWORD_ID,wifi_form.field ? 0xffffff : 0xa4abb3);
+    label(self,50102,wifi_form.field ? "Typing password" : "Typing network name");
+    label(self,50103,wifi_form.error ? wifi_form.error : "");
+    label(self,WIFI_REVEAL_ID,wifi_form.reveal ? "Hide" : "Show");
+    label(self,WIFI_SYMBOLS_ID,wifi_form.symbols ? "ABC" : "#+=");
+    label(self,WIFI_SHIFT_ID,wifi_form.shift ? "SHIFT" : "Shift");
+    for(unsigned int i=0;i<40;++i) {
+        char key[2]={wifi_editor_key(&wifi_form,i),0};
+        visible(self,WIFI_KEY_ID+(int)i,key[0]!=0);label(self,WIFI_KEY_ID+(int)i,key);
+    }
+}
+static void close_wifi(void *self) {
+    label(self,WIFI_PASSWORD_ID,"");label(self,WIFI_SSID_ID,"");
+    wifi_editor_close(&wifi_form);
+}
 static void render(void *self) {
     visible(self, SPLASH_ID, phase == 0);
-    visible(self, CONFIG_ID, phase == 1 || phase == 2);
+    visible(self,WIFI_EDITOR_ID,phase==1 && wifi_form.active);
+    visible(self, CONFIG_ID, (phase == 1 || phase == 2) && !wifi_form.active);
+    if(phase==1 && wifi_form.active){render_wifi(self);return;}
     if (phase != 1 && phase != 2) return;
+    label(self,50014,"v" DASHBORNE_VERSION "  /  https://github.com/oliexe/Dashborne");
     visible(self, PATCHES_PANEL_ID, section == 0);
     visible(self, ADB_PANEL_ID, section == 1);
     visible(self, DEVICE_PANEL_ID, section == 3);
@@ -207,8 +251,7 @@ static void render(void *self) {
         append(address, n, ":5555", sizeof(address));
     }
     label(self, ADDRESS_ID, *address ? address : "-");
-    const char *network = debug_wifi_name();
-    label(self, NETWORK_NAME_ID, settings.wifi_adb && *network ? network : "-");
+    label(self, NETWORK_NAME_ID, *saved_network ? saved_network : "Set up Wi-Fi");
     unsigned int enabled = 0;
     for (unsigned int i = 0; i < settings.count; ++i) enabled += !!settings.patches[i].enabled;
     char counts[64] = "";
@@ -472,6 +515,8 @@ static int on_timer_secondary(void *self, int id) {
 }
 static void on_create(void *self) {
     base_on_create(self);
+    wifi_editor_close(&wifi_form);
+    wifi_saved_name(saved_network);
     state_load(&settings);
     settings_ok=settings.config_ok;
     if(access(STOCK_ONCE,0)==0) {
@@ -513,6 +558,27 @@ static void on_create(void *self) {
 }
 static void on_click(void *self, void *control) {
     int id = control_id(control);
+    if(phase==1 && wifi_form.active) {
+        if(id==WIFI_CANCEL_ID)close_wifi(self);
+        else if(id==WIFI_SAVE_ID) {
+            if(wifi_editor_save(&wifi_form)) {
+                wifi_saved_name(saved_network);close_wifi(self);settings_ok=1;
+                if(settings.wifi_adb) {
+                    debug_set_enabled(1);
+                    if(settings.adb_force)(void)debug_set_forced(1);
+                }
+            }
+        } else if(id==WIFI_SSID_ID || id==WIFI_PASSWORD_ID) {
+            wifi_form.field=id==WIFI_PASSWORD_ID;wifi_form.error=0;
+        } else if(id==WIFI_SHIFT_ID)wifi_form.shift=!wifi_form.shift;
+        else if(id==WIFI_SYMBOLS_ID)wifi_form.symbols=!wifi_form.symbols;
+        else if(id==WIFI_REVEAL_ID)wifi_form.reveal=!wifi_form.reveal;
+        else if(id==WIFI_BACKSPACE_ID)wifi_editor_backspace(&wifi_form);
+        else if(id==WIFI_CLEAR_ID)wifi_editor_clear_field(&wifi_form);
+        else if(id==WIFI_SPACE_ID)wifi_editor_type(&wifi_form,' ');
+        else if(id>=WIFI_KEY_ID && id<WIFI_KEY_ID+40)wifi_editor_type(&wifi_form,wifi_editor_key(&wifi_form,(unsigned int)(id-WIFI_KEY_ID)));
+        render(self);return;
+    }
     if (id == TAP_ID && phase == 0) {
         phase = 1; unregister_timer(self, BOOT_TIMER); unregister_timer(self, LOADING_TIMER); log_line("configuration-entered\n");
         debug_set_enabled(settings.wifi_adb);
@@ -529,6 +595,9 @@ static void on_click(void *self, void *control) {
     else if (id == BROWSER_REFRESH_ID && section == 2) { browser_refresh();refresh_browser(self); }
     else if (id == AUTOLAUNCH_ID && section == 2) { toggle_autolaunch(self);return; }
     else if (id == BROWSER_LOAD_ID && section == 2) { load_app(self);return; }
+    else if((id==NETWORK_EDIT_ID || id==NETWORK_NAME_ID || id==50076) && section==1) {
+        if(!wifi_editor_open(&wifi_form))launch_error="Could not read dashborne.conf";
+    }
     else if (id == WIFI_ID && section == 1) {
         settings.wifi_adb = !settings.wifi_adb;
         settings_ok = state_save(&settings);
@@ -554,6 +623,7 @@ static void on_click(void *self, void *control) {
 }
 
 static void destroy(void *self) {
+    wifi_editor_close(&wifi_form);
     unregister_timer(self, LOADING_TIMER);
     if (list_owner == self) list_owner = (void *)0;
     activity_dtor(self); free(self);

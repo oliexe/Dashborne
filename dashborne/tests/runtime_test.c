@@ -4,6 +4,7 @@
 #include <string.h>
 #define RUNTIME_SIZE 7u
 #define RUNTIME_HASH 0x44c0392bu
+#define DASHBORNE_VERSION "9.8.7-test"
 #define dlopen fake_dlopen
 #define dlsym fake_dlsym
 #define open fake_open
@@ -16,6 +17,7 @@
 #define free fake_free
 #define fsync fake_fsync
 #include "../loader.c"
+#include "../wifi_editor.c"
 #undef calloc
 #undef free
 
@@ -30,8 +32,26 @@ static int opened, applied, saved, stopped, retried, cancelled, list_refreshes;
 static void *bound_adapter, *bound_listener;
 static int force_save_failure, extension_calls, restored;
 struct mock_control { int id; char text[256]; int shown, selected; };
-static struct mock_control controls[64];
+static struct mock_control controls[128];
 static int control_count;
+static char config_ssid[33]="TestNetwork",config_password[64]="testpassword";
+static char pending_ssid[33],pending_password[64];
+static int wifi_commits;
+int config_load(void) {strcpy(pending_ssid,config_ssid);strcpy(pending_password,config_password);return strcmp(scenario,"wifi-read-failure")!=0;}
+int config_get(const char *key,char *out,unsigned int capacity) {
+    snprintf(out,capacity,"%s",!strcmp(key,"wifi.ssid") ? pending_ssid : pending_password);return 1;
+}
+int config_set(const char *key,const char *value) {
+    if(!strcmp(key,"wifi.ssid"))snprintf(pending_ssid,sizeof(pending_ssid),"%s",value);
+    else if(!strcmp(key,"wifi.password"))snprintf(pending_password,sizeof(pending_password),"%s",value);
+    else assert(0);
+    return 1;
+}
+int config_commit(void) {
+    if(force_save_failure)return 0;
+    strcpy(config_ssid,pending_ssid);strcpy(config_password,pending_password);++wifi_commits;return 1;
+}
+void config_clear(void) {memset(pending_ssid,0,sizeof(pending_ssid));memset(pending_password,0,sizeof(pending_password));}
 void state_restore(void) { ++restored; }
 void state_load(struct settings *s) {
     *s = (struct settings){0}; s->count = 2;s->config_ok=strcmp(scenario,"config-invalid")!=0;
@@ -143,7 +163,7 @@ static int create(void *p) {
 static void *find(void *p, int id) {
     assert(p);
     for (int i = 0; i < control_count; ++i) if (controls[i].id == id) return &controls[i];
-    assert(control_count < 64); controls[control_count].id = id;
+    assert(control_count < 128); controls[control_count].id = id;
     return &controls[control_count++];
 }
 static void attach_adapter(void *p, void *a) { assert(p && a); if (((struct mock_control *)p)->id == LIST_ID) bound_adapter = a; }
@@ -247,6 +267,42 @@ int main(int argc, char **argv) {
     onEasyUIInit((void *)123);
     const char *selected = onStartupApp((void *)123);
     assert(init_calls == 1 && start_calls == 1);
+    if(!strncmp(scenario,"wifi-",5)) {
+        void *p=registered();on_click(p,find(p,TAP_ID));on_click(p,find(p,ADB_TAB_ID));
+        assert(strstr(((struct mock_control *)find(p,50014))->text,DASHBORNE_VERSION));
+        if(!is("wifi-read-failure")) {
+            const int row_ids[]={NETWORK_EDIT_ID,NETWORK_NAME_ID,50076};
+            for(unsigned int i=0;i<3;++i) {
+                on_click(p,find(p,row_ids[i]));assert(wifi_form.active);
+                on_click(p,find(p,WIFI_CANCEL_ID));assert(!wifi_form.active);
+            }
+        }
+        on_click(p,find(p,NETWORK_EDIT_ID));
+        if(is("wifi-read-failure")){assert(!wifi_form.active && launch_error);return 0;}
+        assert(wifi_form.active && !((struct mock_control *)find(p,CONFIG_ID))->shown);
+        assert(!strstr(((struct mock_control *)find(p,WIFI_PASSWORD_ID))->text,"testpassword"));
+        on_click(p,find(p,LAUNCH_ID));assert(wifi_form.active && !opened);
+        on_click(p,find(p,PATCHES_TAB_ID));assert(section==1);
+        on_click(p,find(p,WIFI_CLEAR_ID));on_click(p,find(p,WIFI_KEY_ID+10));
+        assert(!strcmp(wifi_form.ssid,"q"));
+        int before=retried;
+        on_click(p,find(p,WIFI_CANCEL_ID));assert(!wifi_form.active && !wifi_commits && retried==before);
+        on_click(p,find(p,NETWORK_EDIT_ID));assert(!strcmp(wifi_form.ssid,"TestNetwork"));
+        on_click(p,find(p,WIFI_CLEAR_ID));on_click(p,find(p,WIFI_SAVE_ID));assert(wifi_form.active && wifi_form.error && !wifi_commits);
+        on_click(p,find(p,WIFI_SHIFT_ID));on_click(p,find(p,WIFI_KEY_ID+10));assert(!strcmp(wifi_form.ssid,"Q"));
+        on_timer(p,NETWORK_TIMER);assert(!strcmp(wifi_form.ssid,"Q"));
+        on_click(p,find(p,WIFI_PASSWORD_ID));on_click(p,find(p,WIFI_REVEAL_ID));
+        assert(strstr(((struct mock_control *)find(p,WIFI_PASSWORD_ID))->text,"testpassword"));
+        force_save_failure=1;on_click(p,find(p,WIFI_SAVE_ID));
+        assert(wifi_form.active && wifi_form.error && !wifi_commits && !strcmp(config_ssid,"TestNetwork") && retried==before);
+        force_save_failure=0;settings.wifi_adb=is("wifi-enabled");settings.adb_force=settings.wifi_adb;
+        on_click(p,find(p,WIFI_SAVE_ID));
+        assert(!wifi_form.active && wifi_commits==1 && !strcmp(config_ssid,"Q"));
+        assert(retried==before+settings.wifi_adb && forced_debug==settings.wifi_adb);
+        assert(!*wifi_form.password && !*((struct mock_control *)find(p,WIFI_PASSWORD_ID))->text);
+        assert(!strcmp(((struct mock_control *)find(p,NETWORK_NAME_ID))->text,"Q"));
+        destroy(p);onEasyUIDeinit((void *)123);puts("PASS: Wi-Fi editor and build version");return 0;
+    }
     if(is("external-app") || is("external-empty")) {
         assert(external_app && !ready && !registered && !applied);
         assert(is("external-empty") ? !selected && restarts==1 : selected && !strcmp(selected,"installedActivity"));

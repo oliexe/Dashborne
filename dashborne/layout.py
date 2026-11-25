@@ -75,13 +75,21 @@ def screen():
         adb['button__'+key].update(backgroundColor=0x07080a, bgColorTab={'color1': 0x1c2025})
         adb['button__'+key]['textPosition'] = position(24, 0, 900, 48)
         adb['textview__toggle_'+key] = switch(switch_id, 964, y+6)
+    adb['button__network'] = dict(button(20017, 'Wi-Fi network', 0, 312, 256, 48),
+        fontSize=22, textPosition=position(24, 0, 232, 48),
+        bgColorTab={'color0': 0x07080a, 'color1': 0x1c2025})
     for key, title, value_id, label_id, y, size, color in [
         ('status', 'Status', 50002, 50028, 216, 20, 0xa4abb3),
         ('address', 'IP address', 50003, 50029, 264, 22, 0xc2c9d1),
-        ('network', 'Wi-Fi network', 50027, 50030, 312, 22, 0xd9dde2),
     ]:
         adb['textview__label_'+key] = label(label_id, title, 24, y, 220, 48, 22, 0xe4e7eb)
         adb['textview__'+key] = label(value_id, '-', 256, y, 780, 48, size, color, 38)
+    # Native non-touchable text views still consume hits. Each row segment is a
+    # button, so tapping the name/value/chevron all opens the same editor.
+    adb['button__network_value'] = dict(label(50027, '', 256, 312, 744, 48, 22, 0xd9dde2, 38),
+        touchable=True, textPosition=position(0, 0, 736, 48))
+    adb['button__network_arrow'] = dict(label(50076, '>', 1000, 312, 60, 48, 22, 0x858c94, 36),
+        touchable=True)
     for index, y in enumerate((119, 167, 215, 263, 311, 359)):
         adb['textview__row_line_'+str(index)] = dict(id=50070+index,
             position=position(24, y, 1012, 1), backgroundColor=0x202228, touchable=False)
@@ -159,6 +167,31 @@ def screen():
                 'pic1': '../../../mnt/extsd/Dashborne/ui/continue-pressed.png'})
     root['window__1'] = splash
     root['window__2'] = config
+    wifi = dict(id=110007, position=position(0, 0, 1920, 480), visible=False,
+                backgroundColor=0x000000)
+    wifi['textview__heading'] = dict(label(50100, 'Wi-Fi setup', 180, 24, 480, 40, 28, 0xf1f2f4), bold=True)
+    wifi['textview__typing'] = label(50102, '', 700, 28, 1040, 36, 20, 0xa4abb3)
+    for field, title, title_id, control_id, y in [
+        ('ssid', 'Network name (SSID)', 50101, 20100, 82),
+        ('password', 'Password', 50104, 20101, 188),
+    ]:
+        wifi['textview__'+field] = label(title_id, title, 180, y, 360, 30, 20, 0xa4abb3)
+        wifi['button__'+field] = dict(button(control_id, '', 180, y+36, 480, 58),
+            fontSize=22, bgColorTab={'color0': 0x171a1e, 'color1': 0x2b3139})
+    wifi['button__reveal'] = dict(label(20109, 'Show', 568, 188, 92, 30, 18, 0xc2c9d1, 38), touchable=True)
+    wifi['textview__error'] = label(50103, '', 180, 292, 480, 48, 19, 0xff6369)
+    for id, text, x, primary in [(20103, 'Cancel', 180, False), (20102, 'Save', 430, True)]:
+        wifi['button__'+text.lower()] = button(id, text, x, 356, 230, 58, primary)
+    for i in range(40):
+        key = label(20200+i, '', 700+(i%10)*104, 84+(i//10)*64, 96, 56, 24, 0xf1f2f4, 37)
+        key.update(touchable=True, bgColorTab={'color0': 0x171a1e, 'color1': 0x454e59})
+        wifi['button__key_'+str(i)] = key
+    for id, text, x, width in [(20104, 'Shift', 700, 160), (20105, '#+=', 868, 128),
+                              (20106, 'Space', 1004, 340), (20107, 'Delete', 1352, 192),
+                              (20108, 'Clear', 1552, 180)]:
+        wifi['button__control_'+str(id)] = dict(label(id, text, x, 356, width, 58, 20, 0xd9dde2, 37),
+            touchable=True, bgColorTab={'color0': 0x242930, 'color1': 0x454e59})
+    root['window__wifi'] = wifi
     return root
 
 

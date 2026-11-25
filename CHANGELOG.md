@@ -3,6 +3,11 @@
 This changelog tracks Dashborne core, starting with 0.1.0. Extension changes are
 tracked separately in their source history.
 
+## Unreleased
+
+- Configure developer Wi-Fi from the ADB page with an on-screen keyboard.
+- Read the boot-menu version label from the compiled `VERSION` value.
+
 ## 0.1.1 — 2026-11-25
 
 Target stock OS: 6.11.4.

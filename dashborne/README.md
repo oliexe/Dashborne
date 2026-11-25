@@ -13,14 +13,16 @@ from the installed app in flash.
 
 Choose a category from the left sidebar to open its page. **Extensions** opens by
 default. Switching pages keeps your selections and list position. The footer
-shows the version from `VERSION` and the repository URL beneath the logo.
+shows the compiled version from `VERSION` and the repository URL beneath the logo.
 
 Configuration includes:
 
 - ADB / Enable ADB: developer opt-in, off by default; enable/disable TCP
   ADB. The page uses aligned rows for the switch, live status, IP address with
-  port, and configured developer Wi-Fi name. Address and network fields clear
-  when ADB is disabled.
+  port, and saved developer Wi-Fi name. Tap **Wi-Fi network** to enter an SSID
+  and password using the on-screen keyboard. **Save** updates `dashborne.conf`
+  and reconnects if ADB is enabled; **Cancel** discards edits. The address clears
+  when ADB is disabled; the saved network remains visible.
 - Extensions: swipe the native list to browse up to 64 entries. Tap a row to
   toggle its extension; each row has a title, description and switch. Incompatible
   extensions have a disabled switch. Selections save immediately, and the header
@@ -115,6 +117,12 @@ requires a restart or power cycle.
 selection; the saved autolaunch preference still applies to the next boot.
 
 ## ADB connection handling
+
+The Wi-Fi editor provides letters, numbers, symbols, spaces, Shift, Delete and
+Clear. Passwords are masked unless **Show** is selected. It accepts 1–32 SSID
+bytes and 8–63 password bytes; the keyboard enters printable ASCII. Existing
+UTF-8 names in `dashborne.conf` are preserved. Validation or save errors keep
+the editor open and leave the current connection unchanged.
 
 Enable ADB normally manages a developer connection inside configuration. The
 controller confirms the previous TCP daemon has stopped, validates Wi-Fi
