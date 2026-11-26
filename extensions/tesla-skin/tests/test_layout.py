@@ -33,6 +33,10 @@ class LayoutTests(unittest.TestCase):
    nav=changed['seekbar__nav']
    self.assertEqual(nav['position']['top']+nav['position']['height']/2,121)
    self.assertTrue(all(v.endswith('/'+mode+'/nav-progress-arrow.png') for v in nav['thumbPicTab'].values()))
+   self.assertTrue(nav['backgroundPic'].endswith('/'+mode+'/nav-progress-track.png'))
+   self.assertTrue(nav['progressPic'].endswith('/'+mode+'/nav-progress-fill.png'))
+   sizes=json.loads((ROOT/'resource-sizes.json').read_text())
+   self.assertEqual(sizes[mode+'/nav-progress-fill.png'],[427,14])
    bars=[v for k,v in changed['window__gauge'].items() if isinstance(v,dict)]
    self.assertEqual({b['id'] for b in bars},{620120,620121,620122})
    self.assertEqual(len(bars),3)

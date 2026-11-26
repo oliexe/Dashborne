@@ -67,6 +67,8 @@ def transform(original,page,mode,resources):
             if re.fullmatch(r'P[TMB]_HBAR_NAV',cap):
                 arrow='../../../mnt/extsd/Dashborne/extensions/tesla-skin/assets/ui/'+mode+'/nav-progress-arrow.png'
                 node['thumbPicTab']={'pic0':arrow,'pic1':arrow,'pic4':arrow}
+                node['backgroundPic']=arrow.replace('arrow.png','track.png')
+                node['progressPic']=arrow.replace('arrow.png','fill.png')
                 node['position'].update(top=114,height=14)
             # Reserve separate bands for mode, value, units, gear and secondary data.
             if re.match(r'P[TMB]_G[123]_BTN$',cap):
