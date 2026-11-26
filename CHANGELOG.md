@@ -1,9 +1,24 @@
 # Changelog
 
-This changelog tracks Dashborne core, starting with 0.1.0. Extension changes are
-tracked separately in their source history.
+This changelog tracks Dashborne releases, including bundled extensions.
 
-## Unreleased
+## 0.1.3 — 2026-11-26
+
+Target stock OS: 6.11.4.
+
+- Refine Tesla Skin across the dashboard, settings and widget picker, including
+  TPMS artwork, thin circular gauges, green/gray digital power bars and the red
+  navigation progress pointer.
+- Align the Tesla model and road perspectives, improve Reverse and turn-lamp
+  placement, show side detections on lane boundaries, remove overlapping artwork
+  and use white direction glows.
+- Animate road marks continuously with clipped batch drawing. Drive samples on
+  DASH reached about 60 fps, but occasional 80–100 ms pauses remain. Steering-based
+  road curvature is not available because no steering-angle field is verified.
+- Fix a Tesla Skin startup crash caused by colors outside the native JSON
+  parser's signed integer range.
+- Add scheduled brightness and black-level controls, fix slider previews and
+  control-page blackouts, and keep a two-percent brightness floor.
 
 - Preserve separately installed Tesla Model Widget packs during boot-menu updates
   and rollback, so the widget continues to load after an update.
