@@ -34,14 +34,8 @@ def draw_asset(name,size):
         if style in ('B','C'):
             bounds=((cx-rx)*scale,(cy-ry)*scale,(cx+rx)*scale,(cy+ry)*scale)
             d.arc(bounds,135,405,fill=p['line'],width=3*scale)
-            for i in range(37):
-                a=math.radians(135+i*7.5);r0=.91 if i%3==0 else .965
-                line([(cx+rx*r0*math.cos(a),cy+ry*r0*math.sin(a)),(cx+rx*math.cos(a),cy+ry*math.sin(a))],p['muted'] if i%3==0 else p['line'],2 if i%3==0 else 1)
-            if style=='C':
-                # Signed power: regeneration left, consumption right.
-                d.arc(bounds,155,265,fill=GREEN,width=3*scale)
-                line([(cx,cy-ry-5),(cx,cy-ry+12)],p['text'],2)
-            if preview:d.arc(bounds,135 if style=='B' else 270,225 if style=='B' else 310,fill=BLUE if style=='B' else p['text'],width=5*scale)
+            if preview:
+                d.arc(bounds,135,275 if style=='B' else 215,fill=p['text'],width=3*scale)
         elif style=='D':
             for yy in (96,354):line([(w*.18,h*yy/458),(w*.82,h*yy/458)],p['line'],1)
         if preview:
@@ -242,7 +236,7 @@ def draw_asset(name,size):
             d.ellipse((4,4,w*scale-5,h*scale-5),outline=BLUE,width=2*scale)
         elif stem in ('g1_inds','g2_speed_ind','g3_inds'):
             if stem!='g1_inds':
-                d.arc((3*scale,3*scale,(w-4)*scale,(h-4)*scale),0,360,fill=p['text'] if stem=='g3_inds' else BLUE,width=5*scale)
+                d.arc((3*scale,3*scale,(w-4)*scale,(h-4)*scale),0,360,fill=p['text'],width=3*scale)
         elif stem=='g3_pin':box((1,0,w-2,13),p['text'],r=2)
         elif stem=='g2_arc_ind':
             # Native resource is a cropped lower section of a 416px dial.
@@ -251,8 +245,12 @@ def draw_asset(name,size):
     elif tail.startswith('clock/') and 'pointer' in stem:
         line([(12,h/2),(w-3,h/2)],p['text'],max(2,min(h-2,5)))
         d.ellipse((8*scale,(h/2-4)*scale,16*scale,(h/2+4)*scale),fill=p['text'])
+    elif tail in ('nav-progress-track.png','nav-progress-fill.png'):
+        box((0,6,w-1,7),p['line'] if 'track' in tail else BLUE)
+    elif tail=='nav-progress-arrow.png':
+        poly([(1,1),(w-1,h/2),(1,h-1),(4,h/2)], '#e85d75')
     elif any(t in tail for t in ('hbar','vbar','hor_bar')):
-        color=p['line'] if 'bg' in stem else GREEN if 'green' in stem else p['muted'] if 'sub' in stem else BLUE
+        color=p['line'] if 'bg' in stem else GREEN if 'green' in stem else p['muted'] if 'sub' in stem else p['muted']
         if 'thumb' in stem:color=p['text']
         if w>h:box((0,max(0,h/2-2),w-1,min(h-1,h/2+2)),color,r=min(2,h/2))
         else:box((max(0,w/2-3),0,min(w-1,w/2+3),h-1),color,r=3)

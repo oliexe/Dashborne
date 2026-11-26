@@ -25,10 +25,10 @@ static int image_read(void *self,const char *path,int scale,int flags){
 }
 static int bitmap_read(void **out,const char *path,int scale){assert(out && scale==3);requested=path;return 19;}
 static int bitmap_plain(void **out,const char *path){assert(out);requested=path;return 20;}
-static void *tables[PAGE_COUNT][11];
-static int calls,lookups;
+static void *tables[PAGE_COUNT][25];
+static int calls,lookups;static void *timer_self;
 static void created(void *self){(void)self;calls++;}
-static int timed(void *self,int id){(void)self;calls++;return id;}
+static int timed(void *self,int id){timer_self=self;calls++;return id;}
 static void intended(void *self,const void *intent){(void)self;(void)intent;calls++;}
 static void resumed(void *self){(void)self;calls++;}
 static void *lookup(void *self,int id){(void)self;(void)id;lookups++;return 0;}
@@ -36,6 +36,13 @@ static const char *named(void *self){(void)self;return "native-name";}
 static void *resolve(void *library,const char *name){(void)library;for(unsigned i=0;i<PAGE_COUNT;i++)if(!strcmp(name,pages[i].vtable_name))return tables[i];if(strstr(name,"8onCreateEv"))return (void *)created;if(strstr(name,"7onTimerEi"))return (void *)timed;if(strstr(name,"8onResumeEv"))return (void *)resumed;if(strstr(name,"8onIntentEPK6Intent"))return (void *)intended;return 0;}
 static int owns(const struct dashborne_host *api,const void *callback){(void)api;return callback==(void *)created||callback==(void *)timed||callback==(void *)resumed||callback==(void *)intended;}
 int main(void){
+ int q[12]={0},m[28]={0},slow_values[55]={0};
+ q[1]=40000;q[2]=-100;
+ assert(power_kw((void *)q,(void *)m,(void *)slow_values)==40);
+ q[2]=100;assert(power_kw((void *)q,(void *)m,(void *)slow_values)==-40);
+ q[2]=0;assert(power_kw((void *)q,(void *)m,(void *)slow_values)==0);
+ assert(power_width(0)==0 && power_width(-100)==165 && power_width(400)==165);
+ assert(power_width(-2000)==165 && power_width(2000)==165);
  active_theme=theme;file_load=read_layout;
  for(unsigned i=0;i<PAGE_COUNT;i++)for(int mode=0;mode<2;mode++)snprintf(pages[i].layout[mode],256,"/card/%s-%d.ftu",pages[i].name,mode);
  unsigned int size=0;
@@ -65,8 +72,9 @@ int main(void){
  assert(load_bitmap_plain(&bitmap,"light/elements/btn_back_bg_n.png")==20);
  void *bitmap_slots[]={(void *)load_bitmap,(void *)load_bitmap_plain};
  for(int i=0;i<2;i++){bitmap_got[i]=&bitmap_slots[i];bitmap_prot[i]=1;bitmap_changed[i]=1;}
- struct dashborne_host api={.resolve=resolve,.owns_callback=owns};host=&api;
+ struct dashborne_host api={.resolve=resolve,.owns_callback=owns,.extension_directory="/card"};host=&api;
  for(unsigned i=0;i<PAGE_COUNT;i++){tables[i][5]=(void *)named;tables[i][6]=(void *)created;tables[i][7]=(void *)timed;tables[i][9]=(void *)named;tables[i][pages[i].resume_slot]=(void *)resumed;tables[i][pages[i].intent_slot]=(void *)intended;}
+ tables[0][24]=(void *)timed;
  assert(install_pages(0));
  void *image_slot=(void *)load_image;image_got=&image_slot;image_prot=1;image_changed=1;
  for(unsigned i=0;i<PAGE_COUNT;i++){
@@ -80,6 +88,8 @@ int main(void){
  assert(page_timer(&object,17)==17 && calls==2 && lookups==initial);
  page_intent(&object,0);assert(calls==3 && lookups>initial);initial=lookups;
  page_resume(&object);assert(calls==4 && lookups>initial);
+ void *dashboard[2]={tables[0]+2,0};
+ assert(dashboard_timer(dashboard+1,31)==31 && timer_self==dashboard+1);
  tables[6][6]=(void *)named;
  assert(deactivate()==-1 && tables[6][6]==(void *)named);
  tables[6][6]=(void *)page_create;
@@ -87,6 +97,7 @@ int main(void){
  assert(!deactivate());
  for(unsigned i=0;i<PAGE_COUNT;i++){assert(tables[i][5]==(void *)named);assert(tables[i][6]==(void *)created);assert(tables[i][7]==(void *)timed);assert(tables[i][pages[i].resume_slot]==(void *)resumed);assert(tables[i][pages[i].intent_slot]==(void *)intended);}
  assert(tables[6][9]==(void *)named); /* Keyboard onPause is not a style hook. */
+ assert(tables[0][24]==(void *)timed && !dashboard_timer_listener);
  assert(!host && !image_changed && image_slot==(void *)image_read);
  assert(!bitmap_changed[0] && !bitmap_changed[1]);
  assert(bitmap_slots[0]==(void *)bitmap_read && bitmap_slots[1]==(void *)bitmap_plain);

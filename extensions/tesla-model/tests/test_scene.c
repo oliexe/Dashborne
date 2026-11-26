@@ -34,10 +34,10 @@ int main(void) {
         for(int i=0;i<count;++i)assert(layers[i].w>0&&layers[i].h>0&&layers[i].frame>=-1&&layers[i].frame<25);
     }
     r.gear=TM_DRIVE;r.speed=30;r.open=0;r.left=r.right=1;r.lights_known=r.high_beam=1;
-    s=(struct tm_scene){0};tm_step(&s,&r,now);int count=tm_layers(&s,layers);assert(count==3);
-    struct tm_lamp lamps[4];assert(tm_lamps(&s,lamps)==2&&lamps[0].y0==272);
-    s.angle=0;assert(tm_lamps(&s,lamps)==2&&lamps[0].color==0xffa52d);
-    s.data.left=s.data.right=0;assert(tm_lamps(&s,lamps)==2&&lamps[0].color==0xf4f8ff);
+    s=(struct tm_scene){0};tm_step(&s,&r,now);int count=tm_layers(&s,layers);assert(count==2);
+    struct tm_lamp lamps[4];assert(tm_lamps(&s,lamps)==2&&lamps[0].y0==282);
+    s.angle=0;assert(tm_lamps(&s,lamps)==3&&lamps[0].color==0xffa52d);
+    s.data.left=s.data.right=0;assert(tm_lamps(&s,lamps)==3&&lamps[0].color==0xf4f4f4);
     s.data.lights_known=0;assert(!tm_lamps(&s,lamps));
     r.connected=0;advance(&s,&r,100);assert(s.angle==0&&s.data.left==0&&!s.data.lights_known&&!tm_lamps(&s,lamps));
     r=(struct tm_reading){.connected=1,.gear=999,.speed=999,.known=0,.open=63};
@@ -76,8 +76,8 @@ int main(void) {
         tm_step(&s,&r,now);assert(s.shift==(direction?-1:1));
         count=tm_layers(&s,layers);assert(count==3);
         assert(!strcmp(layers[count-1].name,direction?"night_back_gears_remind":"night_forward_gears_remind"));
-        assert(!strcmp(layers[0].name,"n_road")&&layers[0].frame==0);
-        assert(layers[0].w==210&&layers[0].h==510);
+        assert(!strcmp(layers[0].name,"n_road")&&layers[0].frame==(direction?8:0));
+        assert(layers[0].w==180&&layers[0].h==436);
         assert(direction?layers[0].y<0:layers[0].y+layers[0].h>458);
         int start_y=layers[count-1].y;
         advance(&s,&r,28);tm_layers(&s,layers);
@@ -127,6 +127,25 @@ int main(void) {
     struct tm_layer overhead=layers[0];s.approach.value=1;
     assert(tm_layers(&s,layers)==1&&layers[0].x==overhead.x&&layers[0].y==overhead.y&&layers[0].w==overhead.w&&layers[0].h==overhead.h);
     s.approach.value=0;s.camera.value=24*1024+512;
-    tm_layers(&s,layers);assert(layers[0].frame==0&&layers[0].w>overhead.w&&layers[0].y<overhead.y);
+    tm_layers(&s,layers);assert(layers[0].frame==0&&layers[0].w<=overhead.w&&layers[0].y<=overhead.y);
+    /* Moving roads advance on every 60 Hz tick, even at walking speed. */
+    s=(struct tm_scene){0};r=(struct tm_reading){.connected=1,.gear=TM_DRIVE,.speed=1};
+    tm_step(&s,&r,1000000);
+    for(unsigned long long t=1016667;t<2000000;t+=16667) {
+        unsigned int previous_phase=s.road_phase;
+        assert(tm_step(&s,&r,t));assert(s.road_phase!=previous_phase);
+    }
+    /* Side warnings alone never illuminate the model. Rear anchors follow the
+       source frame through every reverse zoom, not a fixed screen position. */
+    r.detected_left=r.detected_right=1;r.left=r.right=0;
+    tm_step(&s,&r,2016667);assert(!tm_lamps(&s,lamps));
+    for(int zoom=0;zoom<=16;++zoom) {
+        s=(struct tm_scene){.angle=24,.camera={.value=24*1024},
+            .approach={.value=-zoom*1024},.data={.connected=1,.gear=TM_REVERSE,.left=1}};
+        count=tm_layers(&s,layers);int lamp_count=tm_lamps(&s,lamps);assert(count>0&&lamp_count>0);
+        struct tm_layer body=layers[0];
+        assert(lamps[0].x0>=body.x && lamps[0].x1<=body.x+body.w);
+        assert(lamps[0].y0>=body.y && lamps[0].y1<=body.y+body.h);
+    }
     puts("Tesla Model: transitions, reversals, all panel masks, disconnect and pause passed");
 }

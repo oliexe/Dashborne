@@ -46,6 +46,7 @@ int tm_step(struct tm_scene *s,const struct tm_reading *input,unsigned long long
     if(r.connected && s->initialized)r.open|=s->data.open & ~r.known;
     int changed=!s->initialized || s->data.connected!=r.connected ||
         s->data.left!=r.left || s->data.right!=r.right ||
+        s->data.detected_left!=r.detected_left || s->data.detected_right!=r.detected_right ||
         s->data.lights_known!=r.lights_known || s->data.low_beam!=r.low_beam || s->data.high_beam!=r.high_beam;
     int target=r.gear==TM_DRIVE?(r.speed?48:24):(r.gear==TM_REVERSE || r.gear==TM_NEUTRAL)?24:0;
     /* Open panels take priority over the driving camera. Never hide an open
@@ -84,14 +85,13 @@ int tm_step(struct tm_scene *s,const struct tm_reading *input,unsigned long long
        a new road PNG and a new camera PNG in the same animation update. */
     int camera_ready=s->camera.value==target*FRAME;
     if(r.connected && r.speed && !r.open && !s->approach.value && camera_ready && (r.gear==TM_DRIVE || r.gear==TM_REVERSE)) {
-        unsigned long long interval=(unsigned long long)(65000-(r.speed>100?100:r.speed)*400);
-        unsigned long long elapsed=now>=s->road_clock?now-s->road_clock:0;
-        if(elapsed>250000){s->road_clock=now;elapsed=0;}
-        int advance=(int)(elapsed/interval);
+        /* Integrate distance at every display tick. No quantized PNG loop. */
+        unsigned int advance=(unsigned int)(dt*(unsigned int)r.speed/18);
         if(advance) {
-            s->road=(s->road+(r.gear==TM_REVERSE?-advance:advance)+40)%20;
-            s->road_clock+=(unsigned long long)advance*interval;changed=1;
+            s->road_phase=(s->road_phase+(r.gear==TM_REVERSE?1000000-advance%1000000:advance))%1000000;
+            s->road=(int)(s->road_phase/50000);changed=1;
         }
+        s->road_clock=now;
     } else s->road_clock=now;
     int shift=shift_direction(s,&r);
     if(shift!=s->shift){s->shift=shift;s->shift_phase=0;changed=1;}
@@ -113,10 +113,10 @@ int tm_layers(const struct tm_scene *s,struct tm_layer out[TM_LAYERS]) {
            at the top in Reverse. Interpolate its position and size before
            resuming the regular camera sequence. */
         int amount=s->approach.value,forward=amount>0;if(amount<0)amount=-amount;
-        int w=145+65*amount/(16*FRAME),h=350+160*amount/(16*FRAME);
-        int y=75+((forward?286:-280)-75)*amount/(16*FRAME);
+        int w=145+35*amount/(16*FRAME),h=350+86*amount/(16*FRAME);
+        int y=75+((forward?300:-220)-75)*amount/(16*FRAME);
         int center=264-9*amount/(16*FRAME);
-        add(out,&n,"n_road",0,center-w/2,y,w,h);
+        add(out,&n,"n_road",forward?0:8*amount/(16*FRAME),center-w/2,y,w,h);
         if(s->shift) {
             int offset=shift_offset(s->shift_phase);
             add(out,&n,forward?"forward_gears_rectangle":"back_gears_rectangle",-1,145,forward?57:95,220,313);
@@ -126,21 +126,19 @@ int tm_layers(const struct tm_scene *s,struct tm_layer out[TM_LAYERS]) {
     }
     int driving=s->angle>24,overhead=s->angle==24;
     if(s->data.connected && (driving || overhead) && s->data.gear!=TM_NEUTRAL)
-        add(out,&n,"road",s->road,105,82,300,300);
-    if(s->data.connected && s->angle==48 && !s->shift && s->data.lights_known && (s->data.low_beam || s->data.high_beam))
-        add(out,&n,s->data.high_beam?"distance_light":"dipped_light",-1,140,16,237,180);
+        add(out,&n,"road",s->road,75,55,360,380);
     if(s->angle>0) {
         if(s->angle<24)add(out,&n,"P_N",s->angle,14,68,482,322);
         else if(s->angle==24 && s->camera.value<=24*FRAME)add(out,&n,"n_road",0,192,75,145,350);
         else {
             /* The second sequence continues the same overhead camera. Its
                source has a different canvas, matched here at the seam. */
-            int f=s->angle-24,progress=s->camera.value-24*FRAME;
-            int w=145+progress*3/FRAME,h=350+progress*7/FRAME;
-            /* Reframe the rear view toward the tile's center, leaving room
-               for the road ahead instead of crowding the bottom edge. */
-            int lift=(progress*60+12*FRAME)/(24*FRAME);
-            add(out,&n,"n_road",f,264-w/2,75-progress*4/FRAME-lift,w,h);
+            int progress=s->camera.value-24*FRAME;
+            int f=progress/FRAME;
+            int w=145-progress*13/(24*FRAME),h=350-progress*42/(24*FRAME);
+            int x=264-w/2-progress*9/(24*FRAME);
+            int y=75;
+            add(out,&n,"n_road",f,x,y,w,h);
         }
     } else if(!parts)add(out,&n,"P_N",0,14,68,482,322);
     else {
@@ -156,34 +154,44 @@ int tm_layers(const struct tm_scene *s,struct tm_layer out[TM_LAYERS]) {
     }
     return n;
 }
+static void lamp(struct tm_lamp *out,int *n,const struct tm_layer *body,int sw,int sh,
+                 int x0,int y0,int x1,int y1,unsigned int color) {
+    int ay=body->y+y0*body->h/sh,by=body->y+y1*body->h/sh;
+    if((ay<0 && by<0) || (ay>=458 && by>=458) || *n>=4)return;
+    out[(*n)++]=(struct tm_lamp){body->x+x0*body->w/sw,ay,
+        body->x+x1*body->w/sw,by,color};
+}
 int tm_lamps(const struct tm_scene *s,struct tm_lamp out[4]) {
-    if(!s->data.connected || (s->angle!=0 && s->angle!=24 && s->angle!=48))return 0;
-    if(s->approach.value) {
-        int amount=s->approach.value,forward=amount>0;if(amount<0)amount=-amount;
-        int w=145+65*amount/(16*FRAME),h=350+160*amount/(16*FRAME);
-        int x=264-9*amount/(16*FRAME)-w/2,y=75+((forward?286:-280)-75)*amount/(16*FRAME),n=0;
-        const int points[4][4]={{21,28,27,16},{128,28,122,16},{27,292,36,299},{122,292,113,299}};
-        for(int i=0;i<4;++i) {
-            int blink=i%2?s->data.right:s->data.left;
-            int on=i<2&&s->data.lights_known&&(s->data.low_beam||s->data.high_beam);
-            if(!blink&&!on)continue;
-            int y0=y+points[i][1]*h/361,y1=y+points[i][3]*h/361;
-            if((y0<0&&y1<0)||(y0>=458&&y1>=458))continue;
-            out[n++]=(struct tm_lamp){x+points[i][0]*w/149,y0,x+points[i][2]*w/149,y1,
-                blink?0xffa52du:s->data.high_beam?0xf4f8ffu:0xcddcecu};
+    if(!s->data.connected)return 0;
+    struct tm_layer layers[TM_LAYERS],body={"P_N",0,14,68,482,322};
+    int count=tm_layers(s,layers),rear=0;
+    for(int i=0;i<count;++i) {
+        if(layers[i].name[0]=='n' && layers[i].name[1]=='_'){body=layers[i];rear=1;break;}
+        if(layers[i].name[0]=='P'){body=layers[i];break;}
+    }
+    int n=0,on=s->data.lights_known && (s->data.low_beam || s->data.high_beam);
+    unsigned int white=0xf4f4f4,amber=0xffa52d;
+    if(!rear) {
+        if(s->angle)return 0; /* Park rotation has no verified lamp anchors. */
+        if(s->data.left || on) {
+            unsigned int c=s->data.left?amber:white;
+            lamp(out,&n,&body,482,322,147,204,200,199,c);
+            lamp(out,&n,&body,482,322,200,199,216,185,c);
         }
+        if(s->data.right || on)lamp(out,&n,&body,482,322,20,188,37,194,s->data.right?amber:white);
         return n;
     }
-    int n=0,on=s->angle!=48 && s->data.lights_known && (s->data.low_beam || s->data.high_beam);
-    unsigned int white=s->data.high_beam?0xf4f8ffu:0xcddcecu;
-    /* Small lamp highlights follow the stationary camera views. */
-    const int park[2][4]={{176,273,230,258},{38,253,62,264}};
-    const int overhead[2][4]={{211,117,217,99},{315,117,308,99}};
-    const int rear[2][4]={{188,272,205,275},{331,272,318,277}};
-    const int (*points)[4]=s->angle==48?rear:s->angle?overhead:park;
-    for(int side=0;side<2;++side) {
-        int blink=side?s->data.right:s->data.left;
-        if(on || blink)out[n++]=(struct tm_lamp){points[side][0],points[side][1],points[side][2],points[side][3],blink?0xffa52du:white};
+    /* Anchors measured in the actual pack's source pixels, before all camera
+       translation/scaling. All five color variants share this geometry. */
+    static const unsigned short tail_y[25]={290,299,306,312,316,318,319,318,316,312,308,302,296,290,283,276,269,263,257,252,248,245,243,242,243};
+    int f=body.frame;if(f<0 || f>24)return 0;
+    int sw=149,sh=361,y=tail_y[f];
+    int outer=f?20:25,inner=f?40:36;
+    if(s->data.left)lamp(out,&n,&body,sw,sh,outer,y,inner,y+5,amber);
+    if(s->data.right)lamp(out,&n,&body,sw,sh,sw-outer-2,y,sw-inner-2,y+5,amber);
+    if(!f) {
+        if(s->data.left || on)lamp(out,&n,&body,sw,sh,20,30,28,17,s->data.left?amber:white);
+        if(s->data.right || on)lamp(out,&n,&body,sw,sh,129,30,121,17,s->data.right?amber:white);
     }
     return n;
 }

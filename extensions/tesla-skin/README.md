@@ -10,7 +10,10 @@ matching palette. Disable the extension and restart to return to the stock style
 
 ## Appearance
 
-- Neutral dashboard cards, larger digital speed, simpler gauges and media controls.
+- Neutral dashboard cards, larger digital speed and thin white circular gauges.
+- Digital A/D power bars: green regeneration to the left, gray consumption to
+  the right, using the stock electrical-power reading.
+- A red navigation pointer follows the native trip-progress value.
 - Matching Settings, widget picker, page editor, dialogs and keyboard.
 - Inter for ordinary interface text. Native fonts remain in data labels that use
   special unit glyphs.

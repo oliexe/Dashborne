@@ -2226,5 +2226,29 @@
   "light/gauges/3/g3_face.png": [
     404,
     404
+  ],
+  "dash/nav-progress-arrow.png": [
+    14,
+    14
+  ],
+  "light/nav-progress-arrow.png": [
+    14,
+    14
+  ],
+  "dash/nav-progress-track.png": [
+    1,
+    14
+  ],
+  "dash/nav-progress-fill.png": [
+    1,
+    14
+  ],
+  "light/nav-progress-track.png": [
+    1,
+    14
+  ],
+  "light/nav-progress-fill.png": [
+    1,
+    14
   ]
 }

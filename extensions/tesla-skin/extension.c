@@ -4,6 +4,7 @@
 #include "layout_patch.h"
 #include "theme_engine.h"
 #include "theme_tokens.inc"
+#include "power.h"
 typedef __SIZE_TYPE__ usize;
 typedef __UINTPTR_TYPE__ uptr;
 extern int open(const char *,int,...),read(int,void *,unsigned int),write(int,const void *,unsigned int),close(int),fsync(int);
@@ -153,6 +154,7 @@ static int install_file_route(void *base) {
  return !protect(file_got,sizeof(void *),file_prot);
 }
 static const char *image_path(const char *path);
+static void navigation_styles(void *self);
 static void apply_styles(struct page *p,void *self) {
  const void *theme=active_theme();if(p->last_theme==theme)return;
  int mode=light();
@@ -164,11 +166,32 @@ static void apply_styles(struct page *p,void *self) {
   for(int status=0;status<5;status++)if(s->pics[status][0])button_pic(control,status,s->pics[status]);
   if(s->progress[0])progress_pic(control,s->progress);
  }
+ if(p==pages)navigation_styles(self);
  p->last_theme=theme;
+}
+static const volatile unsigned char *power_quick,*power_medium,*power_slow,*power_demo,*power_paired;
+static const volatile unsigned short *power_flags;
+static int (*power_connected)(const void *);
+struct power_rect {int x,y,w,h;};
+static void (*power_position)(void *,const struct power_rect *),(*power_visible)(void *,int);
+static const struct power_rect *(*nav_position)(const void *);
+static void (*nav_thumb)(void *,int,const char *);
+static int last_power=2147483647,last_power_light=-1;
+static void navigation_styles(void *self) {
+ char arrow[256],track[256],fill[256];const char *mode=light()?"light":"dash";
+ snprintf(arrow,sizeof(arrow),"%s/assets/ui/%s/nav-progress-arrow.png",host->extension_directory,mode);
+ snprintf(track,sizeof(track),"%s/assets/ui/%s/nav-progress-track.png",host->extension_directory,mode);
+ snprintf(fill,sizeof(fill),"%s/assets/ui/%s/nav-progress-fill.png",host->extension_directory,mode);
+ for(int i=0;i<3;++i) {
+  void *bar=find(self,91044+i*2);if(!bar)continue;
+  for(int state=0;state<2;++state)nav_thumb(bar,state,arrow);
+  background_pic(bar,track);progress_pic(bar,fill);
+ }
 }
 static void page_create(void *self) {
  struct page *p=page_for(self);if(!p)return;
  p->live=self;p->last_theme=0;p->old_create(self);apply_styles(p,self);
+ if(p==pages){last_power=2147483647;last_power_light=-1;}
 }
 static void page_resume(void *self) {
  struct page *p=page_for(self);if(!p)return;p->old_resume(self);p->last_theme=0;apply_styles(p,self);
@@ -177,9 +200,46 @@ static void page_intent(void *self,const void *intent) {
  struct page *p=page_for(self);if(!p)return;
  p->old_intent(self,intent);p->last_theme=0;apply_styles(p,self);
 }
+static void update_power(void *self) {
+ if(!power_quick)return;
+ int connected=!*power_demo && *(const volatile int *)(power_paired+4)>0 &&
+     power_connected((const void *)power_paired) && !(*power_flags&0x30);
+ int kw=connected?power_kw(power_quick,power_medium,power_slow):0;
+ int mode=light();if(kw==last_power && mode==last_power_light)return;
+ last_power=kw;last_power_light=mode;
+ int width=power_width(kw);
+ for(int page=0;page<3;++page)for(int gauge=0;gauge<2;++gauge) {
+  void *bar=find(self,620101+page*20+gauge*5);if(!bar)continue;
+  power_visible(bar,connected && width>0);
+  if(width) {
+   power_position(bar,&(struct power_rect){kw<0?255-width:255,gauge?329:355,width,4});
+   background_color(bar,0xff000000u|(kw<0?0x39b96d:mode?0x62666d:0xa2a5a9));
+  }
+ }
+}
+/* Native navigation layouts resize this seekbar for each widget size. Keep
+   its centerline and width, but reserve enough height for the pointer. */
+static void navigation_bounds(void *self) {
+ int changed=0;
+ for(int i=0;i<3;++i) {
+  void *bar=find(self,91044+i*2);if(!bar)continue;
+  const struct power_rect *position=nav_position(bar);
+  if(position && position->h<14) {
+   struct power_rect expanded=*position;
+   expanded.y-=(14-expanded.h)/2;expanded.h=14;power_position(bar,&expanded);changed=1;
+  }
+ }
+ if(changed)navigation_styles(self);
+}
+static int (*dashboard_timer_listener)(void *,int);
+static int dashboard_timer(void *listener,int id) {
+ int result=dashboard_timer_listener(listener,id);
+ void *self=(unsigned char *)listener-sizeof(void *);
+ apply_styles(pages,self);update_power(self);navigation_bounds(self);return result;
+}
 static int page_timer(void *self,int id) {
  struct page *p=page_for(self);if(!p)return 1;
- int result=p->old_timer(self,id);apply_styles(p,self);return result;
+ int result=p->old_timer(self,id);apply_styles(p,self);if(p==pages)update_power(self);return result;
 }
 #include "image_routes.inc"
 #define IMAGE_COUNT (sizeof(image_assets)/sizeof(image_assets[0]))
@@ -296,10 +356,23 @@ static int install_pages(void *base) {
   p->installed=mode+1;p->vtable[6]=(void *)page_create;
   p->vtable[7]=(void *)page_timer;p->vtable[p->intent_slot]=(void *)page_intent;p->vtable[p->resume_slot]=(void *)page_resume;
   if(protect(p->vtable,44,mode))return 0;
+  if(i==0) {
+   void **slot=p->vtable+24;void *expected=host->resolve(host->official_library,"_ZThn4_N16dash1actActivity7onTimerEi");
+   int protection=permissions(slot,sizeof(void *));
+   if(!expected || (*slot!=expected && !owned_callback(*slot)) || protection<0 || protect(slot,sizeof(void *),protection|2))return 0;
+   dashboard_timer_listener=(int (*)(void *,int))*slot;*slot=(void *)dashboard_timer;
+   if(protect(slot,sizeof(void *),protection))return 0;
+  }
  }
  return 1;
 }
 static int deactivate(void) {
+ if(dashboard_timer_listener) {
+  void **slot=pages[0].vtable+24;int mode=permissions(slot,sizeof(void *));
+  if(*slot!=(void *)dashboard_timer || mode<0 || protect(slot,sizeof(void *),mode|2))return -1;
+  *slot=(void *)dashboard_timer_listener;
+  if(protect(slot,sizeof(void *),mode))return -1;dashboard_timer_listener=0;
+ }
  for(unsigned int i=PAGE_COUNT;i>0;i--) {
   struct page *p=&pages[i-1];if(!p->installed)continue;
   if((p->vtable[6]!=(void *)page_create && p->vtable[6]!=(void *)p->old_create) ||
@@ -352,7 +425,18 @@ static int activate(const struct dashborne_host *api) {
  UI(background_color,"_ZN6ZKBase18setBackgroundColorEj");UI(background_pic,"_ZN6ZKBase16setBackgroundPicEPKc");
  UI(text_color,"_ZN10ZKTextView18setTextStatusColorEij");UI(button_pic,"_ZN8ZKButton18setButtonStatusPicEiPKc");
  UI(progress_pic,"_ZN9ZKSeekBar14setProgressPicEPKc");
+ UI(nav_position,"_ZNK6ZKBase11getPositionEv");
+ UI(nav_thumb,"_ZN9ZKSeekBar11setThumbPicEiPKc");
+ UI(power_position,"_ZN6ZKBase11setPositionERK14LayoutPosition");
+ UI(power_visible,"_ZN6ZKBase10setVisibleEb");
 #undef UI
+#define DATA(v,n) do {*(void **)(&(v))=host->resolve(host->official_library,n);if(!(v))return -1;}while(0)
+ DATA(power_quick,"quickData");DATA(power_medium,"mediumData");DATA(power_slow,"slowData");
+ DATA(power_demo,"_ZN13WdgDataSource16DEMO_MODE_ACTIVEE");
+ DATA(power_paired,"_ZN10InitSystem21commander_paired_addrB5cxx11E");
+ DATA(power_flags,"_ZN10InitSystem13status_flags_E");
+ DATA(power_connected,"_ZN10InitSystem13isConnectedToERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE");
+#undef DATA
  *(void **)(&active_theme)=host->resolve(host->official_library,"_ZN12ThemeManager9getActiveEv");
  if(!active_theme||!prepare_pages()){host->log(host,"tesla-skin: layout compatibility check failed");return -1;}
  theme_resources_init(host->extension_directory,theme_colors);
