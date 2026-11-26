@@ -5,6 +5,7 @@ enum tm_gear { TM_UNKNOWN, TM_PARK, TM_REVERSE, TM_NEUTRAL, TM_DRIVE };
 enum tm_panel { TM_FL, TM_RL, TM_FR, TM_RR, TM_FRUNK, TM_TRUNK, TM_PANEL_COUNT };
 struct tm_reading {
     int connected, gear, speed, left, right;
+    int detected_left, detected_right;
     unsigned int known, open;
     int lights_known, low_beam, high_beam;
 };
@@ -14,6 +15,7 @@ struct tm_scene {
     struct tm_reading data;
     int angle, panels[TM_PANEL_COUNT], road;
     unsigned long long tick, road_clock;
+    unsigned int road_phase; /* Millionths of one road-mark spacing. */
     int initialized;
     struct tm_motion camera, panel_motion[TM_PANEL_COUNT], approach;
     int shift; /* 1 forward, -1 reverse, 0 hidden */

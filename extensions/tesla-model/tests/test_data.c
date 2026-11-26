@@ -19,8 +19,15 @@ int main(void) {
         tm_data_read(&r);assert(r.known==63&&r.open==mask);
     }
     raw[0xd1]=255;tm_data_read(&r);assert(r.known==62&&r.open==62);
-    b[0x25]='L';b[0x38]=1;tm_data_read(&r);assert(r.left&&!r.right);
-    b[0x38]=0;tm_data_read(&r);assert(!r.left);
+    b[0x25]='G';b[0x38]=1;tm_data_read(&r);assert(r.left&&!r.right);
+    /* Side detection must never turn on a vehicle lamp. Both outputs can
+       coexist with turn signals, including a red collision-warning phase. */
+    b[0x25]='O';b[0x35]='O';m[0x34/4]=1;m[0x38/4]=2;
+    tm_data_read(&r);assert(!r.left&&!r.right&&r.detected_left&&r.detected_right);
+    b[0x25]='R';b[0x35]='G';tm_data_read(&r);
+    assert(r.left&&r.right&&r.detected_left&&r.detected_right);
+    b[0x38]=0;tm_data_read(&r);assert(!r.left&&!r.right&&r.detected_left&&r.detected_right);
+    m[0x34/4]=3;m[0x38/4]=255;tm_data_read(&r);assert(!r.detected_left&&!r.detected_right);
     unsigned char *lamp=(void *)m;
     for(int l=0;l<2;++l)for(int h=0;h<2;++h) {
         lamp[0x5e]=l;lamp[0x5f]=h;tm_data_read(&r);

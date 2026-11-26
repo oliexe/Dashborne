@@ -25,6 +25,27 @@ class LayoutTests(unittest.TestCase):
   for i in [0,4,8,12,16,20,24,28,len(patch)-1]:
    bad=bytearray(patch);bad[i]^=128;self.assertIsNone(self.apply(base,bytes(bad)))
   for length in [0,4,27,len(patch)-1]:self.assertIsNone(self.apply(base,patch[:length]))
+ def test_navigation_pointer_and_digital_power_controls(self):
+  original={'seekbar__nav':{'id':91046,'caption':'PM_HBAR_NAV','position':{'left':18,'top':119,'width':427,'height':4}},
+            'window__gauge':{'id':110012,'caption':'PM_GAUGE1'}}
+  for mode in ('dash','light'):
+   changed=prepare.transform(original,'dash1act',mode,set())
+   nav=changed['seekbar__nav']
+   self.assertEqual(nav['position']['top']+nav['position']['height']/2,121)
+   self.assertTrue(all(v.endswith('/'+mode+'/nav-progress-arrow.png') for v in nav['thumbPicTab'].values()))
+   self.assertTrue(nav['backgroundPic'].endswith('/'+mode+'/nav-progress-track.png'))
+   self.assertTrue(nav['progressPic'].endswith('/'+mode+'/nav-progress-fill.png'))
+   sizes=json.loads((ROOT/'resource-sizes.json').read_text())
+   self.assertEqual(sizes[mode+'/nav-progress-fill.png'],[427,14])
+   bars=[v for k,v in changed['window__gauge'].items() if isinstance(v,dict)]
+   self.assertEqual({b['id'] for b in bars},{620120,620121,620122})
+   self.assertEqual(len(bars),3)
+   # Native Json::Value::asInt rejects unsigned ARGB values above INT_MAX.
+   self.assertTrue(all(0 <= b['backgroundColor'] <= 0x7fffffff for b in bars))
+ def test_unsigned_argb_cannot_reach_native_json_parser(self):
+  from ui_codec import encode
+  with self.assertRaisesRegex(ValueError,'signed JSON range'):
+   prepare.compile_delta(encode({}),{'backgroundColor':0xff393c40})
  def test_semantics_and_transparency(self):
   original={'id':1,'visible':False,'touchable':True,'position':{'left':10,'top':20,'width':200,'height':60},'text':'Brake','colorTab':{'color0':0xff0000},'backgroundColor':-1}
   for mode in ['dash','light']:
@@ -93,5 +114,5 @@ class LayoutTests(unittest.TestCase):
     original=decode(basefile.read_bytes());expected=prepare.transform(original,basefile.stem,mode,resources)
     result=self.apply(basefile.read_bytes(),patch.read_bytes());self.assertIsNotNone(result,basefile.name)
     self.assertEqual(decode(result),expected)
-    self.assertEqual([n['id'] for _,n in prepare.walk(original) if 'id'in n],[n['id'] for _,n in prepare.walk(expected) if 'id'in n])
+    self.assertEqual([n['id'] for _,n in prepare.walk(original) if 'id'in n],[n['id'] for _,n in prepare.walk(expected) if 'id'in n and not n.get('caption','').startswith('TESLA_POWER_')])
 if __name__=='__main__':unittest.main()

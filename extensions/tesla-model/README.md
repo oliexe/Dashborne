@@ -41,14 +41,16 @@ back to the parked view, where each door, frunk and trunk animates independently
 Camera and panel motion ease into and out of each transition. Changing gear
 mid-turn reverses from the current pose; the camera waits for panels to close
 before leaving the parked view. Arrow motion eases at both ends of its loop;
-zoom and translation use elapsed time between display callbacks. Road motion
-pauses during camera transitions to avoid decoding two animation sequences at
-once.
+zoom and translation use elapsed time between display callbacks. Road marks use a continuous projected pattern, with no road-frame PNG decoding.
 
 The adapter reads the stock application's Commander state without changing its
 subscriptions. It uses the previously verified connection, gear, door and turn
 indicator mappings for the supported app build. Low and high beams use the same
 fields as the stock light controls, checked against the app retrieved over ADB.
+Blind-spot states color the lane boundaries independently of the turn lamps.
+Only stock G/R turn-signal states illuminate the model; O is a side warning.
+The current Commander field set exposes no verified steering-angle value, so
+road curvature is not inferred from turn signals.
 When disconnected, live indicators clear; the car stays at full opacity.
 The stock widget frame supplies the rounded corners and edit outline. The
 renderer covers its embedded navigation placeholder with a blank backing that
@@ -60,13 +62,18 @@ cannot reveal a rectangle over the car.
 
 `scene.c` handles animation and layer placement without UI dependencies.
 `data.c` reads vehicle state; `extension.c` connects the scene to native widget
-controls. The renderer shares 12 model-image slots and 20 dedicated road-frame
-slots across placements, releasing both on pause. Keeping the complete road loop
-in memory avoids repeated PNG loads after the first lap. Visible widgets update
+controls. The renderer keeps model images in a bounded shared cache and releases them on
+pause. Lane marks are antialiased in one native clipped drawing callback,
+including during page slides, instead of issuing a native draw call per pixel. Visible widgets update
 on the native 16 ms cadence; delayed callbacks advance elapsed time without
 replaying missed frames. Zoom geometry remains continuous between sprite frames,
 and the overhead view shares the close-up's image and position to avoid a jump.
-Actual frame rate still depends on the sprite sequence and image-loading cost.
+On DASH, moving Drive and side-warning samples presented at about 59.7–59.8 fps,
+with approximately 3.3 ms average widget drawing time. An occasional 80–100 ms
+presentation gap remains; this is not a guarantee of uninterrupted 60 fps.
+Actual frame rate still depends on display scheduling and image-loading cost.
+Lamp anchors use source-image coordinates. Cropped black/red driving sprites
+are placed in the same reference frame as the gray/white/blue sprites.
 
 Run `sh extensions/tesla-model/test.sh` for the state-machine, parser, telemetry
 and lifecycle tests. They cover all panel combinations, gear changes during

@@ -47,7 +47,14 @@ void tm_data_read(struct tm_reading *r) {
     if(!r->connected)return;
     r->gear=word(medium,0);r->speed=speed();tm_decode_panels(r,slow);
     const volatile unsigned char *b=blinkers();
-    if(b){r->left=b[0x25]!='N' && b[0x38];r->right=b[0x35]!='N' && b[0x38];}
+    /* The stock output is G/R for an illuminated turn signal, O for a
+       side warning without a turn signal, and N for off. O is not a lamp. */
+    if(b){r->left=(b[0x25]=='G' || b[0x25]=='R') && b[0x38];
+          r->right=(b[0x35]=='G' || b[0x35]=='R') && b[0x38];}
+    /* blinkersCalculate reads these separate side-detection states. The stock
+       app treats 0/3 as clear; only the defined 1/2 warning states are shown. */
+    int left=word(medium,0x34),right=word(medium,0x38);
+    r->detected_left=left==1 || left==2;r->detected_right=right==1 || right==2;
     /* Verified through ADB: getAct_Low_Beam_38 and getAct_High_Beam_37
        read mediumData bytes 0x5e/0x5f in the fingerprinted app. */
     unsigned int low=medium[0x5e],high=medium[0x5f];

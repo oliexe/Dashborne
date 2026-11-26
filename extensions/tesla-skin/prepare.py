@@ -64,6 +64,12 @@ def transform(original,page,mode,resources):
         if page=='pageEdit' and cap in ('LBL_PC_InfoText','LBL_PA_InfoText'):
             node['fontSize']=22
         if page=='dash1act':
+            if re.fullmatch(r'P[TMB]_HBAR_NAV',cap):
+                arrow='../../../mnt/extsd/Dashborne/extensions/tesla-skin/assets/ui/'+mode+'/nav-progress-arrow.png'
+                node['thumbPicTab']={'pic0':arrow,'pic1':arrow,'pic4':arrow}
+                node['backgroundPic']=arrow.replace('arrow.png','track.png')
+                node['progressPic']=arrow.replace('arrow.png','fill.png')
+                node['position'].update(top=114,height=14)
             # Reserve separate bands for mode, value, units, gear and secondary data.
             if re.match(r'P[TMB]_G[123]_BTN$',cap):
                 node['fontSize']=22
@@ -103,6 +109,24 @@ def transform(original,page,mode,resources):
             for key,value in overrides.get(selector,{}).items():
                 if isinstance(value,dict) and isinstance(node.get(key),dict):node[key].update(copy.deepcopy(value))
                 else:node[key]=copy.deepcopy(value)
+    if page=='dash1act':
+        # Native digital gauges have no horizontal power controls. Add controls
+        # to their existing windows so paging, editing and alpha remain native.
+        for path,node in list(walk(layout)):
+            cap=node.get('caption','')
+            match=re.fullmatch(r'P([TMB])_(GAUGE1|GAUGE4)',cap)
+            if not match:continue
+            page_index='TMB'.index(match[1]);gauge=0 if match[2]=='GAUGE1' else 1
+            base=620100+page_index*20+gauge*5
+            y=356 if gauge==0 else 330
+            for key,offset,x,width,height,color_value in [
+                ('track',0,90,330,2,p['line']),('value',1,255,1,4,p['muted']),
+                ('zero',2,254,2,8,p['muted'])]:
+                node['textview__tesla_power_'+key]={
+                    'id':base+offset,'caption':'TESLA_POWER_'+key.upper(),
+                    'touchable':False,'visible':key!='value','backgroundColor':color_value,
+                    'position':{'left':x,'top':y-(3 if key=='zero' else 1 if key=='value' else 0),
+                                'width':width,'height':height}}
     return layout
 
 def object_spans(text):
@@ -141,6 +165,11 @@ def object_spans(text):
 
 
 def compile_delta(blob, changed):
+    # FlyThings reads these JSON colors through Json::Value::asInt. Pass RGB
+    # here; direct C setters receive opaque ARGB separately in styles.inc.
+    for _,node in walk(changed):
+        if 'backgroundColor' in node and not -(1<<31)<=node['backgroundColor']<(1<<31):
+            raise ValueError('backgroundColor exceeds the native signed JSON range')
     original=decode(blob)
     offset=struct.unpack_from('<I',blob,6)[0]
     plain=zlib.decompress(blob[offset+8:-6]);spans=object_spans(plain.decode())
@@ -184,8 +213,10 @@ def write_styles(pages):
         for mode,layout in variants.items():
             out.append('static const struct style '+page+'_'+mode+'[] = {')
             for id,path,n in styles(layout,page):
+                if n.get('caption','').startswith('TESLA_POWER_'):
+                    n=dict(n,backgroundColor=0xff000000|n['backgroundColor'])
                 if page=='dash1act':
-                    n={k:v for k,v in n.items() if k=='colorTab' or (k=='backgroundPic' and any(tag in n.get('caption','') for tag in ('_DEST_ICO_NAV','_G3_ARC')))}
+                    n={k:v for k,v in n.items() if k=='colorTab' or (k=='backgroundColor' and n.get('caption','').startswith('TESLA_POWER_')) or (k=='backgroundPic' and any(tag in n.get('caption','') for tag in ('_DEST_ICO_NAV','_G3_ARC')))}
                 ct=n.get('colorTab',{});pt=n.get('picTab',{})
                 colors=[str(ct.get('color'+str(i),ct.get('color0',0)))+'u' for i in range(5)]
                 pics=[cstring(pt.get('pic'+str(i),'')) for i in range(5)]
